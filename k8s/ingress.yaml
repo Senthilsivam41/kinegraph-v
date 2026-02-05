@@ -1,0 +1,27 @@
+---
+# Ingress for external access (optional - requires Ingress Controller)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kinetic-ingress
+  namespace: kinetic-v
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"  # If using cert-manager
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: kinetic.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kinetic-api-service
+            port:
+              number: 8000
+  tls:
+  - hosts:
+    - kinetic.yourdomain.com
+    secretName: kinetic-tls
