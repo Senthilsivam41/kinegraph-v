@@ -1,0 +1,63 @@
+---
+# Celery Worker Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kinetic-worker
+  namespace: kinetic-v
+  labels:
+    app: kinetic-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kinetic-worker
+  template:
+    metadata:
+      labels:
+        app: kinetic-worker
+    spec:
+      containers:
+      - name: worker
+        image: kinetic-vectra:latest
+        imagePullPolicy: Always
+        command: ["celery", "-A", "workers.celery_app", "worker", "--loglevel=info", "--concurrency=4"]
+        envFrom:
+        - configMapRef:
+            name: kinetic-config
+        - secretRef:
+            name: kinetic-secrets
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "1000m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+---
+# Horizontal Pod Autoscaler for Workers
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: kinetic-worker-hpa
+  namespace: kinetic-v
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kinetic-worker
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 85

@@ -1,0 +1,38 @@
+# Core Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# LangChain Ecosystem
+langchain==0.1.6
+langchain-community==0.0.19
+langchain-openai==0.0.5
+langgraph==0.0.20
+langchain-core==0.1.23
+
+# Vector Database
+chromadb==0.4.22
+
+# Graph Database
+neo4j==5.16.0
+
+# Task Queue
+celery==5.3.6
+redis==5.0.1
+
+# Document Processing
+pypdf==4.0.1
+python-multipart==0.0.6
+
+# Utilities
+python-dotenv==1.0.1
+httpx==0.26.0
+tenacity==8.2.3
+
+# Logging and Monitoring
+python-json-logger==2.0.7
+
+# Testing (optional but recommended)
+pytest==7.4.4
+pytest-asyncio==0.23.3
