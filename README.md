@@ -27,7 +27,7 @@ The system uses **LangGraph** to orchestrate complex query workflows and **Celer
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture 
 
 ### System Components
 
@@ -52,6 +52,9 @@ The system uses **LangGraph** to orchestrate complex query workflows and **Celer
     │ Results │
     └─────────┘
 ```
+### Architecture Overview
+
+![KineticGraph-Vectra Architecture](architecture.png)
 
 ### Infrastructure Stack
 
