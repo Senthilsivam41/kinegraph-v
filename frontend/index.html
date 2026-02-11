@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hybrid RAG Chat - KineGraph</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>🔍 KineGraph</h1>
+                <p>Hybrid RAG System</p>
+            </div>
+
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <h3>📄 Upload Document</h3>
+                <div class="upload-container">
+                    <input type="file" id="fileInput" accept=".pdf" />
+                    <button id="uploadBtn" class="btn-upload">Upload PDF</button>
+                </div>
+                <div id="uploadStatus" class="upload-status"></div>
+            </div>
+
+            <!-- Query Mode Selection -->
+            <div class="mode-section">
+                <h3>🎯 Query Mode</h3>
+                <div class="mode-options">
+                    <label class="radio-label">
+                        <input type="radio" name="mode" value="hybrid" checked>
+                        <span>Hybrid (Recommended)</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="mode" value="vector">
+                        <span>Vector Search</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="mode" value="graph">
+                        <span>Graph Search</span>
+                    </label>
+                </div>
+                <div class="mode-description" id="modeDescription">
+                    <strong>Hybrid Mode:</strong> Combines vector and graph search for best results
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="settings-section">
+                <h3>⚙️ Settings</h3>
+                <div class="setting-item">
+                    <label for="maxResults">Max Results:</label>
+                    <input type="number" id="maxResults" value="10" min="1" max="100">
+                </div>
+                <div class="setting-item">
+                    <label for="apiUrl">API URL:</label>
+                    <input type="text" id="apiUrl" value="http://localhost:8000" placeholder="http://localhost:8000">
+                </div>
+            </div>
+
+            <!-- System Status -->
+            <div class="status-section">
+                <h3>💚 System Status</h3>
+                <div id="systemStatus" class="status-indicators">
+                    <div class="status-item">
+                        <span class="status-dot pending"></span>
+                        <span>Checking...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="chat-container">
+            <div class="chat-header">
+                <h2>Chat with Your Documents</h2>
+                <button id="clearChat" class="btn-clear">🗑️ Clear Chat</button>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-message">
+                    <h2>👋 Welcome to KineGraph!</h2>
+                    <p>I'm your hybrid RAG assistant. I can help you:</p>
+                    <ul>
+                        <li>Search through your documents using semantic similarity</li>
+                        <li>Explore relationships and connections in your knowledge graph</li>
+                        <li>Answer questions using both vector and graph databases</li>
+                    </ul>
+                    <p><strong>Get started:</strong> Upload a PDF document or ask me a question!</p>
+                </div>
+            </div>
+
+            <div class="chat-input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="chatInput" 
+                        placeholder="Ask me anything about your documents..." 
+                        rows="1"
+                    ></textarea>
+                    <button id="sendBtn" class="btn-send" disabled>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

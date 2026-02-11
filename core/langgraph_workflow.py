@@ -54,22 +54,27 @@ class HybridRAGWorkflow:
         workflow = StateGraph(WorkflowState)
         
         # Add nodes
+        workflow.add_node("router", self._route_query_node)
         workflow.add_node("vector_agent", self._vector_agent)
         workflow.add_node("graph_agent", self._graph_agent)
         workflow.add_node("fusion_node", self._fusion_node)
         workflow.add_node("format_results", self._format_results)
         
-        # Add conditional routing
-        workflow.set_conditional_entry_point(
-            self._route_query,
+        # Set entry point
+        workflow.set_entry_point("router")
+        
+        # Add conditional edges from router
+        workflow.add_conditional_edges(
+            "router",
+            self._route_decision,
             {
                 "vector": "vector_agent",
                 "graph": "graph_agent",
-                "hybrid": "vector_agent"  # Hybrid starts with vector, then graph
+                "hybrid": "vector_agent"
             }
         )
         
-        # Add edges
+       # Add edges
         workflow.add_edge("vector_agent", "fusion_node")
         workflow.add_edge("graph_agent", "fusion_node")
         workflow.add_edge("fusion_node", "format_results")
@@ -77,7 +82,11 @@ class HybridRAGWorkflow:
         
         return workflow.compile()
     
-    def _route_query(self, state: WorkflowState) -> str:
+    async def _route_query_node(self, state: WorkflowState) -> WorkflowState:
+        """Router node - just passes through state"""
+        return state
+    
+    def _route_decision(self, state: WorkflowState) -> str:
         """Determine which path to take based on query mode"""
         return state["mode"].value
     
