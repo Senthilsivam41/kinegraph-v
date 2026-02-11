@@ -70,18 +70,21 @@ curl http://localhost:8000/health
 # }
 ```
 
-### Step 5: Access the UI
+### Step 5: Access the API Documentation
 
 Open your browser and visit:
 
-- **API Documentation:** http://localhost:8000/docs
-- **Neo4j Browser:** http://localhost:7474
+- **API Documentation (Swagger UI):** http://localhost:8000/docs
+- **Alternative API Docs (ReDoc):** http://localhost:8000/redoc
+- **Neo4j Database Browser:** http://localhost:7474
   - Username: `neo4j`
   - Password: (check your `.env` file)
 
+**Note:** This is a backend API service. There is no frontend UI - all interactions are via REST API endpoints.
+
 ### Step 6: Ingest Your First Document
 
-Using the **Swagger UI** at http://localhost:8000/docs:
+Using the **Swagger UI** (interactive API documentation) at http://localhost:8000/docs:
 
 1. Navigate to **POST /api/v1/ingest/document**
 2. Click "Try it out"

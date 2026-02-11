@@ -120,13 +120,47 @@ open http://localhost:8000/docs
 
 ### 4. Access Individual Services
 
-- **FastAPI:** http://localhost:8000
+- **API Documentation (Swagger):** http://localhost:8000/docs
+- **API Documentation (ReDoc):** http://localhost:8000/redoc  
+- **API Endpoints:** http://localhost:8000
 - **Neo4j Browser:** http://localhost:7474 (user: `neo4j`, password: see `.env`)
-- **ChromaDB:** http://localhost:8001
+- **ChromaDB API:** http://localhost:8001
 
 ---
 
-## 📚 Usage
+## � Chat UI
+
+A modern, responsive chat interface is available in the `frontend/` directory.
+
+### Launch the Chat UI
+
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Start the server (Python 3)
+python3 serve.py
+
+# Or use Python's built-in server
+python3 -m http.server 8080
+```
+
+Then open your browser to: **http://localhost:8080**
+
+### Features
+
+- 🗨️ **Real-time chat interface** for querying your documents
+- 📄 **PDF upload** with live processing status
+- 🎯 **Three query modes**: Hybrid, Vector, and Graph
+- ⚙️ **Customizable settings**: max results, API endpoint
+- 💚 **Live system health** monitoring
+- 📱 **Responsive design** for mobile and desktop
+
+See [`frontend/README.md`](frontend/README.md) for detailed documentation.
+
+---
+
+## �📚 Usage
 
 ### Document Ingestion
 
@@ -337,15 +371,17 @@ kubectl apply -f k8s/worker-deployment.yaml
 kubectl apply -f k8s/ingress.yaml
 ```
 
-### 4. Access the Application
+### 4. Access the API
 
 ```bash
-# Port forward to access locally
+# Port forward to access the API locally
 kubectl port-forward -n kinetic-v svc/kinetic-api-service 8000:8000
 
 # Or get LoadBalancer IP
 kubectl get svc -n kinetic-v kinetic-api-service
 ```
+
+Access the API documentation at: http://localhost:8000/docs
 
 ### 5. Monitor Deployments
 
