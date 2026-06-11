@@ -78,6 +78,8 @@ The system uses **LangGraph** to orchestrate complex query workflows and **Celer
 - **OpenAI API Key**
 - At least **8GB RAM** available for containers
 
+> **Compose note:** The Docker Compose file resides in `infra/`. Run `cd infra` before executing the commands below or pass `-f infra/docker-compose.yml` to `docker compose`.
+
 ### 1. Clone and Setup
 
 ```bash
@@ -95,13 +97,14 @@ nano .env  # or use your favorite editor
 
 ```bash
 # Build and start all containers
-docker-compose up --build -d
+cd infra
+docker compose up --build -d
 
 # Check service health
-docker-compose ps
+docker compose ps
 
 # View logs
-docker-compose logs -f app
+docker compose logs -f app
 ```
 
 ### 3. Verify System Health
@@ -147,8 +150,6 @@ Then open your browser to: **http://localhost:8080**
 
 - 🗨️ **Real-time chat interface** for querying your documents
 - 📄 **PDF upload** with live processing status
-- 🎯 **Three query modes**: Hybrid, Vector, and Graph
-- ⚙️ **Customizable settings**: max results, API endpoint
 - 💚 **Live system health** monitoring
 - 📱 **Responsive design** for mobile and desktop
 
@@ -162,7 +163,6 @@ See [`frontend/README.md`](frontend/README.md) for detailed documentation.
 
 Upload a PDF document for processing:
 
-```bash
 curl -X POST "http://localhost:8000/api/v1/ingest/document" \
   -H "Content-Type: multipart/form-data" \
   -F "file=@/path/to/document.pdf" \
@@ -180,7 +180,7 @@ curl -X POST "http://localhost:8000/api/v1/ingest/document" \
 
 ### Check Processing Status
 
-```bash
+ **Docker Fixes**: [docs/DOCKER_FIXES.md](docs/DOCKER_FIXES.md)
 curl http://localhost:8000/api/v1/ingest/task/abc123
 ```
 
@@ -250,36 +250,23 @@ curl -X POST "http://localhost:8000/api/v1/query" \
 
 ```
 kinegraph-v/
-├── app/                        # FastAPI application
-│   ├── main.py                 # Application entry point
-│   ├── models.py               # Pydantic models
-│   └── api/
-│       └── routes/
-│           ├── health.py       # Health check endpoints
-│           ├── ingest.py       # Document ingestion
-│           └── query.py        # Query endpoints
-├── core/                       # Core logic
-│   ├── config.py               # Configuration management
-│   ├── langgraph_workflow.py  # LangGraph orchestration
-│   └── rrf.py                  # Reciprocal Rank Fusion
-├── services/                   # Database services
-│   ├── chroma_service.py       # ChromaDB client
-│   └── neo4j_service.py        # Neo4j client
-├── workers/                    # Celery workers
-│   ├── celery_app.py           # Celery configuration
-│   ├── tasks.py                # Processing tasks
-│   └── document_processor.py   # Document utilities
-├── k8s/                        # Kubernetes manifests
-│   ├── configmap.yaml
-│   ├── api-deployment.yaml
-│   ├── worker-deployment.yaml
-│   ├── chroma-deployment.yaml
-│   ├── neo4j-statefulset.yaml
-│   ├── redis-deployment.yaml
-│   └── ingress.yaml
-├── docker-compose.yml          # Docker Compose configuration
-├── Dockerfile                  # Container image
+├── backend/                    # Python backend packages
+│   ├── app/                    # FastAPI application (routes, models)
+│   ├── core/                   # Config, LangGraph workflow, RRF
+│   ├── services/               # ChromaDB and Neo4j clients
+│   └── workers/                # Celery app, tasks, document processor
+├── frontend/                   # Chat UI assets and server script
+├── infra/                      # Infrastructure assets
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   └── k8s/                    # Kubernetes manifests
+├── data/                       # Runtime storage (gitignored)
+│   ├── chroma_data/
+│   └── uploads/
+├── docs/                       # Additional documentation
+├── scripts/                    # Helper scripts (start UI, fix API key)
 ├── requirements.txt            # Python dependencies
+├── architecture.png            # Diagram referenced in docs
 └── .env.example                # Environment template
 ```
 
@@ -299,24 +286,26 @@ kinegraph-v/
 
 ### Managing Services
 
+> Run these commands from the `infra/` directory (or pass `-f infra/docker-compose.yml`).
+
 ```bash
 # Start services
-docker-compose up -d
+docker compose up -d
 
 # Stop services
-docker-compose down
+docker compose down
 
 # View logs
-docker-compose logs -f [service_name]
+docker compose logs -f [service_name]
 
 # Restart a service
-docker-compose restart app
+docker compose restart app
 
 # Rebuild after code changes
-docker-compose up --build app
+docker compose up --build app
 
 # Scale workers
-docker-compose up -d --scale worker=5
+docker compose up -d --scale worker=5
 ```
 
 ---
@@ -519,10 +508,10 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # Run FastAPI with hot reload
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 
 # Run Celery worker
-celery -A workers.celery_app worker --loglevel=info
+celery -A backend.workers.celery_app worker --loglevel=info
 ```
 
 ### Code Formatting
