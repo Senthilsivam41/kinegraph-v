@@ -49,11 +49,12 @@ logs/
 # Docker
 .dockerignore
 
-# Database
+# Database & runtime data
 *.db
 *.sqlite3
-chroma_data/
-neo4j_data/
+data/chroma_data/
+data/neo4j_data/
+data/uploads/
 
 # OS
 .DS_Store
