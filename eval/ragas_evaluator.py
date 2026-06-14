@@ -100,7 +100,8 @@ class RAGASEvaluator:
         embedding_model: str = "text-embedding-3-small",
         metrics: Optional[List[str]] = None,
     ) -> None:
-        self.openai_api_key = openai_api_key
+        import os
+        self.openai_api_key = openai_api_key or os.getenv("OPENAI_AI_KEY") or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.embedding_model = embedding_model
         self.metrics_names = metrics or DEFAULT_METRICS
@@ -113,15 +114,30 @@ class RAGASEvaluator:
         if not (_RAGAS_AVAILABLE and _OPENAI_AVAILABLE):
             return
         try:
+            is_openrouter = self.openai_api_key and (
+                self.openai_api_key.startswith("sk-or-") or "openrouter" in self.openai_api_key
+            )
+
             kw: Dict[str, Any] = {"model": self.model, "temperature": 0}
+            ekw: Dict[str, Any] = {"model": self.embedding_model}
+
             if self.openai_api_key:
                 kw["openai_api_key"] = self.openai_api_key
-            self._llm = ChatOpenAI(**kw)
-
-            ekw: Dict[str, Any] = {"model": self.embedding_model}
-            if self.openai_api_key:
                 ekw["openai_api_key"] = self.openai_api_key
-            self._embeddings = OpenAIEmbeddings(**ekw)
+
+            if is_openrouter:
+                kw["base_url"] = "https://openrouter.ai/api/v1"
+                if kw["model"] == "gpt-4o-mini":
+                    kw["model"] = "openrouter/free"
+                
+                self._llm = ChatOpenAI(**kw)
+                
+                # Use local free embeddings to avoid OpenRouter 402/payment limit errors
+                from langchain_community.embeddings import HuggingFaceEmbeddings
+                self._embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+            else:
+                self._llm = ChatOpenAI(**kw)
+                self._embeddings = OpenAIEmbeddings(**ekw)
 
             _map = {
                 "faithfulness": faithfulness,
