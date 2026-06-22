@@ -11,6 +11,7 @@ class QueryMode(str, Enum):
     VECTOR = "vector"
     GRAPH = "graph"
     HYBRID = "hybrid"
+    VECTORLESS = "vectorless"
 
 
 class QueryRequest(BaseModel):
@@ -19,6 +20,8 @@ class QueryRequest(BaseModel):
     mode: QueryMode = Field(default=QueryMode.HYBRID, description="Query mode")
     max_results: int = Field(default=10, ge=1, le=100, description="Maximum results")
     filters: Optional[Dict[str, Any]] = Field(default=None, description="Additional filters")
+    attachment_content: Optional[str] = Field(default=None, description="Raw text of the document attachment")
+    attachment_name: Optional[str] = Field(default=None, description="Name of the document attachment")
 
 
 class DocumentChunk(BaseModel):

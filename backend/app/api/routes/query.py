@@ -48,6 +48,8 @@ async def query_system(query_request: QueryRequest, request: Request):
                     mode=query_request.mode,
                     max_results=query_request.max_results,
                     filters=query_request.filters,
+                    attachment_content=query_request.attachment_content,
+                    attachment_name=query_request.attachment_name,
                 )
                 execution_time = round((time.perf_counter() - start_time) * 1000, 2)
 
@@ -64,6 +66,8 @@ async def query_system(query_request: QueryRequest, request: Request):
                 mode=query_request.mode,
                 max_results=query_request.max_results,
                 filters=query_request.filters,
+                attachment_content=query_request.attachment_content,
+                attachment_name=query_request.attachment_name,
             )
             execution_time = round((time.perf_counter() - start_time) * 1000, 2)
 
