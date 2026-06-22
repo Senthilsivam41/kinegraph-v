@@ -73,6 +73,8 @@ class WorkflowState(TypedDict):
     answer_confidence: float
     latency_breakdown: Dict[str, float]
     final_results: List[DocumentChunk]
+    attachment_content: Optional[str]
+    attachment_name: Optional[str]
 
 
 # ---------------------------------------------------------------------------
@@ -129,6 +131,7 @@ class HybridRAGWorkflow:
         workflow.add_node("vector_agent",    self._vector_agent)
         workflow.add_node("graph_agent",     self._graph_agent)
         workflow.add_node("parallel_fetch",  self._parallel_fetch)
+        workflow.add_node("vectorless_agent", self._vectorless_agent)
         workflow.add_node("fusion_node",     self._fusion_node)
         workflow.add_node("rerank_node",     self._rerank_node)
         workflow.add_node("generate_node",   self._generate_node)
@@ -144,12 +147,14 @@ class HybridRAGWorkflow:
                 "vector":  "vector_agent",
                 "graph":   "graph_agent",
                 "hybrid":  "parallel_fetch",   # ← parallel branch
+                "vectorless": "vectorless_agent",
             },
         )
 
         # Single-mode paths
         workflow.add_edge("vector_agent", "fusion_node")
         workflow.add_edge("graph_agent",  "fusion_node")
+        workflow.add_edge("vectorless_agent", "fusion_node")
 
         # Hybrid parallel path
         workflow.add_edge("parallel_fetch", "fusion_node")
@@ -185,6 +190,38 @@ class HybridRAGWorkflow:
             elif suggested_mode == "graph":
                 effective_mode = QueryMode.GRAPH
             # else: stays hybrid
+
+        # Check for auto-routing to Vectorless RAG
+        attachment_content = state.get("attachment_content")
+        filters = state.get("filters")
+        query_lower = state["query"].lower()
+
+        # Rule 1: Explicitly requested Vectorless
+        # Rule 2: Query is a global/summarization query (vector chunking is bad and expensive)
+        # Rule 3: Direct attachment content is small (<40k chars)
+        is_summary_query = any(kw in query_lower for kw in [
+            "summarize", "summary", "tldr", "overall theme", "recap", "synopsis", "outline", "explain the main"
+        ])
+
+        should_use_vectorless = False
+
+        if effective_mode == QueryMode.VECTORLESS:
+            should_use_vectorless = True
+        elif attachment_content:
+            if len(attachment_content) < 40000 or is_summary_query:
+                should_use_vectorless = True
+                logger.info("[IntentRouter] Auto-routing to VECTORLESS: Attachment content detected (len=%d, is_summary=%s)", len(attachment_content), is_summary_query)
+        elif filters and "file_name" in filters:
+            file_name = filters["file_name"]
+            from backend.services.vectorless_service import VectorlessService
+            vectorless = VectorlessService()
+            doc_text = vectorless.get_local_document_text(file_name)
+            if doc_text and (len(doc_text) < 40000 or is_summary_query):
+                should_use_vectorless = True
+                logger.info("[IntentRouter] Auto-routing to VECTORLESS: Local file '%s' is small/queried for summary", file_name)
+
+        if should_use_vectorless:
+            effective_mode = QueryMode.VECTORLESS
 
         logger.info(
             "[IntentRouter] query=%r intent=%s mode=%s→%s rewritten=%r",
@@ -275,6 +312,49 @@ class HybridRAGWorkflow:
                     state["latency_breakdown"]["graph_agent_ms"])
         return state
 
+    async def _vectorless_agent(self, state: WorkflowState) -> WorkflowState:
+        """Vectorless retrieval agent using local BM25 and attachment filtering."""
+        t0 = time.perf_counter()
+        
+        query = state["rewritten_query"]
+        attachment_content = state.get("attachment_content")
+        attachment_name = state.get("attachment_name")
+        filters = state.get("filters")
+        max_results = state["max_results"]
+
+        results = []
+        
+        try:
+            from backend.services.vectorless_service import VectorlessService
+            vectorless = VectorlessService()
+
+            if attachment_content:
+                # Retrieve from direct request attachment
+                results = vectorless.search_attachment(
+                    query=query,
+                    attachment_content=attachment_content,
+                    attachment_name=attachment_name,
+                    max_results=max_results
+                )
+                logger.info("[VectorlessAgent] Extracted %d chunks from attachment", len(results))
+            else:
+                # Retrieve from local document chunk cache
+                results = vectorless.search_chunks(
+                    query=query,
+                    top_k=max_results,
+                    filters=filters
+                )
+                logger.info("[VectorlessAgent] Retrieved %d chunks from local chunks", len(results))
+        except Exception as e:
+            logger.error("[VectorlessAgent] Failed vectorless retrieval: %s", e)
+
+        state["vector_results"] = results
+        state["graph_results"] = []
+        state["latency_breakdown"]["vectorless_agent_ms"] = round(
+            (time.perf_counter() - t0) * 1000, 2
+        )
+        return state
+
     # ------------------------------------------------------------------
     # Node: fusion_node
     # ------------------------------------------------------------------
@@ -284,7 +364,7 @@ class HybridRAGWorkflow:
         t0 = time.perf_counter()
         mode = state["mode"]
 
-        if mode == QueryMode.VECTOR:
+        if mode in (QueryMode.VECTOR, QueryMode.VECTORLESS):
             fused = state["vector_results"]
         elif mode == QueryMode.GRAPH:
             fused = state["graph_results"]
@@ -418,6 +498,8 @@ class HybridRAGWorkflow:
         mode: QueryMode = QueryMode.HYBRID,
         max_results: int = 10,
         filters: Optional[Dict[str, Any]] = None,
+        attachment_content: Optional[str] = None,
+        attachment_name: Optional[str] = None,
     ) -> List[DocumentChunk]:
         """Execute the full retrieval + generation workflow."""
         initial_state = WorkflowState(
@@ -436,6 +518,8 @@ class HybridRAGWorkflow:
             answer_confidence=0.0,
             latency_breakdown={},
             final_results=[],
+            attachment_content=attachment_content,
+            attachment_name=attachment_name,
         )
         final_state = await self.graph.ainvoke(initial_state)
         return final_state["final_results"]
@@ -446,6 +530,8 @@ class HybridRAGWorkflow:
         mode: QueryMode = QueryMode.HYBRID,
         max_results: int = 10,
         filters: Optional[Dict[str, Any]] = None,
+        attachment_content: Optional[str] = None,
+        attachment_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Execute and return both retrieved chunks AND the generated answer.
@@ -476,6 +562,8 @@ class HybridRAGWorkflow:
             answer_confidence=0.0,
             latency_breakdown={},
             final_results=[],
+            attachment_content=attachment_content,
+            attachment_name=attachment_name,
         )
         final_state = await self.graph.ainvoke(initial_state)
         return {

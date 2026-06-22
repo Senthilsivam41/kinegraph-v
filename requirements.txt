@@ -23,6 +23,7 @@ redis==5.0.1
 
 # Document Processing
 pypdf==4.0.1
+pymupdf>=1.24.0
 python-multipart==0.0.6
 
 # Utilities
@@ -43,7 +44,7 @@ ragas>=0.1.7
 datasets>=2.18.0
 
 # LangSmith tracing
-langsmith>=0.1.20
+langsmith>=0.0.83,<0.1.0
 
 # Context reranker (optional — improves context_precision significantly)
 sentence-transformers>=2.6.0   ; extra == "rerank"

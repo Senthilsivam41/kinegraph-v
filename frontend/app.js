@@ -4,7 +4,8 @@ const state = {
     mode: 'hybrid',
     maxResults: 10,
     messages: [],
-    uploadedFiles: []
+    uploadedFiles: [],
+    attachment: null
 };
 
 // DOM Elements
@@ -19,14 +20,21 @@ const elements = {
     systemStatus: document.getElementById('systemStatus'),
     apiUrl: document.getElementById('apiUrl'),
     maxResults: document.getElementById('maxResults'),
-    modeDescription: document.getElementById('modeDescription')
+    modeDescription: document.getElementById('modeDescription'),
+    attachmentArea: document.getElementById('attachmentArea'),
+    attachmentName: document.getElementById('attachmentName'),
+    attachmentSize: document.getElementById('attachmentSize'),
+    removeAttachmentBtn: document.getElementById('removeAttachmentBtn'),
+    attachBtn: document.getElementById('attachBtn'),
+    attachmentInput: document.getElementById('attachmentInput')
 };
 
 // Mode Descriptions
 const modeDescriptions = {
     hybrid: '<strong>Hybrid Mode:</strong> Combines vector and graph search for best results using Reciprocal Rank Fusion (RRF)',
     vector: '<strong>Vector Mode:</strong> Semantic similarity search using ChromaDB embeddings - fast and good for general queries',
-    graph: '<strong>Graph Mode:</strong> Cypher query generation using Neo4j - best for relationship and connection queries'
+    graph: '<strong>Graph Mode:</strong> Cypher query generation using Neo4j - best for relationship and connection queries',
+    vectorless: '<strong>Vectorless Mode:</strong> Pure lexical search (BM25) over documents and attachments without expensive vector databases or embeddings'
 };
 
 // Initialize Application
@@ -84,27 +92,82 @@ function setupEventListeners() {
         this.style.height = 'auto';
         this.style.height = Math.min(this.scrollHeight, 120) + 'px';
     });
+
+    // Attachment triggers
+    elements.attachBtn.addEventListener('click', () => elements.attachmentInput.click());
+    elements.attachmentInput.addEventListener('change', handleAttachmentSelection);
+    elements.removeAttachmentBtn.addEventListener('click', removeAttachment);
 }
 
 // Handle Input Change
 function handleInputChange() {
     const hasText = elements.chatInput.value.trim().length > 0;
-    elements.sendBtn.disabled = !hasText;
+    const hasAttachment = state.attachment !== null;
+    elements.sendBtn.disabled = !hasText && !hasAttachment;
+}
+
+// Handle Attachment Selection
+function handleAttachmentSelection(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+        state.attachment = {
+            name: file.name,
+            size: file.size,
+            content: evt.target.result
+        };
+        
+        // Show badge
+        elements.attachmentName.textContent = file.name;
+        const kbSize = (file.size / 1024).toFixed(1);
+        elements.attachmentSize.textContent = `(${kbSize} KB)`;
+        elements.attachmentArea.style.display = 'block';
+        elements.sendBtn.disabled = false; // Enable send button when attachment is added
+        
+        console.log(`Attached file: ${file.name} (${file.size} bytes)`);
+    };
+    reader.onerror = function() {
+        alert('Failed to read the file.');
+    };
+    reader.readAsText(file);
+}
+
+// Remove Attachment
+function removeAttachment() {
+    state.attachment = null;
+    elements.attachmentInput.value = '';
+    elements.attachmentArea.style.display = 'none';
+    handleInputChange();
 }
 
 // Send Message
 async function handleSendMessage() {
     const query = elements.chatInput.value.trim();
-    if (!query) return;
+    if (!query && !state.attachment) return;
     
     // Add user message
-    addMessage('user', query);
+    const userMsgContent = query + (state.attachment ? `\n\n📎 Attached: ${state.attachment.name}` : '');
+    addMessage('user', userMsgContent);
     elements.chatInput.value = '';
     elements.chatInput.style.height = 'auto';
     elements.sendBtn.disabled = true;
     
     // Show typing indicator
     const typingId = showTypingIndicator();
+
+    const payload = {
+        query: query || `Summarize the attached file: ${state.attachment.name}`,
+        mode: state.mode,
+        max_results: state.maxResults
+    };
+
+    if (state.attachment) {
+        payload.attachment_content = state.attachment.content;
+        payload.attachment_name = state.attachment.name;
+        removeAttachment();
+    }
     
     try {
         // Call query API
@@ -113,11 +176,7 @@ async function handleSendMessage() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                query: query,
-                mode: state.mode,
-                max_results: state.maxResults
-            })
+            body: JSON.stringify(payload)
         });
         
         if (!response.ok) {
@@ -180,6 +239,29 @@ function addAssistantMessage(data) {
     const summary = document.createElement('p');
     summary.innerHTML = `Found <strong>${data.total_results}</strong> result${data.total_results !== 1 ? 's' : ''} using <strong>${data.mode}</strong> mode in <strong>${data.execution_time_ms}ms</strong>`;
     contentDiv.appendChild(summary);
+
+    // Generated Answer (if available)
+    if (data.generated_answer) {
+        const answerPara = document.createElement('div');
+        answerPara.className = 'generated-answer';
+        answerPara.innerHTML = `<strong>Answer:</strong><br>${data.generated_answer.replace(/\n/g, '<br>')}`;
+        
+        if (data.answer_confidence !== undefined) {
+            const confBadge = document.createElement('div');
+            confBadge.className = `confidence-badge ${data.answer_confidence >= 0.7 ? 'high' : 'low'}`;
+            confBadge.textContent = `Confidence: ${(data.answer_confidence * 100).toFixed(0)}%`;
+            answerPara.appendChild(confBadge);
+        }
+        
+        contentDiv.appendChild(answerPara);
+        
+        // Add a line break or separator before source chunks
+        const separator = document.createElement('hr');
+        separator.style.margin = '16px 0 12px 0';
+        separator.style.border = '0';
+        separator.style.borderTop = '1px solid var(--border-color, #e0e0e0)';
+        contentDiv.appendChild(separator);
+    }
     
     // Results
     if (data.results && data.results.length > 0) {

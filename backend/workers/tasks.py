@@ -107,6 +107,21 @@ def process_document(self, file_path: str, metadata: Dict[str, Any]) -> Dict[str
             raise Exception("Failed to store documents in ChromaDB")
         
         print(f"[Task {self.request.id}] Stored in ChromaDB")
+
+        # Store in Local Lexical Cache for Vectorless RAG
+        try:
+            from backend.services.vectorless_service import VectorlessService
+            vectorless = VectorlessService()
+            vectorless.save_document_chunks(
+                doc_id=doc_id,
+                file_name=file_name,
+                chunks=chunks,
+                metadatas=chunk_metadata,
+                ids=chunk_ids
+            )
+            print(f"[Task {self.request.id}] Stored chunks and raw text for Vectorless RAG")
+        except Exception as ve:
+            print(f"[Task {self.request.id}] Error saving chunks for Vectorless RAG: {ve}")
         
         # Update state
         self.update_state(state='PROGRESS', meta={'status': 'Extracting entities...'})

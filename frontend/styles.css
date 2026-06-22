@@ -583,3 +583,115 @@ body {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* Attachment Styles */
+.btn-attach {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.btn-attach:hover {
+    color: var(--primary-color);
+    background: var(--bg-light);
+}
+
+.attachment-area {
+    padding: 8px 0;
+    margin-bottom: 8px;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.attachment-badge {
+    display: inline-flex;
+    align-items: center;
+    background: #f3f4f6;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--text-primary);
+    gap: 6px;
+}
+
+.attachment-name {
+    font-weight: 500;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.attachment-size {
+    color: var(--text-secondary);
+    font-size: 11px;
+}
+
+.btn-remove-attachment {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s;
+}
+
+.btn-remove-attachment:hover {
+    color: var(--danger-color);
+}
+
+/* Generated Answer Block */
+.generated-answer {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 10px;
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: #166534;
+    position: relative;
+}
+
+.confidence-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    margin-top: 10px;
+    text-transform: uppercase;
+}
+
+.confidence-badge.high {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+
+.confidence-badge.low {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+}
+
+/* Vectorless Result Badge */
+.result-source.vectorless {
+    background: #f3e8ff;
+    color: #6b21a8;
+}
+

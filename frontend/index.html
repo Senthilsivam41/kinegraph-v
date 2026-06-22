@@ -41,6 +41,10 @@
                         <input type="radio" name="mode" value="graph">
                         <span>Graph Search</span>
                     </label>
+                    <label class="radio-label">
+                        <input type="radio" name="mode" value="vectorless">
+                        <span>Vectorless RAG</span>
+                    </label>
                 </div>
                 <div class="mode-description" id="modeDescription">
                     <strong>Hybrid Mode:</strong> Combines vector and graph search for best results
@@ -93,7 +97,23 @@
             </div>
 
             <div class="chat-input-container">
+                <!-- Attachment preview badge -->
+                <div id="attachmentArea" class="attachment-area" style="display: none;">
+                    <div class="attachment-badge">
+                        <span class="attachment-icon">📎</span>
+                        <span id="attachmentName" class="attachment-name">filename.txt</span>
+                        <span id="attachmentSize" class="attachment-size">(1.2 KB)</span>
+                        <button id="removeAttachmentBtn" class="btn-remove-attachment">×</button>
+                    </div>
+                </div>
+
                 <div class="input-wrapper">
+                    <button id="attachBtn" class="btn-attach" title="Attach file (.txt, .csv, .json, .md)">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                        </svg>
+                    </button>
+                    <input type="file" id="attachmentInput" accept=".txt,.csv,.json,.md,.html" style="display: none;" />
                     <textarea 
                         id="chatInput" 
                         placeholder="Ask me anything about your documents..." 
