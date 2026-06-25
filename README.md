@@ -23,7 +23,8 @@
 
 - **Vector Database (ChromaDB):** Fast semantic similarity search on document embeddings
 - **Graph Database (Neo4j):** Deep relational reasoning with entities and relationships
-- **Fusion Layer (RRF):** Reciprocal Rank Fusion to intelligently merge results
+- **Vectorless Search (BM25 Local Cache):** Ultra-fast lexical retrieval directly from disk
+- **Fusion Layer (RRF):** Reciprocal Rank Fusion to intelligently merge results from all active retrieval pathways
 
 The system uses **LangGraph** to orchestrate complex query workflows and **Celery** for asynchronous document processing.
 
@@ -34,43 +35,45 @@ The system uses **LangGraph** to orchestrate complex query workflows and **Celer
 ### System Components
 
 ```
-┌──────────────────────────────────────────┐
-│              FastAPI App                 │  ← REST API (query, ingest, eval)
-└────────────────────┬─────────────────────┘
-                     │
-          ┌──────────▼──────────┐
-          │   Intent Router     │  ← Query classification + rewriting  [NEW v2]
-          └──┬──────────────────┘
-             │
-    ┌────────▼────────┐
-    │  Parallel Fetch │  ← asyncio.gather (vector ∥ graph)            [NEW v2]
-    └──┬──────────┬───┘
-       │          │
-  ┌────▼──┐  ┌───▼────┐
-  │Vector │  │ Graph  │
-  │ Agent │  │ Agent  │
-  └────┬──┘  └───┬────┘
-       │          │
-  ┌────▼──────────▼────┐
-  │    Fusion Node     │  ← Reciprocal Rank Fusion (RRF)
-  └────────┬───────────┘
-           │
-  ┌────────▼───────────┐
-  │   Rerank Node      │  ← Context relevance filter                  [NEW v2]
-  └────────┬───────────┘
-           │
-  ┌────────▼───────────┐
-  │   Generate Node    │  ← Faithfulness-first LLM answer             [NEW v2]
-  └────────┬───────────┘
-           │
-      ┌────▼─────────────────────────────────┐
-      │   Eval & Observability Layer         │
-      │   eval/ragas_evaluator.py            │  ← RAGAS metrics
-      │   eval/langsmith_tracer.py           │  ← Per-step traces
-      │   eval/metrics_collector.py          │  ← SQLite/PostgreSQL store
-      │   eval/dashboard.py                  │  ← Streamlit dashboard
-      └──────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│                          FastAPI App                           │  ← REST API (query, ingest, eval)
+└───────────────────────────────┬────────────────────────────────┘
+                                │
+                     ┌──────────▼──────────┐
+                     │   Intent Router     │  ← Query classification + routing [NEW v3]
+                     └──┬───┬──────────┬───┘
+                        │   │          │
+        ┌───────────────┘   │          └────────────────┐
+        │                   │                           │
+  ┌─────▼─────┐       ┌─────▼──────────┐          ┌─────▼──────┐
+  │  Vector   │       │ Parallel Fetch │          │ Vectorless │  ← Local lexical BM25
+  │  Agent    │       │ (Vector∥Graph) │          │ Agent      │    search [NEW v3]
+  └─────┬─────┘       └─────┬──────────┘          └─────┬──────┘
+        │                   │                           │
+  ┌─────▼─────┐             │                           │
+  │   Graph   │             │                           │
+  │   Agent   │             │                           │
+  └─────┬─────┘             │                           │
+        │                   │                           │
+        └─────────────────┐ │ ┌─────────────────────────┘
+                          │ │ │
+                       ┌──▼─▼─▼────────┐
+                       │  Fusion Node  │  ← Reciprocal Rank Fusion (RRF)
+                       └───────┬───────┘
+                               │
+                       ┌───────▼───────┐
+                       │  Rerank Node  │  ← Context relevance filter
+                       └───────┬───────┘
+                               │
+                       ┌───────▼───────┐
+                       │ Generate Node │  ← Faithfulness-first LLM answer
+                       └───────┬───────┘
+                               │
+                ┌──────────────▼──────────────┐
+                │  Eval & Observability Layer │
+                └─────────────────────────────┘
 ```
+
 ### Architecture Overview
 
 ![KineticGraph-Vectra Architecture](architecture.png)
@@ -290,8 +293,9 @@ kinegraph-v/
 │   │   └── config.py               # Settings (incl. LANGSMITH_API_KEY, DATABASE_URL)
 │   ├── services/
 │   │   ├── chroma_service.py       # ChromaDB client
-│   │   └── neo4j_service.py        # Neo4j + Cypher generation
-│   └── workers/                    # Celery app, tasks, document processor
+│   │   ├── neo4j_service.py        # Neo4j + Cypher generation
+│   │   └── vectorless_service.py   # Pure-Python BM25 local index [NEW]
+│   └── workers/                    # Celery app, tasks, document processor (billiard)
 │
 ├── eval/                            # ★ Evaluation & Observability Layer [NEW]
 │   ├── __init__.py
