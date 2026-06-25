@@ -537,6 +537,9 @@ KineticGraph-Vectra ships with a full RAG evaluation and observability layer bui
 | `context_recall` | 0.35 | **0.55 – 0.70** | +86% |
 | `answer_correctness` | 0.37 | **0.60 – 0.75** | +85% |
 
+#### RAGAS Evaluation Radar Chart
+![RAGAS Evaluation Radar Chart](reports/spider_graph_ragas_score.png)
+
 **Worst-performing queries identified (v1):**
 
 | Rank | Query | Composite Score |
