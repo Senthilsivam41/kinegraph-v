@@ -2,7 +2,7 @@
 Document Processing Utilities
 """
 from typing import List, Dict, Any, Tuple
-from concurrent.futures import ThreadPoolExecutor
+from billiard.pool import Pool
 import fitz  # PyMuPDF
 import os
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -13,12 +13,12 @@ import json
 import hashlib
 
 
-def _extract_page_range(args: Tuple[bytes, int, int]) -> Tuple[int, str]:
-    """Extract text from a range of pages in a PDF document (opened from memory)."""
-    pdf_bytes, start_page, end_page = args
+def _extract_page_range(args: Tuple[str, int, int]) -> Tuple[int, str]:
+    """Extract text from a range of pages in a PDF document (opened inside the worker process)."""
+    pdf_path, start_page, end_page = args
     try:
         text_parts = []
-        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+        with fitz.open(pdf_path) as doc:
             for idx in range(start_page, end_page):
                 text_parts.append(doc.load_page(idx).get_text())
         return start_page, "\n".join(text_parts)
@@ -29,24 +29,20 @@ def _extract_page_range(args: Tuple[bytes, int, int]) -> Tuple[int, str]:
 
 def extract_text_from_pdf(pdf_path: str) -> str:
     """
-    Extract text from a PDF file in parallel using batch-level ThreadPoolExecutor and PyMuPDF.
-    Splits the PDF into batches equal to CPU core count to minimize memory and I/O overhead.
+    Extract text from a PDF file in parallel using billiard process Pool and PyMuPDF.
+    Splits the PDF into batches equal to CPU core count to utilize multiple cores safely.
     """
     try:
-        # Read the file into memory once
-        with open(pdf_path, "rb") as f:
-            pdf_bytes = f.read()
-
         # Get total page count
-        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+        with fitz.open(pdf_path) as doc:
             num_pages = len(doc)
             
         if num_pages == 0:
             return ""
 
-        # If it's a very small document, just parse sequentially to avoid thread overhead
+        # If it's a very small document, just parse sequentially to avoid process overhead
         if num_pages <= 10:
-            with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+            with fitz.open(pdf_path) as doc:
                 return "\n".join(page.get_text() for page in doc)
 
         # Split page range into CPU core count batches
@@ -58,11 +54,11 @@ def extract_text_from_pdf(pdf_path: str) -> str:
             start = i * batch_size
             end = min(start + batch_size, num_pages)
             if start < end:
-                batches.append((pdf_bytes, start, end))
+                batches.append((pdf_path, start, end))
 
-        # Run extraction in parallel
-        with ThreadPoolExecutor(max_workers=len(batches)) as executor:
-            results = list(executor.map(_extract_page_range, batches))
+        # Run extraction in parallel using process pool
+        with Pool(processes=len(batches)) as pool:
+            results = pool.map(_extract_page_range, batches)
             
         # Sort results to ensure pages remain in order
         results.sort(key=lambda x: x[0])
@@ -71,7 +67,7 @@ def extract_text_from_pdf(pdf_path: str) -> str:
 
     except Exception as e:
         print(f"Error during parallel PDF text extraction: {e}")
-        # Fallback to sequential file-based extraction
+        # Fallback to sequential extraction
         try:
             with fitz.open(pdf_path) as doc:
                 return "\n".join(page.get_text() for page in doc)

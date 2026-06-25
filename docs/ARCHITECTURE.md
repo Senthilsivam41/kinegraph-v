@@ -8,7 +8,8 @@ KineticGraph-Vectra implements a **Hybrid Retrieval-Augmented Generation (RAG)**
 
 1. **Vector Search (ChromaDB):** Excels at semantic similarity and finding conceptually related content
 2. **Graph Search (Neo4j):** Excels at understanding relationships and traversing connected entities
-3. **Reciprocal Rank Fusion:** Intelligently merges results from both sources
+3. **Vectorless Search (BM25 Local Lexical Cache):** Excels at fast, direct keyword lookup and attachment processing without vector DB dependencies
+4. **Reciprocal Rank Fusion:** Intelligently merges results from all retrieval sources
 
 ---
 
@@ -51,12 +52,16 @@ graph TD
     A[Query Request] --> B{Route Query}
     B -->|Vector| C[Vector Agent]
     B -->|Graph| D[Graph Agent]
-    B -->|Hybrid| E[Both Agents]
+    B -->|Hybrid| E[Parallel Fetch]
+    B -->|Vectorless| V[Vectorless Agent]
     C --> F[Fusion Node]
     D --> F
     E --> F
-    F --> G[Format Results]
-    G --> H[Return Response]
+    V --> F
+    F --> R[Rerank Node]
+    R --> G[Generate Node]
+    G --> H[Format Results]
+    H --> I[Return Response]
 ```
 
 **Vector Agent:**
@@ -146,13 +151,14 @@ Neo4jService
 Celery Workers
 ├── Task Queue (Redis)
 ├── Document Processor
-│   ├── PDF Text Extraction
+│   ├── PDF Text Extraction (Billiard Pool)
 │   ├── Text Chunking
 │   ├── Entity Extraction (LLM)
 │   └── Relationship Extraction (LLM)
-└── Database Population
+└── Database & Cache Population
     ├── Embed & Store in ChromaDB
-    └── Graph Creation in Neo4j
+    ├── Graph Creation in Neo4j
+    └── Local Disk Lexical Cache (JSON/TXT Chunks)
 ```
 
 **Processing Pipeline:**
@@ -160,17 +166,19 @@ Celery Workers
 ```
 PDF Upload
     ↓
-Extract Text (PyPDF)
+Extract Text (PyMuPDF)
     ↓
 Chunk Text (1000 chars, 200 overlap)
     ↓
-Branch: Vector Path         Branch: Graph Path
-    ↓                            ↓
-Generate Embeddings         Extract Entities (GPT-4)
-    ↓                            ↓
-Store in ChromaDB           Extract Relationships
-                                 ↓
-                            Store in Neo4j
+┌───────────────────────┼────────────────────────┐
+↓                       ↓                        ↓
+Branch: Vector Path     Branch: Graph Path       Branch: Vectorless Path
+↓                       ↓                        ↓
+Generate Embeddings     Extract Entities         Save Chunks to JSON
+↓                       ↓                        Save Text to TXT
+Store in ChromaDB       Extract Relationships    ↓
+                        ↓                        Local Disk Cache
+                        Store in Neo4j
 ```
 
 **Worker Configuration:**
@@ -189,11 +197,12 @@ Store in ChromaDB           Extract Relationships
 1. User uploads PDF → FastAPI endpoint
 2. File saved temporarily → Task queued in Redis
 3. Celery worker picks up task
-4. Worker extracts text from PDF
+4. Worker extracts text from PDF (using PyMuPDF with billiard process pool)
 5. Worker chunks text into semantic segments
 6. Parallel processing:
    a. Generate embeddings → Store in ChromaDB
    b. Extract entities/relationships → Store in Neo4j
+   c. Save chunks and raw text → Local Lexical Cache on Disk
 7. Task marked as complete
 8. Temporary file deleted
 ```
@@ -203,10 +212,11 @@ Store in ChromaDB           Extract Relationships
 ```
 1. User sends query → FastAPI endpoint
 2. Query routed to LangGraph workflow
-3. Based on mode:
+3. Based on mode & intent routing:
    - Vector: ChromaDB search only
    - Graph: Neo4j search only
-   - Hybrid: Both searches executed
+   - Hybrid: Parallel fetch from Vector + Graph
+   - Vectorless: BM25 Local Lexical Cache search (for attachments or explicit requests)
 4. Results passed to Fusion Node
 5. RRF combines and ranks results
 6. Results deduplicated and formatted
@@ -264,6 +274,7 @@ Neo4j:
 ### Latency Targets
 
 - **Health Check:** < 100ms
+- **Vectorless Search (BM25):** < 10ms (sub-millisecond retrieval)
 - **Vector Search:** < 500ms
 - **Graph Search:** < 1000ms
 - **Hybrid Search:** < 1500ms
