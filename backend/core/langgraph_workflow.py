@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from typing import Any, Dict, List, Optional, TypedDict
 
@@ -32,20 +33,38 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Faithfulness-first generation prompt
 # ---------------------------------------------------------------------------
-_SYSTEM_PROMPT = """You are a precise question-answering assistant.
-Answer the user's question using ONLY the information in the provided context.
-Rules:
-- If the context does not contain the answer, say "I don't have enough context to answer this."
-- Do NOT add information beyond what is stated in the context.
-- Be concise and direct. Avoid padding or filler sentences.
-- Quote or paraphrase from the context; never invent facts."""
+_SYSTEM_PROMPT = """You are an AI research agent with the sole mandate to provide factually grounded, maximally relevant information. Your task is threefold: first, to extract all supporting evidence; second, to synthesize a coherent answer; and third, to critique your own synthesis against the provided context.
 
-_HUMAN_PROMPT = """Context:
+---
+### 🎯 TASK 1: EVIDENCE EXTRACTION (CRITICAL STEP FOR FAITHFULNESS)
+Review the provided Contextual Data. Do not attempt to answer yet. Instead, identify and list every claim from the context that directly addresses or contributes information towards the User Question.
+*   Format each finding as a concise bullet point claim, followed immediately by the specific source chunk ID that supports it.
+*   If a relationship (Graph-derived) is critical, note the path/nodes involved.
+*   **Goal:** Prove existence and location of all answer components.
+
+### 🎯 TASK 2: SYNTHESIS AND ANSWER GENERATION (GOAL: RELEVANCY)
+Using *only* the claims identified in Task 1, synthesize a single, unified answer to the User Question.
+*   The tone must be precise and objective.
+*   Structure the answer logically (e.g., using headings or sequential steps) to match the complexity of the question.
+*   If there are conflicting claims across the sources (V vs G), you MUST flag them in your answer, stating the conflict found in the context.
+
+### 🎯 TASK 3: CRITICAL REVIEW (SELF-CORRECTION)
+Critique your synthesized answer against the original context and question. Answer the following:
+1.  **Faithfulness Check:** Are all claims in your answer directly supported by the extracted context? (Yes/No, and identify any extrapolation).
+2.  **Completeness Check:** Does the answer fully address all components of the original question? (Yes/No, and identify any missing facets).
+
+---
+### FINAL OUTPUT FORMAT
+Provide only the synthesized answer from Task 2, followed by a concise confidence score based on your assessment in Task 3.
+"""
+
+
+_HUMAN_PROMPT = """## [INPUT CONTEXTUAL DATA]
 {context}
 
-Question: {question}
-
-Answer (based strictly on the context above):"""
+## [USER QUESTION]
+{question}
+"""
 
 GENERATION_PROMPT = ChatPromptTemplate.from_messages([
     ("system", _SYSTEM_PROMPT),
@@ -75,6 +94,63 @@ class WorkflowState(TypedDict):
     final_results: List[DocumentChunk]
     attachment_content: Optional[str]
     attachment_name: Optional[str]
+
+
+# ---------------------------------------------------------------------------
+# Helper function
+# ---------------------------------------------------------------------------
+
+def parse_research_synthesis_output(text: str) -> tuple[str, float]:
+    parts = re.split(r"###?\s*FINAL\s*OUTPUT\s*FORMAT", text, flags=re.IGNORECASE)
+    if len(parts) > 1:
+        final_section = parts[1].strip()
+    else:
+        parts = re.split(r"###?\s*TASK\s*2(?::|and|synthesis|answer|generation|\s)*", text, flags=re.IGNORECASE)
+        if len(parts) > 1:
+            task2_section = parts[1].strip()
+            task2_parts = re.split(r"###?\s*TASK\s*3", task2_section, flags=re.IGNORECASE)
+            final_section = task2_parts[0].strip()
+        else:
+            final_section = text.strip()
+
+    score_match = re.search(r"(?:confidence|score)\s*(?:score)?\s*[:\-\s]\s*(\d+(?:\.\d+)?)(?:\s*/\s*(\d+))?", final_section, re.IGNORECASE)
+    
+    confidence = 0.85
+    clean_answer = final_section
+    
+    if score_match:
+        val_str = score_match.group(1)
+        max_str = score_match.group(2)
+        try:
+            val = float(val_str)
+            if max_str:
+                max_val = float(max_str)
+                if max_val > 0:
+                    confidence = round(val / max_val, 2)
+            else:
+                if 0 <= val <= 1:
+                    confidence = val
+                elif 0 <= val <= 10:
+                    confidence = round(val / 10.0, 2)
+                elif 0 <= val <= 5:
+                    confidence = round(val / 5.0, 2)
+        except ValueError:
+            pass
+        
+        # Remove the confidence score line
+        lines = clean_answer.split("\n")
+        clean_lines = []
+        for line in lines:
+            if re.search(r"(?:confidence|score)\s*(?:score)?\s*[:\-\s]\s*\d+", line, re.IGNORECASE):
+                continue
+            clean_lines.append(line)
+        clean_answer = "\n".join(clean_lines).strip()
+
+    # Clean leading colons or headers
+    clean_answer = re.sub(r"^(?::|and|synthesis|answer|generation|\s)*", "", clean_answer, flags=re.IGNORECASE).strip()
+    clean_answer = re.sub(r"^(?:Provide only the synthesized answer from Task 2, followed by a concise confidence score based on your assessment in Task 3\.?|Synthesized Answer:)\s*", "", clean_answer, flags=re.IGNORECASE).strip()
+    
+    return clean_answer, confidence
 
 
 # ---------------------------------------------------------------------------
@@ -436,16 +512,8 @@ class HybridRAGWorkflow:
                 "context":  context_str,
                 "question": state["query"],
             })
-            answer = response.content.strip()
-
-            # Simple confidence heuristic: if LLM says "don't have context" → low confidence
-            _low_conf_signals = [
-                "don't have enough context",
-                "cannot answer",
-                "not mentioned",
-                "no information",
-            ]
-            confidence = 0.3 if any(s in answer.lower() for s in _low_conf_signals) else 0.85
+            raw_answer = response.content.strip()
+            answer, confidence = parse_research_synthesis_output(raw_answer)
 
             state["generated_answer"] = answer
             state["answer_confidence"] = confidence

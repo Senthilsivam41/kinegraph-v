@@ -82,17 +82,44 @@ def rewrite_query_for_retrieval(query: str, intent: str) -> str:
     """
     Expand / rewrite the query to improve recall.
 
-    Adds intent-specific context words that anchor vector search to the right
-    semantic neighbourhood and improve context_recall.
+    Adds intent-specific context words, resolves common abbreviations (e.g., RRF, DB),
+    and filters out conversational noise to improve context_recall.
     """
-    expansions: Dict[str, str] = {
-        "definition":     f"definition explanation concept: {query}",
-        "comparison":     f"comparison difference similarities: {query}",
-        "how_to":         f"process steps mechanism workflow: {query}",
-        "relationship":   f"relationship connection graph entities: {query}",
-        "debugging":      f"root cause debugging solution fix: {query}",
-        "factual_lookup": f"fact data information: {query}",
-        "procedural":     f"procedure configuration setup steps: {query}",
-        "conceptual":     f"concept overview purpose: {query}",
+    # 1. Lowercase for mapping
+    q = query.lower().strip()
+    
+    # 2. Resolve common abbreviations
+    abbreviations = {
+        r"\brrf\b": "reciprocal rank fusion",
+        r"\bdb\b": "database",
+        r"\bapi\b": "application programming interface",
+        r"\brag\b": "retrieval augmented generation",
     }
-    return expansions.get(intent, query)
+    for abbrev, full in abbreviations.items():
+        q = re.sub(abbrev, full, q)
+        
+    # 3. Clean common conversational filler
+    fillers = [
+        r"^how does\b", r"^how do\b", r"^how can\b", r"^what is the role of\b",
+        r"^what is the purpose of\b", r"^what is the\b", r"^what is\b", r"^what are\b",
+        r"^why use\b", r"^why do we use\b", r"^can you explain\b", r"^explain\b"
+    ]
+    for filler in fillers:
+        q = re.sub(filler, "", q)
+    q = q.strip("? ").strip()
+    
+    # Re-apply cleaned query to expansions
+    cleaned_query = q or query
+    
+    expansions: Dict[str, str] = {
+        "definition":     f"definition explanation concept: {cleaned_query}",
+        "comparison":     f"comparison difference similarities: {cleaned_query}",
+        "how_to":         f"process steps mechanism workflow: {cleaned_query}",
+        "relationship":   f"relationship connection graph entities: {cleaned_query}",
+        "debugging":      f"root cause debugging solution fix: {cleaned_query}",
+        "factual_lookup": f"fact data information: {cleaned_query}",
+        "procedural":     f"procedure configuration setup steps: {cleaned_query}",
+        "conceptual":     f"concept overview purpose: {cleaned_query}",
+    }
+    return expansions.get(intent, cleaned_query)
+

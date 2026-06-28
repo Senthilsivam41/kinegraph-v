@@ -37,6 +37,14 @@ const modeDescriptions = {
     vectorless: '<strong>Vectorless Mode:</strong> Pure lexical search (BM25) over documents and attachments without expensive vector databases or embeddings'
 };
 
+// Chat Header Titles
+const chatHeaderTitles = {
+    hybrid: 'Hybrid RAG Chat',
+    vector: 'Vector Search Chat',
+    graph: 'Graph Search Chat',
+    vectorless: 'Vectorless RAG Chat'
+};
+
 // Initialize Application
 async function init() {
     setupEventListeners();
@@ -83,6 +91,13 @@ function setupEventListeners() {
         radio.addEventListener('change', (e) => {
             state.mode = e.target.value;
             elements.modeDescription.innerHTML = modeDescriptions[state.mode];
+            
+            // Update chat header text dynamically
+            const chatHeader = document.querySelector('.chat-header h2');
+            if (chatHeader) {
+                chatHeader.textContent = chatHeaderTitles[state.mode];
+            }
+            
             saveSettings();
         });
     });
@@ -566,6 +581,12 @@ function loadSettings() {
             elements.maxResults.value = state.maxResults;
             document.querySelector(`input[name="mode"][value="${state.mode}"]`).checked = true;
             elements.modeDescription.innerHTML = modeDescriptions[state.mode];
+            
+            // Update chat header text dynamically
+            const chatHeader = document.querySelector('.chat-header h2');
+            if (chatHeader) {
+                chatHeader.textContent = chatHeaderTitles[state.mode];
+            }
         } catch (e) {
             console.error('Error loading settings:', e);
         }

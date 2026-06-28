@@ -9,6 +9,7 @@ import logging
 import time
 from typing import Any, Dict, List, Optional
 
+from backend.app.models import QueryMode
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -161,10 +162,15 @@ class RAGASEvaluator:
         answer: str,
         contexts: List[str],
         ground_truth: Optional[str] = None,
-    ) -> Dict[str, float]:
-        """Evaluate one QA sample. Returns metric_name → score (0-1)."""
+    ) -> Dict[str, Any]:
+        """Evaluate one QA sample. Returns metric_name → score (0-1) and metadata."""
         if not _RAGAS_AVAILABLE or not self._ragas_metrics:
-            return _fallback_evaluate(question, answer, contexts, ground_truth)
+            scores = _fallback_evaluate(question, answer, contexts, ground_truth)
+            return {
+                **scores,
+                "ragas_failed": True,
+                "ragas_error": "RAGAS not available or not configured"
+            }
 
         row: Dict[str, Any] = {
             "question": [question],
@@ -187,10 +193,47 @@ class RAGASEvaluator:
                 embeddings=self._embeddings,
                 raise_exceptions=False,
             )
-            return {m.name: round(float(result[m.name] or 0), 4) for m in active}
+            scores_dict = {}
+            nan_metrics = []
+            import math
+            for m in active:
+                val = result[m.name]
+                if isinstance(val, list):
+                    val = val[0] if val else 0.0
+                elif hasattr(val, "iloc"):
+                    val = val.iloc[0] if len(val) > 0 else 0.0
+                
+                # Check for NaN
+                is_nan = False
+                try:
+                    fval = float(val) if val is not None else float('nan')
+                    if math.isnan(fval):
+                        is_nan = True
+                except (ValueError, TypeError):
+                    is_nan = True
+                
+                if is_nan:
+                    nan_metrics.append(m.name)
+                    scores_dict[m.name] = float('nan')
+                else:
+                    scores_dict[m.name] = round(fval, 4)
+            
+            if nan_metrics:
+                scores_dict["ragas_failed"] = True
+                scores_dict["ragas_error"] = f"RAGAS returned NaN for metric(s): {', '.join(nan_metrics)}"
+            else:
+                scores_dict["ragas_failed"] = False
+                scores_dict["ragas_error"] = None
+                
+            return scores_dict
         except Exception as exc:
             logger.error("RAGAS evaluate_single error: %s", exc)
-            return _fallback_evaluate(question, answer, contexts, ground_truth)
+            scores = _fallback_evaluate(question, answer, contexts, ground_truth)
+            return {
+                **scores,
+                "ragas_failed": True,
+                "ragas_error": f"Exception: {str(exc)}"
+            }
 
     def evaluate_batch(
         self, dataset: List[Dict[str, Any]], show_progress: bool = True
@@ -212,6 +255,12 @@ class RAGASEvaluator:
                 contexts=sample.get("contexts", []),
                 ground_truth=sample.get("ground_truth"),
             )
+            if scores.get("ragas_failed"):
+                logger.warning(
+                    "RAGAS evaluation failed for query '%s'. Error: %s",
+                    sample["question"],
+                    scores.get("ragas_error"),
+                )
             records.append({
                 "question": sample["question"],
                 "answer": sample["answer"],
@@ -222,6 +271,146 @@ class RAGASEvaluator:
             })
         if show_progress:
             print(f"  Evaluated {len(dataset)} samples.        ")
+        return pd.DataFrame(records)
+
+    async def evaluate_live_single(
+        self,
+        workflow: Any,
+        question: str,
+        ground_truth: Optional[str] = None,
+        mode: QueryMode = QueryMode.HYBRID,
+        max_results: int = 10,
+    ) -> Dict[str, Any]:
+        """
+        Run the live workflow on a single query and evaluate the output with RAGAS.
+        """
+        t0 = time.perf_counter()
+        try:
+            res = await workflow.execute_with_answer(
+                query=question,
+                mode=mode,
+                max_results=max_results,
+            )
+            answer = res.get("answer", "")
+            chunks = res.get("chunks", [])
+            contexts = [c.content for c in chunks]
+            run_latency_ms = round((time.perf_counter() - t0) * 1000, 1)
+            workflow_error = None
+        except Exception as e:
+            logger.error("Workflow execution failed for query '%s': %s", question, e)
+            answer = "Error: Workflow execution failed"
+            contexts = []
+            run_latency_ms = round((time.perf_counter() - t0) * 1000, 1)
+            workflow_error = str(e)
+
+        t_eval = time.perf_counter()
+        scores = self.evaluate_single(
+            question=question,
+            answer=answer,
+            contexts=contexts,
+            ground_truth=ground_truth,
+        )
+        eval_latency_ms = round((time.perf_counter() - t_eval) * 1000, 1)
+
+        return {
+            "question": question,
+            "answer": answer,
+            "contexts": contexts,
+            "n_contexts": len(contexts),
+            "has_ground_truth": bool(ground_truth),
+            "ground_truth": ground_truth,
+            "workflow_latency_ms": run_latency_ms,
+            "eval_latency_ms": eval_latency_ms,
+            "workflow_error": workflow_error,
+            **scores,
+        }
+
+    async def evaluate_live_workflow(
+        self,
+        workflow: Any,
+        dataset: List[Dict[str, Any]],
+        mode: QueryMode = QueryMode.HYBRID,
+        max_results: int = 10,
+        concurrency_limit: int = 3,
+        show_progress: bool = True,
+    ) -> pd.DataFrame:
+        """
+        Run the live workflow on a dataset and evaluate the output with RAGAS.
+        
+        Args:
+            workflow: An instance of HybridRAGWorkflow.
+            dataset: List of dicts, each containing at least 'question' and optionally 'ground_truth'.
+            mode: QueryMode to run the workflow (e.g. QueryMode.HYBRID).
+            max_results: Maximum retrieved context chunks.
+            concurrency_limit: Concurrency limit for executing queries against the LLM/databases.
+            show_progress: Whether to print progress to stdout.
+        """
+        import asyncio
+        semaphore = asyncio.Semaphore(concurrency_limit)
+        
+        async def evaluate_sample(idx: int, sample: Dict[str, Any]) -> Dict[str, Any]:
+            question = sample["question"]
+            ground_truth = sample.get("ground_truth")
+            
+            async with semaphore:
+                if show_progress:
+                    print(f"  [{idx+1}/{len(dataset)}] Querying workflow: {question}")
+                t0 = time.perf_counter()
+                try:
+                    res = await workflow.execute_with_answer(
+                        query=question,
+                        mode=mode,
+                        max_results=max_results,
+                    )
+                    answer = res.get("answer", "")
+                    chunks = res.get("chunks", [])
+                    contexts = [c.content for c in chunks]
+                    run_latency_ms = round((time.perf_counter() - t0) * 1000, 1)
+                    workflow_error = None
+                except Exception as e:
+                    logger.error("Workflow execution failed for query '%s': %s", question, e)
+                    answer = "Error: Workflow execution failed"
+                    contexts = []
+                    run_latency_ms = round((time.perf_counter() - t0) * 1000, 1)
+                    workflow_error = str(e)
+            
+            if show_progress:
+                print(f"  [{idx+1}/{len(dataset)}] Evaluating output: {question}")
+                
+            t_eval = time.perf_counter()
+            scores = self.evaluate_single(
+                question=question,
+                answer=answer,
+                contexts=contexts,
+                ground_truth=ground_truth,
+            )
+            eval_latency_ms = round((time.perf_counter() - t_eval) * 1000, 1)
+            
+            return {
+                "question": question,
+                "answer": answer,
+                "n_contexts": len(contexts),
+                "has_ground_truth": bool(ground_truth),
+                "ground_truth": ground_truth,
+                "workflow_latency_ms": run_latency_ms,
+                "eval_latency_ms": eval_latency_ms,
+                "workflow_error": workflow_error,
+                **scores,
+            }
+            
+        tasks = []
+        for idx, sample in enumerate(dataset):
+            tasks.append(evaluate_sample(idx, sample))
+            
+        if show_progress:
+            mode_str = mode.value if hasattr(mode, 'value') else str(mode)
+            print(f"🚀 Running live evaluation for {len(dataset)} samples in {mode_str} mode (concurrency={concurrency_limit})...")
+            
+        records = await asyncio.gather(*tasks)
+        
+        if show_progress:
+            print(f"🎉 Evaluation completed for {len(dataset)} samples.")
+            
         return pd.DataFrame(records)
 
     def generate_report(self, results: pd.DataFrame) -> Dict[str, Any]:
