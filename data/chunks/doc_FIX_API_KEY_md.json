@@ -1,0 +1,82 @@
+[
+  {
+    "id": "chunk_0_199b9297",
+    "content": "# Fix: OpenAI API Key Issue\n\n## 🔍 Problem Identified\n\nYour document uploads are failing because you're using a **Google API key** instead of an **OpenAI API key**.\n\n### Error in Logs:\n```\nError code: 401 - Incorrect API key provided: AIzaSyBO***fVvw\n```\n\n### Current Configuration:\n```bash\nOPENAI_API_KEY=AIzaSyBO5kPUxn3p74SHS3a8cm4_8hwPS8XfVvw  # ❌ Google API key\n```\n\n### Why This Matters:\nThe system uses OpenAI's API to generate embeddings (vector representations) of your documents. Without a valid OpenAI API key, documents cannot be processed and stored in ChromaDB.\n\n---\n\n## ✅ Solution\n\n### Option 1: Quick Fix Script (Recommended)\n\n1. **Get your OpenAI API key**:\n   - Visit: https://platform.openai.com/api-keys\n   - Sign in or create an account\n   - Click \"Create new secret key\"\n   - Copy the key (starts with `sk-`)",
+    "metadata": {
+      "document_id": "doc_FIX_API_KEY_md",
+      "chunk_index": 0,
+      "file_name": "FIX_API_KEY.md",
+      "total_chunks": 8
+    }
+  },
+  {
+    "id": "chunk_1_ed8d58a7",
+    "content": "1. **Get your OpenAI API key**:\n   - Visit: https://platform.openai.com/api-keys\n   - Sign in or create an account\n   - Click \"Create new secret key\"\n   - Copy the key (starts with `sk-`)\n\n2. **Update `.env` file**:\n   ```bash\n   nano .env\n   ```\n   \n   Find and replace:\n   ```bash\n   # From:\n   OPENAI_API_KEY=AIzaSyBO5kPUxn3p74SHS3a8cm4_8hwPS8XfVvw\n   \n   # To:\n   OPENAI_API_KEY=sk-proj-your-actual-openai-key-here\n   ```\n\n3. **Run the fix script**:\n   ```bash\n   ./fix-api-key.sh\n   ```\n   \n   This will:\n   - Verify your key format\n   - Restart Docker services\n   - Check system health\n   - Confirm everything is working\n\n### Option 2: Manual Fix\n\n```bash\n# 1. Update .env file\nnano .env\n# Replace the Google key with your OpenAI key\n\n# 2. Restart services\ndocker-compose down\ndocker-compose up -d\n\n# 3. Wait for services to start (40 seconds)\nsleep 40\n\n# 4. Verify health\ncurl http://localhost:8000/health/\n```\n\n---\n\n## 🔑 How to Get an OpenAI API Key\n\n### Step-by-Step:",
+    "metadata": {
+      "document_id": "doc_FIX_API_KEY_md",
+      "chunk_index": 1,
+      "file_name": "FIX_API_KEY.md",
+      "total_chunks": 8
+    }
+  },
+  {
+    "id": "chunk_2_50fa8bc8",
+    "content": "# 3. Wait for services to start (40 seconds)\nsleep 40\n\n# 4. Verify health\ncurl http://localhost:8000/health/\n```\n\n---\n\n## 🔑 How to Get an OpenAI API Key\n\n### Step-by-Step:\n\n1. **Go to OpenAI Platform**\n   - URL: https://platform.openai.com/api-keys\n   - If you don't have an account, sign up (free)\n\n2. **Create API Key**\n   - Click \"+ Create new secret key\"\n   - Give it a name (e.g., \"KineGraph\")\n   - Select permissions (default is fine)\n   - Click \"Create secret key\"\n\n3. **Copy the Key**\n   - **IMPORTANT**: Copy it immediately\n   - You won't be able to see it again\n   - Save it somewhere safe\n   - Format: `sk-proj-...` or `sk-...`\n\n4. **Verify You Have Credit**\n   - Check: https://platform.openai.com/usage\n   - New accounts get free credits\n   - Or add a payment method\n\n---\n\n## 💰 Pricing Information\n\nOpenAI's `text-embedding-ada-002` model (used by this system):\n- **Cost**: $0.0004 per 1,000 tokens (~750 words)\n- **Example**: Processing a 100-page PDF ≈ $0.10-$0.30",
+    "metadata": {
+      "document_id": "doc_FIX_API_KEY_md",
+      "chunk_index": 2,
+      "file_name": "FIX_API_KEY.md",
+      "total_chunks": 8
+    }
+  },
+  {
+    "id": "chunk_3_e3d166e9",
+    "content": "---\n\n## 💰 Pricing Information\n\nOpenAI's `text-embedding-ada-002` model (used by this system):\n- **Cost**: $0.0004 per 1,000 tokens (~750 words)\n- **Example**: Processing a 100-page PDF ≈ $0.10-$0.30\n\n**Free credits**: New accounts typically get $5-$18 in free credits.\n\n---\n\n## ✨ After Fixing\n\nOnce you've updated your API key and restarted services, you can:\n\n1. **Test with Chat UI**:\n   - Open: http://localhost:8080\n   - Upload a PDF document\n   - Wait for \"✅ Document processed successfully!\"\n   - Ask questions about the document\n\n2. **Verify in Logs**:\n   ```bash\n   # Should see successful processing\n   docker-compose logs worker -f\n   ```\n\n3. **Check ChromaDB**:\n   ```bash\n   # Should return documents after upload\n   curl -X POST http://localhost:8000/api/v1/query/ \\\n     -H \"Content-Type: application/json\" \\\n     -d '{\"query\": \"test\", \"mode\": \"vector\"}'\n   ```\n\n---\n\n## 🐛 Troubleshooting",
+    "metadata": {
+      "document_id": "doc_FIX_API_KEY_md",
+      "chunk_index": 3,
+      "file_name": "FIX_API_KEY.md",
+      "total_chunks": 8
+    }
+  },
+  {
+    "id": "chunk_4_5feea032",
+    "content": "---\n\n## 🐛 Troubleshooting\n\n### \"Invalid API Key\" Error Persists\n```bash\n# Check what's in your .env\ngrep OPENAI_API_KEY .env\n\n# Make sure it starts with 'sk-'\n# Not 'AIzaSy' (Google) or other formats\n```\n\n### Services Won't Restart\n```bash\n# Force clean restart\ndocker-compose down -v\ndocker-compose up -d --build\n```\n\n### Key Works But Still Failing\n```bash\n# Check OpenAI account status\n# Visit: https://platform.openai.com/usage\n# Ensure you have available credit\n\n# Check rate limits\n# New accounts have usage limits\n```\n\n---\n\n## 📝 Common Mistakes\n\n❌ **Using the wrong type of key**:\n- Google API keys: `AIzaSy...`\n- Azure OpenAI: Different format\n- OpenAI org key: Different from API key\n\n✅ **Correct OpenAI API key format**:\n- `sk-proj-...` (new project keys)\n- `sk-...` (older format)\n\n❌ **Spaces or quotes in .env**:\n```bash\nOPENAI_API_KEY=\"sk-...\" # ❌ Don't use quotes\nOPENAI_API_KEY= sk-...  # ❌ No space after =\n```",
+    "metadata": {
+      "document_id": "doc_FIX_API_KEY_md",
+      "chunk_index": 4,
+      "file_name": "FIX_API_KEY.md",
+      "total_chunks": 8
+    }
+  },
+  {
+    "id": "chunk_5_a9da1531",
+    "content": "❌ **Spaces or quotes in .env**:\n```bash\nOPENAI_API_KEY=\"sk-...\" # ❌ Don't use quotes\nOPENAI_API_KEY= sk-...  # ❌ No space after =\n```\n\n✅ **Correct format**:\n```bash\nOPENAI_API_KEY=sk-proj-your-actual-key\n```\n\n---\n\n## 🔐 Security Best Practices\n\n1. **Never commit `.env` to Git**:\n   ```bash\n   # Already in .gitignore, but verify:\n   git status\n   # Should NOT show .env file\n   ```\n\n2. **Rotate keys regularly**:\n   - Create new keys periodically\n   - Delete old keys from OpenAI dashboard\n\n3. **Use different keys for dev/prod**:\n   - Development: One key\n   - Production: Separate key with monitoring\n\n4. **Monitor usage**:\n   - Check: https://platform.openai.com/usage\n   - Set up usage alerts\n\n---\n\n## ✅ Success Checklist\n\nAfter fixing the API key:",
+    "metadata": {
+      "document_id": "doc_FIX_API_KEY_md",
+      "chunk_index": 5,
+      "file_name": "FIX_API_KEY.md",
+      "total_chunks": 8
+    }
+  },
+  {
+    "id": "chunk_6_e4a218b7",
+    "content": "4. **Monitor usage**:\n   - Check: https://platform.openai.com/usage\n   - Set up usage alerts\n\n---\n\n## ✅ Success Checklist\n\nAfter fixing the API key:\n\n- [ ] `.env` file has valid OpenAI key (starts with `sk-`)\n- [ ] Services restarted: `docker-compose ps` shows all healthy\n- [ ] Health check passes: `curl http://localhost:8000/health/`\n- [ ] Upload works: Try uploading a PDF via UI\n- [ ] Processing succeeds: Check worker logs for success\n- [ ] Queries work: Ask questions about uploaded documents\n\n---\n\n## 🎯 Quick Commands Reference\n\n```bash\n# Check current key\ngrep OPENAI_API_KEY .env\n\n# Edit key\nnano .env\n\n# Restart services\ndocker-compose down && docker-compose up -d\n\n# Check health\ncurl http://localhost:8000/health/\n\n# Watch worker logs\ndocker-compose logs worker -f\n\n# Test upload via UI\nopen http://localhost:8080\n```\n\n---\n\n## 📞 Still Having Issues?\n\nIf problems persist after updating the key:",
+    "metadata": {
+      "document_id": "doc_FIX_API_KEY_md",
+      "chunk_index": 6,
+      "file_name": "FIX_API_KEY.md",
+      "total_chunks": 8
+    }
+  },
+  {
+    "id": "chunk_7_36c4d9b2",
+    "content": "# Watch worker logs\ndocker-compose logs worker -f\n\n# Test upload via UI\nopen http://localhost:8080\n```\n\n---\n\n## 📞 Still Having Issues?\n\nIf problems persist after updating the key:\n\n1. **Verify key is active**: https://platform.openai.com/api-keys\n2. **Check account has credit**: https://platform.openai.com/usage\n3. **Try a new key**: Create fresh key to rule out issues\n4. **Check logs**: `docker-compose logs worker --tail=100`\n\n---\n\n**Remember**: The ChromaDB log message \"Collection kinetic_vectors is not created\" is **normal** - it just means the collection will be created on first use. The real issue was the invalid API key preventing document embedding.",
+    "metadata": {
+      "document_id": "doc_FIX_API_KEY_md",
+      "chunk_index": 7,
+      "file_name": "FIX_API_KEY.md",
+      "total_chunks": 8
+    }
+  }
+]

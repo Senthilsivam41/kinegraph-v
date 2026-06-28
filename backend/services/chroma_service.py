@@ -18,7 +18,11 @@ class ChromaService:
             port=settings.CHROMA_PORT,
             settings=ChromaSettings(anonymized_telemetry=False)
         )
-        self.embeddings = OpenAIEmbeddings(openai_api_key=settings.OPENAI_API_KEY)
+        openai_key = settings.OPENAI_API_KEY
+        kw = {"openai_api_key": openai_key}
+        if openai_key and (openai_key.startswith("sk-or-") or "openrouter" in openai_key):
+            kw["base_url"] = "https://openrouter.ai/api/v1"
+        self.embeddings = OpenAIEmbeddings(**kw)
         self.collection_name = settings.CHROMA_COLLECTION_NAME
     
     def get_or_create_collection(self):

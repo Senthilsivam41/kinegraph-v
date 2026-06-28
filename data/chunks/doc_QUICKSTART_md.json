@@ -1,0 +1,52 @@
+[
+  {
+    "id": "chunk_0_d17ffaba",
+    "content": "# Quick Start Guide\n\n## Getting Started in 5 Minutes\n\nThis guide will help you get KineticGraph-Vectra up and running quickly.\n\n### Step 1: Prerequisites Check\n\n```bash\n# Check Docker installation\ndocker --version\ndocker-compose --version\n\n# Ensure you have at least 8GB RAM available\ndocker system info | grep \"Total Memory\"\n```\n\n### Step 2: Environment Setup\n\n```bash\n# Navigate to project directory\ncd /Users/sendils/work/repo/kinetic-v/kinegraph-v\n\n# Create environment file\ncp .env.example .env\n\n# Edit .env file - IMPORTANT: Add your OpenAI API key\n# Use nano, vim, or any editor\nnano .env\n```\n\n**Required Change in .env:**\n```bash\nOPENAI_API_KEY=sk-your-actual-key-here\n```\n\n### Step 3: Start Services\n\n```bash\n# Build and start all containers (this may take 5-10 minutes the first time)\ndocker-compose up --build -d\n\n# Watch the startup process\ndocker-compose logs -f\n```\n\nWait until you see:\n- `kinetic-api    | Uvicorn running on http://0.0.0.0:8000`\n- `kinetic-worker | celery@... ready`",
+    "metadata": {
+      "document_id": "doc_QUICKSTART_md",
+      "chunk_index": 0,
+      "file_name": "QUICKSTART.md",
+      "total_chunks": 5
+    }
+  },
+  {
+    "id": "chunk_1_435d113d",
+    "content": "# Watch the startup process\ndocker-compose logs -f\n```\n\nWait until you see:\n- `kinetic-api    | Uvicorn running on http://0.0.0.0:8000`\n- `kinetic-worker | celery@... ready`\n\n### Step 4: Verify Installation\n\n```bash\n# Check all services are running\ndocker-compose ps\n\n# Test health endpoint\ncurl http://localhost:8000/health\n\n# Expected response:\n# {\n#   \"status\": \"healthy\",\n#   \"services\": {\n#     \"api\": true,\n#     \"chroma\": true,\n#     \"neo4j\": true,\n#     \"redis\": true\n#   },\n#   \"version\": \"1.0.0\"\n# }\n```\n\n### Step 5: Access the API Documentation\n\nOpen your browser and visit:\n\n- **API Documentation (Swagger UI):** http://localhost:8000/docs\n- **Alternative API Docs (ReDoc):** http://localhost:8000/redoc\n- **Neo4j Database Browser:** http://localhost:7474\n  - Username: `neo4j`\n  - Password: (check your `.env` file)\n\n**Note:** This is a backend API service. There is no frontend UI - all interactions are via REST API endpoints.\n\n### Step 6: Ingest Your First Document",
+    "metadata": {
+      "document_id": "doc_QUICKSTART_md",
+      "chunk_index": 1,
+      "file_name": "QUICKSTART.md",
+      "total_chunks": 5
+    }
+  },
+  {
+    "id": "chunk_2_327bd4b9",
+    "content": "**Note:** This is a backend API service. There is no frontend UI - all interactions are via REST API endpoints.\n\n### Step 6: Ingest Your First Document\n\nUsing the **Swagger UI** (interactive API documentation) at http://localhost:8000/docs:\n\n1. Navigate to **POST /api/v1/ingest/document**\n2. Click \"Try it out\"\n3. Upload a PDF file\n4. Click \"Execute\"\n5. Copy the `task_id` from the response\n\nMonitor progress:\n```bash\n# Replace abc123 with your actual task_id\ncurl http://localhost:8000/api/v1/ingest/task/abc123\n```\n\n### Step 7: Query the System\n\n```bash\ncurl -X POST \"http://localhost:8000/api/v1/query\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"query\": \"Your question here\",\n    \"mode\": \"hybrid\",\n    \"max_results\": 5\n  }'\n```\n\n---\n\n## Common Issues\n\n### Issue: Port Already in Use\n\n```bash\n# Check what's using the port\nlsof -i :8000\n\n# Stop the conflicting service or change ports in docker-compose.yml\n```\n\n### Issue: Out of Memory",
+    "metadata": {
+      "document_id": "doc_QUICKSTART_md",
+      "chunk_index": 2,
+      "file_name": "QUICKSTART.md",
+      "total_chunks": 5
+    }
+  },
+  {
+    "id": "chunk_3_92a02930",
+    "content": "### Issue: Port Already in Use\n\n```bash\n# Check what's using the port\nlsof -i :8000\n\n# Stop the conflicting service or change ports in docker-compose.yml\n```\n\n### Issue: Out of Memory\n\n```bash\n# Increase Docker memory limit in Docker Desktop settings\n# Minimum recommended: 8GB\n\n# Or reduce service replicas temporarily\ndocker-compose up -d --scale worker=1\n```\n\n### Issue: ChromaDB Connection Failed\n\n```bash\n# Restart ChromaDB service\ndocker-compose restart chroma\n\n# Check logs\ndocker-compose logs chroma\n```\n\n### Issue: Neo4j Authentication Failed\n\n```bash\n# Reset Neo4j password\ndocker-compose down\ndocker volume rm kinegraph-v_neo4j_data\ndocker-compose up -d\n```\n\n---\n\n## Next Steps\n\n1. **Explore the API:** Visit http://localhost:8000/docs\n2. **Read the Full Documentation:** See [README.md](README.md)\n3. **Customize Configuration:** Edit `.env` and `docker-compose.yml`\n4. **Deploy to Production:** Follow the [Kubernetes Guide](KUBERNETES.md)\n\n---\n\n## Stopping the System",
+    "metadata": {
+      "document_id": "doc_QUICKSTART_md",
+      "chunk_index": 3,
+      "file_name": "QUICKSTART.md",
+      "total_chunks": 5
+    }
+  },
+  {
+    "id": "chunk_4_e26ccebd",
+    "content": "---\n\n## Stopping the System\n\n```bash\n# Stop all services\ndocker-compose down\n\n# Stop and remove all data\ndocker-compose down -v\n```\n\n---\n\nNeed help? Check the [README.md](README.md) for detailed documentation.",
+    "metadata": {
+      "document_id": "doc_QUICKSTART_md",
+      "chunk_index": 4,
+      "file_name": "QUICKSTART.md",
+      "total_chunks": 5
+    }
+  }
+]

@@ -47,45 +47,34 @@ The system uses **LangGraph** to orchestrate complex query workflows and **Celer
 
 ### System Components
 
+```mermaid
+graph TD
+    User([User Query]) --> Router{Intent Router}
+    
+    Router -->|Vector Mode| VA[Vector Agent]
+    Router -->|Hybrid/Parallel Mode| PF[Parallel Fetch]
+    Router -->|Vectorless Mode| VLA[Vectorless Agent]
+    
+    VA --> Chroma[(ChromaDB Vector Store)]
+    
+    PF --> Chroma
+    PF --> Neo4j[(Neo4j Graph Database)]
+    
+    VLA --> Lexical[BM25 Local Lexical Cache]
+    
+    Chroma --> Fusion[Fusion Node - Reciprocal Rank Fusion]
+    Neo4j --> Fusion
+    Lexical --> Fusion
+    
+    Fusion --> Rerank[Rerank Node - sentence-transformers]
+    Rerank --> Generate[Generate Node - LLM Answer]
+    Generate --> Output([Final Answer])
+    
+    style User fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff
+    style Router fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
+    style Fusion fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff
+    style Output fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff
 ```
-┌────────────────────────────────────────────────────────────────┐
-│                          FastAPI App                           │  ← REST API (query, ingest)
-└───────────────────────────────┬────────────────────────────────┘
-                                │
-                     ┌──────────▼──────────┐
-                     │   Intent Router     │  ← Query classification + routing
-                     └──┬───┬──────────┬───┘
-                        │   │          │
-        ┌───────────────┘   │          └────────────────┐
-        │                   │                           │
-  ┌─────▼─────┐       ┌─────▼──────────┐          ┌─────▼──────┐
-  │  Vector   │       │ Parallel Fetch │          │ Vectorless │  ← Local lexical BM25
-  │  Agent    │       │ (Vector∥Graph) │          │ Agent      │    search
-  └─────┬─────┘       └─────┬──────────┘          └─────┬──────┘
-        │                   │                           │
-  ┌─────▼─────┐             │                           │
-  │   Graph   │             │                           │
-  │   Agent   │             │                           │
-  └─────┬─────┘             │                           │
-        │                   │                           │
-        └─────────────────┐ │ ┌─────────────────────────┘
-                          │ │ │
-                        ┌──▼─▼─▼────────┐
-                        │  Fusion Node  │  ← Reciprocal Rank Fusion (RRF)
-                        └───────┬───────┘
-                                │
-                        ┌───────▼───────┐
-                        │  Rerank Node  │  ← Context relevance filter
-                        └───────┬───────┘
-                                │
-                        ┌───────▼───────┐
-                        │ Generate Node │  ← Faithfulness-first LLM answer
-                        └───────────────┘
-```
-
-### Architecture Overview
-
-![KineticGraph-Vectra Architecture](architecture.png)
 
 ### Infrastructure Stack
 
@@ -163,7 +152,18 @@ curl -X POST "http://localhost:8000/api/v1/query" \
 
 The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor system performance offline and live.
 
-- **Offline Evaluation**: The Jupyter notebook at [rag_evaluation.ipynb](file:///Users/sendils/work/repo/kinetic-v/kinegraph-v/notebooks/rag_evaluation.ipynb) performs full RAGAS batch assessments, rendering mode comparison plots and a polar radar chart mapping baseline scores.
+- **Synthetic Testset Generation**: Create rich multi-hop and specific factual benchmark questions directly from the project's documentation using:
+  ```bash
+  python scripts/generate_testset.py --size 5 --output eval/kinegraph_benchmark_v1.csv
+  ```
+- **Direct Database Ingestion**: Populate ChromaDB and Neo4j locally with documentation:
+  ```bash
+  python scripts/ingest_docs.py
+  ```
+- **Live Pipeline Benchmarking**: Execute the live RAG pipeline on your benchmark questions and compute RAGAS metrics:
+  ```bash
+  python scratch/run_evaluation.py
+  ```
 - **Live Diagnostics**: The `RAGASEvaluator` ([ragas_evaluator.py](file:///Users/sendils/work/repo/kinetic-v/kinegraph-v/eval/ragas_evaluator.py)) automatically catches evaluation errors/NaN scores and warns on the console with the exact query and failed metrics details, falling back cleanly to keyword heuristics.
 - **Concurrent Batch Eval**: Supports asynchronous concurrent live evaluation of the RAG workflow via the `evaluate_live_workflow` method.
 

@@ -1,0 +1,92 @@
+[
+  {
+    "id": "chunk_0_ba17f2f5",
+    "content": "# Quick Start Testing Guide\n\nThis guide provides step-by-step instructions for testing the KineticGraph-Vectra Hybrid RAG System.\n\n## 🚀 Prerequisites\n\n- Docker and Docker Compose installed\n- OpenAI API Key\n- At least 8GB RAM available\n- curl or any HTTP client\n- Python with pytest (for unit tests)\n\n## 📋 Testing Steps\n\n### 1. Start the Application\n\n```bash\n# Clone and navigate to the repository\ncd /Users/sendils/work/repo/kinetic-v/kinegraph-v\n\n# Copy environment file\ncp .env.example .env\n\n# Edit .env and add your OpenAI API key\nnano .env  # or use your favorite editor\n\n# Build and start all containers\ndocker-compose up --build -d\n\n# Check service health\ndocker-compose ps\n\n# View logs (optional)\ndocker-compose logs -f app\n```\n\n### 2. Verify Service Health\n\n```bash\n# Overall health check\ncurl http://localhost:8000/health\n\n# Liveness probe\ncurl http://localhost:8000/health/liveness\n\n# Readiness probe\ncurl http://localhost:8000/health/readiness\n```\n\n### 3. Access Individual Services",
+    "metadata": {
+      "document_id": "doc_quick_start_md",
+      "chunk_index": 0,
+      "file_name": "quick_start.md",
+      "total_chunks": 9
+    }
+  },
+  {
+    "id": "chunk_1_62654aa9",
+    "content": "# Liveness probe\ncurl http://localhost:8000/health/liveness\n\n# Readiness probe\ncurl http://localhost:8000/health/readiness\n```\n\n### 3. Access Individual Services\n\n- **FastAPI:** http://localhost:8000\n- **Neo4j Browser:** http://localhost:7474 (user: `neo4j`, password: see `.env`)\n- **ChromaDB:** http://localhost:8001\n- **API Documentation:** http://localhost:8000/docs\n\n### 4. Test Document Ingestion\n\n```bash\n# Create a test PDF (if you don't have one)\n# Then upload it to the system\ncurl -X POST \"http://localhost:8000/api/v1/ingest/document\" \\\n  -H \"Content-Type: multipart/form-data\" \\\n  -F \"file=@test.pdf\" \\\n  -F 'metadata={\"author\":\"Test User\",\"category\":\"test\"}'\n\n# Check the processing status (replace with actual task_id)\ncurl http://localhost:8000/api/v1/ingest/task/abc123\n```\n\nExpected Response:\n```json\n{\n  \"task_id\": \"abc123\",\n  \"status\": \"PENDING\",\n  \"message\": \"Document 'test.pdf' queued for processing\"\n}\n```\n\n### 5. Test Query Endpoints",
+    "metadata": {
+      "document_id": "doc_quick_start_md",
+      "chunk_index": 1,
+      "file_name": "quick_start.md",
+      "total_chunks": 9
+    }
+  },
+  {
+    "id": "chunk_2_6cad7a3e",
+    "content": "Expected Response:\n```json\n{\n  \"task_id\": \"abc123\",\n  \"status\": \"PENDING\",\n  \"message\": \"Document 'test.pdf' queued for processing\"\n}\n```\n\n### 5. Test Query Endpoints\n\n#### 5.1 Hybrid Search (Vector + Graph)\n```bash\ncurl -X POST \"http://localhost:8000/api/v1/query\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"query\": \"What are the main findings about climate change?\",\n    \"mode\": \"hybrid\",\n    \"max_results\": 10\n  }'\n```\n\n#### 5.2 Vector-Only Search\n```bash\ncurl -X POST \"http://localhost:8000/api/v1/query\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"query\": \"climate change impact\",\n    \"mode\": \"vector\",\n    \"max_results\": 5\n  }'\n```\n\n#### 5.3 Graph-Only Search\n```bash\ncurl -X POST \"http://localhost:8000/api/v1/query\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"query\": \"Show relationships between climate and weather\",\n    \"mode\": \"graph\",\n    \"max_results\": 5\n  }'\n```",
+    "metadata": {
+      "document_id": "doc_quick_start_md",
+      "chunk_index": 2,
+      "file_name": "quick_start.md",
+      "total_chunks": 9
+    }
+  },
+  {
+    "id": "chunk_3_0914064c",
+    "content": "Expected Response:\n```json\n{\n  \"query\": \"climate change impact\",\n  \"mode\": \"hybrid\",\n  \"results\": [\n    {\n      \"content\": \"Climate change has significant impacts...\",\n      \"metadata\": {\n        \"document_id\": \"doc_abc123\",\n        \"file_name\": \"climate_report.pdf\",\n        \"chunk_index\": 3\n      },\n      \"score\": 0.92,\n      \"source\": \"vector\"\n    }\n  ],\n  \"total_results\": 10,\n  \"execution_time_ms\": 234.56\n}\n```\n\n### 6. Run Python Unit Tests\n\n```bash\n# Install test dependencies (already in requirements.txt)\npip install pytest pytest-asyncio\n\n# Run all tests\npytest tests/ -v\n\n# Run specific test file (if exists)\npytest tests/test_health.py -v\n\n# Run with coverage\npytest tests/ -v --cov=app --cov=core --cov=services\n```\n\n### 7. Test Performance and Scaling\n\n```bash\n# Scale workers for testing\ndocker-compose up -d --scale worker=5",
+    "metadata": {
+      "document_id": "doc_quick_start_md",
+      "chunk_index": 3,
+      "file_name": "quick_start.md",
+      "total_chunks": 9
+    }
+  },
+  {
+    "id": "chunk_4_5345d755",
+    "content": "# Run with coverage\npytest tests/ -v --cov=app --cov=core --cov=services\n```\n\n### 7. Test Performance and Scaling\n\n```bash\n# Scale workers for testing\ndocker-compose up -d --scale worker=5\n\n# Test load with multiple concurrent requests\nfor i in {1..10}; do\n  curl -X POST \"http://localhost:8000/api/v1/query\" \\\n    -H \"Content-Type: application/json\" \\\n    -d '{\"query\": \"test query\", \"mode\": \"hybrid\", \"max_results\": 5}' &\ndone\nwait\n```\n\n## 🛠️ Service Management\n\n### Docker Compose Commands\n\n```bash\n# Start services\ndocker-compose up -d\n\n# Stop services\ndocker-compose down\n\n# View logs\ndocker-compose logs -f [service_name]\n\n# Restart a service\ndocker-compose restart app\n\n# Rebuild after code changes\ndocker-compose up --build app\n\n# Scale workers\ndocker-compose up -d --scale worker=5\n```\n\n### Service Ports",
+    "metadata": {
+      "document_id": "doc_quick_start_md",
+      "chunk_index": 4,
+      "file_name": "quick_start.md",
+      "total_chunks": 9
+    }
+  },
+  {
+    "id": "chunk_5_fd8c4507",
+    "content": "# Restart a service\ndocker-compose restart app\n\n# Rebuild after code changes\ndocker-compose up --build app\n\n# Scale workers\ndocker-compose up -d --scale worker=5\n```\n\n### Service Ports\n\n| Service | Internal Port | External Port |\n|---------|---------------|---------------|\n| FastAPI | 8000 | 8000 |\n| ChromaDB | 8000 | 8001 |\n| Neo4j HTTP | 7474 | 7474 |\n| Neo4j Bolt | 7687 | 7687 |\n| Redis | 6379 | 6379 |\n\n## 🔍 Common Test Scenarios\n\n### Scenario 1: Basic Health Check\n1. Start services\n2. Verify health endpoint returns 200 OK\n3. Check all individual services are accessible\n\n### Scenario 2: Document Processing Pipeline\n1. Upload a PDF document\n2. Monitor task status\n3. Verify document is processed and indexed\n4. Query the uploaded content\n\n### Scenario 3: Query Performance\n1. Test different query modes (vector, graph, hybrid)\n2. Compare response times\n3. Validate result quality and relevance",
+    "metadata": {
+      "document_id": "doc_quick_start_md",
+      "chunk_index": 5,
+      "file_name": "quick_start.md",
+      "total_chunks": 9
+    }
+  },
+  {
+    "id": "chunk_6_d0e171f3",
+    "content": "### Scenario 3: Query Performance\n1. Test different query modes (vector, graph, hybrid)\n2. Compare response times\n3. Validate result quality and relevance\n\n### Scenario 4: Error Handling\n1. Test with invalid file formats\n2. Test with missing parameters\n3. Test service failures\n\n## 🐛 Troubleshooting\n\n### Common Issues\n\n1. **Services not starting**\n   ```bash\n   # Check logs\n   docker-compose logs -f\n   \n   # Check port conflicts\n   lsof -i :8000\n   ```\n\n2. **OpenAI API errors**\n   - Verify API key in `.env` file\n   - Check API quota and billing\n\n3. **Memory issues**\n   - Ensure at least 8GB RAM available\n   - Monitor container resource usage: `docker stats`\n\n4. **Test failures**\n   ```bash\n   # Check test dependencies\n   pip install -r requirements.txt\n   \n   # Verify test environment\n   pytest --version\n   ```\n\n## 📊 Expected Performance Metrics",
+    "metadata": {
+      "document_id": "doc_quick_start_md",
+      "chunk_index": 6,
+      "file_name": "quick_start.md",
+      "total_chunks": 9
+    }
+  },
+  {
+    "id": "chunk_7_3102eec0",
+    "content": "4. **Test failures**\n   ```bash\n   # Check test dependencies\n   pip install -r requirements.txt\n   \n   # Verify test environment\n   pytest --version\n   ```\n\n## 📊 Expected Performance Metrics\n\n- **Health Check Response:** < 100ms\n- **Simple Query:** < 500ms\n- **Document Processing:** 30-60 seconds (depending on size)\n- **Concurrent Queries:** 10+ requests simultaneously\n\n## 📝 Test Checklist\n\n- [ ] All services start successfully\n- [ ] Health endpoints return 200 OK\n- [ ] Document ingestion works\n- [ ] Query endpoints return expected results\n- [ ] Different query modes work correctly\n- [ ] API documentation is accessible\n- [ ] Unit tests pass\n- [ ] Performance meets expectations\n- [ ] Error handling works as expected\n\n## 🔧 Development Testing\n\nFor local development without Docker:\n\n```bash\n# Create virtual environment\npython -m venv venv\nsource venv/bin/activate  # On Windows: venv\\Scripts\\activate\n\n# Install dependencies\npip install -r requirements.txt",
+    "metadata": {
+      "document_id": "doc_quick_start_md",
+      "chunk_index": 7,
+      "file_name": "quick_start.md",
+      "total_chunks": 9
+    }
+  },
+  {
+    "id": "chunk_8_c95137da",
+    "content": "```bash\n# Create virtual environment\npython -m venv venv\nsource venv/bin/activate  # On Windows: venv\\Scripts\\activate\n\n# Install dependencies\npip install -r requirements.txt\n\n# Run FastAPI with hot reload\nuvicorn app.main:app --reload --host 0.0.0.0 --port 8000\n\n# Run Celery worker (separate terminal)\ncelery -A workers.celery_app worker --loglevel=info\n```\n\n## 📞 Support\n\nFor issues and questions:\n- Check the main documentation: [README.md](./README.md)\n- Open an issue on GitHub\n- Review API docs at http://localhost:8000/docs",
+    "metadata": {
+      "document_id": "doc_quick_start_md",
+      "chunk_index": 8,
+      "file_name": "quick_start.md",
+      "total_chunks": 9
+    }
+  }
+]

@@ -1,0 +1,162 @@
+[
+  {
+    "id": "chunk_0_b1cc0125",
+    "content": "# Architecture Deep Dive\n\n## System Overview\n\nKineticGraph-Vectra implements a **Hybrid Retrieval-Augmented Generation (RAG)** pattern that combines the strengths of two complementary database paradigms:\n\n### Design Philosophy\n\n1. **Vector Search (ChromaDB):** Excels at semantic similarity and finding conceptually related content\n2. **Graph Search (Neo4j):** Excels at understanding relationships and traversing connected entities\n3. **Vectorless Search (BM25 Local Lexical Cache):** Excels at fast, direct keyword lookup and attachment processing without vector DB dependencies\n4. **Reciprocal Rank Fusion:** Intelligently merges results from all retrieval sources\n\n---\n\n## Component Architecture\n\n### 1. API Layer (FastAPI)\n\n**Location:** `/app`\n\n```\nFastAPI Application\n├── Entry Point (main.py)\n├── Pydantic Models (models.py)\n└── Route Handlers\n    ├── Health Check\n    ├── Document Ingestion\n    └── Query Processing\n```",
+    "metadata": {
+      "document_id": "doc_ARCHITECTURE_md",
+      "chunk_index": 0,
+      "file_name": "ARCHITECTURE.md",
+      "total_chunks": 16
+    }
+  },
+  {
+    "id": "chunk_1_d3ea2e45",
+    "content": "```\nFastAPI Application\n├── Entry Point (main.py)\n├── Pydantic Models (models.py)\n└── Route Handlers\n    ├── Health Check\n    ├── Document Ingestion\n    └── Query Processing\n```\n\n**Key Features:**\n- Async/await for high concurrency\n- Automatic OpenAPI documentation\n- Pydantic validation\n- CORS middleware\n- Health probes for Kubernetes\n\n**Scaling Strategy:**\n- Horizontal scaling with K8s HPA\n- Stateless design\n- Connection pooling to databases\n\n---\n\n### 2. Orchestration Layer (LangGraph)\n\n**Location:** `/core/langgraph_workflow.py`\n\n```mermaid\ngraph TD\n    A[Query Request] --> B{Route Query}\n    B -->|Vector| C[Vector Agent]\n    B -->|Graph| D[Graph Agent]\n    B -->|Hybrid| E[Parallel Fetch]\n    B -->|Vectorless| V[Vectorless Agent]\n    C --> F[Fusion Node]\n    D --> F\n    E --> F\n    V --> F\n    F --> R[Rerank Node]\n    R --> G[Generate Node]\n    G --> H[Format Results]\n    H --> I[Return Response]\n```",
+    "metadata": {
+      "document_id": "doc_ARCHITECTURE_md",
+      "chunk_index": 1,
+      "file_name": "ARCHITECTURE.md",
+      "total_chunks": 16
+    }
+  },
+  {
+    "id": "chunk_2_bc6b5f40",
+    "content": "**Vector Agent:**\n- Generates embeddings using OpenAI\n- Performs similarity search in ChromaDB\n- Returns ranked results with distance scores\n\n**Graph Agent:**\n- Converts natural language to Cypher queries using LLM\n- Executes graph traversals in Neo4j\n- Returns structured relationship data\n\n**Fusion Node:**\n- Implements Reciprocal Rank Fusion (RRF)\n- Deduplicates results\n- Re-ranks combined results\n\n**RRF Formula:**\n```\nRRF_score(d) = Σ 1/(k + rank_i(d))\n```\nWhere:\n- `d` = document\n- `k` = constant (default: 60)\n- `rank_i(d)` = rank of document in result set i\n\n---\n\n### 3. Database Services\n\n#### ChromaDB Service\n\n**Location:** `/services/chroma_service.py`\n\n```python\nChromaService\n├── Collection Management\n├── Document Ingestion\n│   ├── Embed text with OpenAI\n│   └── Store vectors + metadata\n└── Similarity Search\n    ├── Generate query embedding\n    ├── Vector similarity (cosine/L2)\n    └── Filter by metadata\n```",
+    "metadata": {
+      "document_id": "doc_ARCHITECTURE_md",
+      "chunk_index": 2,
+      "file_name": "ARCHITECTURE.md",
+      "total_chunks": 16
+    }
+  },
+  {
+    "id": "chunk_3_fdb71d1c",
+    "content": "**Configuration:**\n- Client-server mode (HTTP)\n- Persistent storage\n- Collection-based organization\n\n#### Neo4j Service\n\n**Location:** `/services/neo4j_service.py`\n\n```python\nNeo4jService\n├── Connection Management\n├── Graph Ingestion\n│   ├── Create Document nodes\n│   ├── Create Entity nodes\n│   └── Create Relationships\n└── Query Execution\n    ├── NL → Cypher conversion\n    ├── Graph traversal\n    └── Result formatting\n```\n\n**Schema:**\n```cypher\n// Nodes\n(Document {id, content, metadata})\n(Entity {name, type})\n\n// Relationships\n(Document)-[:MENTIONS]->(Entity)\n(Entity)-[:RELATES_TO {type}]->(Entity)\n```\n\n---\n\n### 4. Worker Layer (Celery)\n\n**Location:** `/workers`",
+    "metadata": {
+      "document_id": "doc_ARCHITECTURE_md",
+      "chunk_index": 3,
+      "file_name": "ARCHITECTURE.md",
+      "total_chunks": 16
+    }
+  },
+  {
+    "id": "chunk_4_4f721051",
+    "content": "// Relationships\n(Document)-[:MENTIONS]->(Entity)\n(Entity)-[:RELATES_TO {type}]->(Entity)\n```\n\n---\n\n### 4. Worker Layer (Celery)\n\n**Location:** `/workers`\n\n```\nCelery Workers\n├── Task Queue (Redis)\n├── Document Processor\n│   ├── PDF Text Extraction (Billiard Pool)\n│   ├── Text Chunking\n│   ├── Entity Extraction (LLM)\n│   └── Relationship Extraction (LLM)\n└── Database & Cache Population\n    ├── Embed & Store in ChromaDB\n    ├── Graph Creation in Neo4j\n    └── Local Disk Lexical Cache (JSON/TXT Chunks)\n```\n\n**Processing Pipeline:**",
+    "metadata": {
+      "document_id": "doc_ARCHITECTURE_md",
+      "chunk_index": 4,
+      "file_name": "ARCHITECTURE.md",
+      "total_chunks": 16
+    }
+  },
+  {
+    "id": "chunk_5_31391eff",
+    "content": "**Processing Pipeline:**\n\n```\nPDF Upload\n    ↓\nExtract Text (PyMuPDF)\n    ↓\nChunk Text (1000 chars, 200 overlap)\n    ↓\n┌───────────────────────┼────────────────────────┐\n↓                       ↓                        ↓\nBranch: Vector Path     Branch: Graph Path       Branch: Vectorless Path\n↓                       ↓                        ↓\nGenerate Embeddings     Extract Entities         Save Chunks to JSON\n↓                       ↓                        Save Text to TXT\nStore in ChromaDB       Extract Relationships    ↓\n                        ↓                        Local Disk Cache\n                        Store in Neo4j\n```\n\n**Worker Configuration:**\n- Concurrent task execution\n- Automatic retries\n- Progress tracking\n- Graceful task termination\n\n---\n\n## Data Flow\n\n### Ingestion Flow",
+    "metadata": {
+      "document_id": "doc_ARCHITECTURE_md",
+      "chunk_index": 5,
+      "file_name": "ARCHITECTURE.md",
+      "total_chunks": 16
+    }
+  },
+  {
+    "id": "chunk_6_83322653",
+    "content": "**Worker Configuration:**\n- Concurrent task execution\n- Automatic retries\n- Progress tracking\n- Graceful task termination\n\n---\n\n## Data Flow\n\n### Ingestion Flow\n\n```\n1. User uploads PDF → FastAPI endpoint\n2. File saved temporarily → Task queued in Redis\n3. Celery worker picks up task\n4. Worker extracts text from PDF (using PyMuPDF with billiard process pool)\n5. Worker chunks text into semantic segments\n6. Parallel processing:\n   a. Generate embeddings → Store in ChromaDB\n   b. Extract entities/relationships → Store in Neo4j\n   c. Save chunks and raw text → Local Lexical Cache on Disk\n7. Task marked as complete\n8. Temporary file deleted\n```\n\n### Query Flow",
+    "metadata": {
+      "document_id": "doc_ARCHITECTURE_md",
+      "chunk_index": 6,
+      "file_name": "ARCHITECTURE.md",
+      "total_chunks": 16
+    }
+  },
+  {
+    "id": "chunk_7_bc126fce",
+    "content": "### Query Flow\n\n```\n1. User sends query → FastAPI endpoint\n2. Query routed to LangGraph workflow\n3. Based on mode & intent routing:\n   - Vector: ChromaDB search only\n   - Graph: Neo4j search only\n   - Hybrid: Parallel fetch from Vector + Graph\n   - Vectorless: BM25 Local Lexical Cache search (for attachments or explicit requests)\n4. Results passed to Fusion Node\n5. RRF combines and ranks results\n6. Results deduplicated and formatted\n7. Response returned to user\n```\n\n---\n\n## Scaling Architecture\n\n### Horizontal Scaling\n\n**API Pods:**\n- Stateless design\n- Auto-scale based on CPU/memory\n- Load balanced with K8s Service\n\n**Worker Pods:**\n- Independent scaling from API\n- Scale based on queue depth\n- HPA configuration for demand\n\n### Vertical Scaling\n\n**Database Resources:**\n- ChromaDB: Increase memory for larger vector indices\n- Neo4j: Increase memory for graph traversal\n- Redis: Typically lightweight, minimal scaling needed\n\n### Resource Allocation",
+    "metadata": {
+      "document_id": "doc_ARCHITECTURE_md",
+      "chunk_index": 7,
+      "file_name": "ARCHITECTURE.md",
+      "total_chunks": 16
+    }
+  },
+  {
+    "id": "chunk_8_d0149766",
+    "content": "### Resource Allocation\n\n```yaml\n# Recommended K8s resource limits\nAPI:\n  requests: {memory: 512Mi, cpu: 500m}\n  limits: {memory: 1Gi, cpu: 1000m}\n\nWorker:\n  requests: {memory: 1Gi, cpu: 1000m}\n  limits: {memory: 2Gi, cpu: 2000m}\n\nChromaDB:\n  requests: {memory: 1Gi, cpu: 500m}\n  limits: {memory: 2Gi, cpu: 1000m}\n\nNeo4j:\n  requests: {memory: 2Gi, cpu: 1000m}\n  limits: {memory: 4Gi, cpu: 2000m}\n```\n\n---\n\n## Performance Considerations\n\n### Latency Targets\n\n- **Health Check:** < 100ms\n- **Vectorless Search (BM25):** < 10ms (sub-millisecond retrieval)\n- **Vector Search:** < 500ms\n- **Graph Search:** < 1000ms\n- **Hybrid Search:** < 1500ms\n- **Document Processing:** 5-30 seconds (async)\n\n### Optimization Strategies",
+    "metadata": {
+      "document_id": "doc_ARCHITECTURE_md",
+      "chunk_index": 8,
+      "file_name": "ARCHITECTURE.md",
+      "total_chunks": 16
+    }
+  },
+  {
+    "id": "chunk_9_49f8e4bc",
+    "content": "### Optimization Strategies\n\n1. **Embedding Cache:** Cache frequently used query embeddings\n2. **Connection Pooling:** Reuse database connections\n3. **Batch Processing:** Process multiple chunks together\n4. **Index Optimization:** Proper Neo4j indexes on Entity.name\n5. **Result Caching:** Cache popular queries (Redis)\n\n### Bottlenecks\n\nCommon bottlenecks and solutions:\n\n| Bottleneck | Solution |\n|------------|----------|\n| OpenAI API rate limits | Implement exponential backoff, use Azure OpenAI |\n| ChromaDB memory | Increase pod memory, implement sharding |\n| Neo4j query performance | Add indexes, optimize Cypher queries |\n| Worker queue buildup | Scale worker pods, increase concurrency |\n\n---\n\n## Security Architecture\n\n### Authentication & Authorization\n\n**Current State:** No authentication (development)\n\n**Production Requirements:**",
+    "metadata": {
+      "document_id": "doc_ARCHITECTURE_md",
+      "chunk_index": 9,
+      "file_name": "ARCHITECTURE.md",
+      "total_chunks": 16
+    }
+  },
+  {
+    "id": "chunk_10_66abfd49",
+    "content": "---\n\n## Security Architecture\n\n### Authentication & Authorization\n\n**Current State:** No authentication (development)\n\n**Production Requirements:**\n\n1. **API Authentication:**\n   ```python\n   # JWT middleware\n   from fastapi import Depends, HTTPException\n   from fastapi.security import HTTPBearer\n   \n   security = HTTPBearer()\n   \n   async def verify_token(credentials = Depends(security)):\n       # Verify JWT token\n       pass\n   ```\n\n2. **Database Security:**\n   - Neo4j: Change default password\n   - Use K8s secrets for credentials\n   - TLS for all connections\n\n3. **Network Policies:**\n   ```yaml\n   # K8s NetworkPolicy example\n   apiVersion: networking.k8s.io/v1\n   kind: NetworkPolicy\n   metadata:\n     name: api-policy\n   spec:\n     podSelector:\n       matchLabels:\n         app: kinetic-api\n     ingress:\n     - from:\n       - podSelector:\n           matchLabels:\n             app: ingress-nginx\n   ```\n\n---\n\n## Monitoring & Observability\n\n### Metrics to Track",
+    "metadata": {
+      "document_id": "doc_ARCHITECTURE_md",
+      "chunk_index": 10,
+      "file_name": "ARCHITECTURE.md",
+      "total_chunks": 16
+    }
+  },
+  {
+    "id": "chunk_11_45b27bde",
+    "content": "---\n\n## Monitoring & Observability\n\n### Metrics to Track\n\n1. **Application Metrics:**\n   - Request rate (requests/sec)\n   - Response time (p50, p95, p99)\n   - Error rate (%)\n   - Active connections\n\n2. **Database Metrics:**\n   - ChromaDB: Collection size, query latency\n   - Neo4j: Node count, query execution time\n   - Redis: Queue depth, memory usage\n\n3. **Worker Metrics:**\n   - Tasks processed/sec\n   - Task success/failure rate\n   - Average task duration\n   - Active workers\n\n### Logging Strategy\n\n**Structured Logging:**\n```python\nimport logging\nfrom pythonjsonlogger import jsonlogger\n\nlogger = logging.getLogger()\nhandler = logging.StreamHandler()\nformatter = jsonlogger.JsonFormatter()\nhandler.setFormatter(formatter)\nlogger.addHandler(handler)\n\nlogger.info(\"Query executed\", extra={\n    \"query\": query,\n    \"mode\": mode,\n    \"execution_time_ms\": 234.56,\n    \"results_count\": 10\n})\n```",
+    "metadata": {
+      "document_id": "doc_ARCHITECTURE_md",
+      "chunk_index": 11,
+      "file_name": "ARCHITECTURE.md",
+      "total_chunks": 16
+    }
+  },
+  {
+    "id": "chunk_12_a5c817a8",
+    "content": "logger.info(\"Query executed\", extra={\n    \"query\": query,\n    \"mode\": mode,\n    \"execution_time_ms\": 234.56,\n    \"results_count\": 10\n})\n```\n\n**Log Aggregation:**\n- Use ELK stack (Elasticsearch, Logstash, Kibana)\n- Or Loki + Grafana for K8s\n- CloudWatch for AWS deployments\n\n---\n\n## Disaster Recovery\n\n### Backup Strategy\n\n1. **ChromaDB:**\n   - Backup persistent volume\n   - Export collection data periodically\n\n2. **Neo4j:**\n   - Automated backups with neo4j-admin\n   - Point-in-time recovery\n   - Backup to S3/GCS\n\n3. **Redis:**\n   - RDB snapshots\n   - AOF persistence for critical data\n\n### Recovery Procedures\n\n```bash\n# ChromaDB recovery\nkubectl restore pvc chroma-pvc from-snapshot snapshot-xyz\n\n# Neo4j recovery\nneo4j-admin restore --from=/backup/neo4j-backup-2026-02-05\n\n# Redis recovery\nredis-cli --rdb /backup/redis-dump.rdb\n```\n\n---\n\n## Future Architecture Enhancements\n\n### Short-term (3-6 months)",
+    "metadata": {
+      "document_id": "doc_ARCHITECTURE_md",
+      "chunk_index": 12,
+      "file_name": "ARCHITECTURE.md",
+      "total_chunks": 16
+    }
+  },
+  {
+    "id": "chunk_13_0dd42e72",
+    "content": "# Redis recovery\nredis-cli --rdb /backup/redis-dump.rdb\n```\n\n---\n\n## Future Architecture Enhancements\n\n### Short-term (3-6 months)\n\n1. **Caching Layer:** Redis cache for popular queries\n2. **Enhanced Entity Extraction:** Use spaCy + GPT-4 hybrid\n3. **Query Analytics:** Track and optimize slow queries\n4. **Multi-tenant Support:** Isolate data per tenant\n\n### Long-term (6-12 months)\n\n1. **Multi-modal Support:** Process images, tables, charts\n2. **Distributed ChromaDB:** Sharding for massive scale\n3. **Neo4j Causal Cluster:** High availability setup\n4. **Real-time Streaming:** WebSocket for progressive results\n5. **Advanced RAG:** Query rewriting, sub-question decomposition\n6. **Federated Learning:** Privacy-preserving embeddings\n\n---\n\n## Technology Alternatives\n\n### Database Alternatives",
+    "metadata": {
+      "document_id": "doc_ARCHITECTURE_md",
+      "chunk_index": 13,
+      "file_name": "ARCHITECTURE.md",
+      "total_chunks": 16
+    }
+  },
+  {
+    "id": "chunk_14_5834df06",
+    "content": "---\n\n## Technology Alternatives\n\n### Database Alternatives\n\n| Component | Current | Alternatives |\n|-----------|---------|--------------|\n| Vector DB | ChromaDB | Pinecone, Weaviate, Milvus, Qdrant |\n| Graph DB | Neo4j | ArangoDB, JanusGraph, Amazon Neptune |\n| Task Queue | Celery+Redis | RabbitMQ, AWS SQS, Google Cloud Tasks |\n\n### Framework Alternatives\n\n| Component | Current | Alternatives |\n|-----------|---------|--------------|\n| API | FastAPI | Flask, Django, Express.js |\n| Orchestration | LangGraph | LangChain, Haystack, custom workflows |\n| Workers | Celery | Dramatiq, Huey, Apache Airflow |\n\n---\n\n## Conclusion\n\nKineticGraph-Vectra's architecture is designed for:\n\n- **Scalability:** Horizontal scaling at every layer\n- **Reliability:** Health checks, retries, graceful degradation\n- **Performance:** Async operations, connection pooling\n- **Maintainability:** Clean separation of concerns\n- **Extensibility:** Pluggable components, clear interfaces",
+    "metadata": {
+      "document_id": "doc_ARCHITECTURE_md",
+      "chunk_index": 14,
+      "file_name": "ARCHITECTURE.md",
+      "total_chunks": 16
+    }
+  },
+  {
+    "id": "chunk_15_d3d6afde",
+    "content": "The system can scale from a laptop (Docker Compose) to enterprise production (Kubernetes) without architectural changes.\n\n---\n\nFor implementation details, see:\n- [README.md](README.md) - Setup and usage\n- [API.md](API.md) - API documentation\n- [QUICKSTART.md](QUICKSTART.md) - Quick start guide",
+    "metadata": {
+      "document_id": "doc_ARCHITECTURE_md",
+      "chunk_index": 15,
+      "file_name": "ARCHITECTURE.md",
+      "total_chunks": 16
+    }
+  }
+]

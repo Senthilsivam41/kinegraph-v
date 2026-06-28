@@ -17,11 +17,15 @@ class Neo4jService:
             settings.NEO4J_URI,
             auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD)
         )
-        self.llm = ChatOpenAI(
-            model="gpt-4",
-            openai_api_key=settings.OPENAI_API_KEY,
-            temperature=0
-        )
+        openai_key = settings.OPENAI_API_KEY
+        kw = {
+            "model": "gpt-4",
+            "openai_api_key": openai_key,
+            "temperature": 0
+        }
+        if openai_key and (openai_key.startswith("sk-or-") or "openrouter" in openai_key):
+            kw["base_url"] = "https://openrouter.ai/api/v1"
+        self.llm = ChatOpenAI(**kw)
     
     def close(self):
         """Close the Neo4j driver"""
@@ -135,7 +139,15 @@ Cypher Query:
         )
         
         cypher_query = await self.llm.ainvoke(prompt.format(query=natural_language_query))
-        return cypher_query.content.strip()
+        query_str = cypher_query.content.strip()
+        if query_str.startswith("```"):
+            lines = query_str.split("\n")
+            if lines[0].strip().startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            query_str = "\n".join(lines).strip()
+        return query_str
     
     async def graph_search(
         self,

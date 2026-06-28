@@ -61,11 +61,15 @@ async def extract_entities_and_relationships(
     Returns:
         Tuple of (entities, relationships)
     """
-    llm = ChatOpenAI(
-        model="gpt-4",
-        openai_api_key=settings.OPENAI_API_KEY,
-        temperature=0
-    )
+    openai_key = settings.OPENAI_API_KEY
+    kw = {
+        "model": "gpt-4",
+        "openai_api_key": openai_key,
+        "temperature": 0
+    }
+    if openai_key and (openai_key.startswith("sk-or-") or "openrouter" in openai_key):
+        kw["base_url"] = "https://openrouter.ai/api/v1"
+    llm = ChatOpenAI(**kw)
     
     prompt = PromptTemplate(
         input_variables=["text"],
