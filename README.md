@@ -171,6 +171,17 @@ The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor s
 - **Live Diagnostics**: The `RAGASEvaluator` ([ragas_evaluator.py](file:///Users/sendils/work/repo/kinetic-v/kinegraph-v/eval/ragas_evaluator.py)) automatically catches evaluation errors/NaN scores and warns on the console with the exact query and failed metrics details, falling back cleanly to keyword heuristics.
 - **Concurrent Batch Eval**: Supports asynchronous concurrent live evaluation of the RAG workflow via the `evaluate_live_workflow` method.
 
+#### Baseline Evaluation Scores
+
+| Metric | Score | Status / Recommendation |
+| :--- | :---: | :--- |
+| **Faithfulness** | 0.3292 | Low: LLM hallucinating. Tighten system prompt with 'only use provided context'. |
+| **Answer Relevancy** | 0.1016 | Low: Answers drift off-topic. Add query intent classification. |
+| **Context Precision** | 1.0000 | Excellent: Relevant retrieved chunks are ranked at the top. |
+| **Context Recall** | 0.3476 | Low: Missing relevant chunks. Increase chunk overlap or add BM25 fallback. |
+| **Answer Correctness** | 0.3745 | Low: Verify knowledge-base freshness and consider fine-tuning. |
+| **Overall Composite** | **0.4306** | Baseline score over 20 evaluation queries. |
+
 #### RAGAS Evaluation Radar Chart
 ![RAGAS Evaluation Radar Chart](reports/spider_graph_ragas_score.png)
 

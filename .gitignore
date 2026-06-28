@@ -55,6 +55,14 @@ logs/
 data/chroma_data/
 data/neo4j_data/
 data/uploads/
+data/chunks/
+data/documents/
+
+# Evaluation results & caches
+eval_results.csv
+*eval_results.csv
+*mode_comparison_results.csv
+notebooks/*_fixed.ipynb
 
 # OS
 .DS_Store
