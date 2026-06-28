@@ -9,7 +9,7 @@ langchain==0.1.6
 langchain-community==0.0.19
 langchain-openai==0.0.5
 langgraph==0.0.20
-langchain-core==0.1.23
+langchain-core>=0.1.52
 
 # Vector Database
 chromadb==0.4.22
@@ -43,24 +43,14 @@ pytest-asyncio==0.23.3
 ragas>=0.1.7
 datasets>=2.18.0
 
-# LangSmith tracing
-langsmith>=0.0.83,<0.1.0
-
 # Context reranker (optional — improves context_precision significantly)
 sentence-transformers>=2.6.0   ; extra == "rerank"
-
-# Metrics dashboard
-streamlit>=1.32.0
-plotly>=5.19.0
 
 # Notebook evaluation
 jupyter>=1.0.0
 ipykernel>=6.29.0
 matplotlib>=3.8.0
 seaborn>=0.13.0
-
-# Metrics storage (PostgreSQL optional)
-psycopg2-binary>=2.9.9   ; extra == "postgres"
 
 # Data analysis
 pandas>=2.2.0
