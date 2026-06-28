@@ -117,6 +117,54 @@ EVAL_DATASET = [
      "ground_truth": "The fusion node combines results from vector and graph agents using RRF into a single ranked list."},
 ]
 
+async def async_run_rag(raw_dataset: list) -> list:
+    from backend.services.chroma_service import ChromaService
+    from backend.services.neo4j_service import Neo4jService
+    from backend.core.langgraph_workflow import HybridRAGWorkflow
+
+    chroma = ChromaService()
+    neo4j = Neo4jService()
+    workflow = HybridRAGWorkflow(chroma_service=chroma, neo4j_service=neo4j)
+    
+    dataset = []
+    print(f"Running RAG pipeline on {len(raw_dataset)} benchmark questions...")
+    for idx, row in enumerate(raw_dataset):
+        q = row["question"]
+        print(f"  [{idx+1}/{len(raw_dataset)}] Query: {q}")
+        try:
+            res = await workflow.execute_with_answer(query=q)
+            dataset.append({
+                "question": q,
+                "answer": res["answer"],
+                "contexts": [chunk.content for chunk in res.get("chunks", [])],
+                "ground_truth": row.get("ground_truth", "")
+            })
+        except Exception as e:
+            print(f"  Error running pipeline for query '{q}': {e}")
+            
+    try:
+        neo4j.close()
+    except Exception:
+        pass
+    return dataset
+
+# Determine evaluation dataset
+csv_path = "eval/kinegraph_benchmark_v1.csv"
+if os.path.exists(csv_path):
+    print(f"Found synthetic benchmark dataset at '{csv_path}'. Loading...")
+    import pandas as pd
+    import asyncio
+    df = pd.read_csv(csv_path)
+    raw_data = [{"question": row["user_input"], "ground_truth": row["reference"]} for _, row in df.iterrows()]
+    eval_dataset = asyncio.run(async_run_rag(raw_data))
+else:
+    print("Using hardcoded static offline evaluation dataset...")
+    eval_dataset = EVAL_DATASET[:3]
+
+if not eval_dataset:
+    print("Error: Evaluation dataset is empty. Check logs for pipeline failures.")
+    sys.exit(1)
+
 print("Starting evaluation of structured prompt...")
 evaluator = RAGASEvaluator(
     openai_api_key=os.getenv('OPENAI_API_KEY'),
@@ -124,8 +172,12 @@ evaluator = RAGASEvaluator(
              'context_recall', 'answer_correctness'],
 )
 
-results_df = evaluator.evaluate_batch(EVAL_DATASET[:3])
+results_df = evaluator.evaluate_batch(eval_dataset)
 report = evaluator.generate_report(results_df)
+
+print("\n=== PER-METRIC AVERAGE SCORES ===")
+for metric, stats in report['per_metric'].items():
+    print(f"  {metric:25s}: {stats['mean']:.4f}")
 
 print("\n=== ACTIONABLE RECOMMENDATIONS ===")
 for i, rec in enumerate(report['recommendations'], 1):

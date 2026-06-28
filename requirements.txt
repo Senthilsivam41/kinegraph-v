@@ -42,6 +42,8 @@ pytest-asyncio==0.23.3
 # RAGAS evaluation framework
 ragas>=0.1.7
 datasets>=2.18.0
+langchain-huggingface
+rapidfuzz
 
 # Context reranker (optional — improves context_precision significantly)
 sentence-transformers>=2.6.0   ; extra == "rerank"

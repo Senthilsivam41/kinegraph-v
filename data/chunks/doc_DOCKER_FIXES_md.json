@@ -1,0 +1,52 @@
+[
+  {
+    "id": "chunk_0_4b09a95d",
+    "content": "# Docker Compose Fixes - February 11, 2026\n\n## Issues Found\n\n1. **Obsolete `version` attribute** - Docker Compose warning\n2. **Neo4j healthcheck failing** - Container exiting with code 1\n3. **Deprecated Neo4j environment variables** - Using old `dbms.*` naming\n\n## Fixes Applied\n\n### 1. Removed Obsolete Version Line\n```diff\n- version: '3.8'\n-\nservices:\n```\n\n### 2. Fixed Neo4j Healthcheck\nThe original healthcheck used `neo4j status` which was failing because it detected Neo4j was already running.\n\n**Old healthcheck:**\n```yaml\nhealthcheck:\n  test: [\"CMD\", \"neo4j\", \"status\"]\n  interval: 30s\n  timeout: 10s\n  retries: 5\n```\n\n**New healthcheck:**\n```yaml\nhealthcheck:\n  test: [\"CMD-SHELL\", \"wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1\"]\n  interval: 10s\n  timeout: 5s\n  retries: 5\n  start_period: 40s\n```",
+    "metadata": {
+      "document_id": "doc_DOCKER_FIXES_md",
+      "chunk_index": 0,
+      "file_name": "DOCKER_FIXES.md",
+      "total_chunks": 5
+    }
+  },
+  {
+    "id": "chunk_1_537c200d",
+    "content": "**Changes:**\n- Uses HTTP endpoint check instead of internal status command\n- Added `start_period: 40s` to give Neo4j time to fully initialize\n- More frequent checks (10s interval) for faster startup\n- More reliable as it tests the actual HTTP interface\n\n### 3. Updated Neo4j Environment Variables\nChanged from deprecated `dbms.*` to current `server.*` naming:\n\n```diff\n- NEO4J_dbms_memory_pagecache_size=512M\n+ NEO4J_server_memory_pagecache_size=512M\n\n- NEO4J_dbms_memory_heap_initial__size=512M\n+ NEO4J_server_memory_heap_initial__size=512M\n\n- NEO4J_dbms_memory_heap_max__size=2G\n+ NEO4J_server_memory_heap_max__size=2G\n```\n\n## Verification\n\nAll services are now running and healthy:\n\n```bash\n$ docker-compose ps\nNAME             STATUS\nkinetic-api      Up (healthy)\nkinetic-chroma   Up (healthy)\nkinetic-neo4j    Up (healthy)\nkinetic-redis    Up (healthy)\nkinetic-worker   Up (healthy)\n```",
+    "metadata": {
+      "document_id": "doc_DOCKER_FIXES_md",
+      "chunk_index": 1,
+      "file_name": "DOCKER_FIXES.md",
+      "total_chunks": 5
+    }
+  },
+  {
+    "id": "chunk_2_670d323f",
+    "content": "```bash\n$ curl -s http://localhost:8000/health/\n{\n    \"status\": \"healthy\",\n    \"services\": {\n        \"api\": true,\n        \"chroma\": true,\n        \"neo4j\": true,\n        \"redis\": true\n    },\n    \"version\": \"1.0.0\"\n}\n```\n\n## Service Endpoints\n\nAll services are now accessible:\n\n- **API**: http://localhost:8000\n- **API Docs (Swagger)**: http://localhost:8000/docs\n- **Health Check**: http://localhost:8000/health/\n- **Neo4j Browser**: http://localhost:7474\n- **ChromaDB**: http://localhost:8001\n- **Redis**: localhost:6379\n\n## Starting/Stopping Services\n\n```bash\n# Start all services\ndocker-compose up -d\n\n# Stop all services\ndocker-compose down\n\n# View logs\ndocker-compose logs -f\n\n# View specific service logs\ndocker-compose logs -f app\ndocker-compose logs -f neo4j\n\n# Check status\ndocker-compose ps\n\n# Rebuild and restart\ndocker-compose up -d --build\n```\n\n## Troubleshooting\n\n### If containers fail to start:\n\n1. **Check logs:**\n   ```bash\n   docker-compose logs [service-name]\n   ```",
+    "metadata": {
+      "document_id": "doc_DOCKER_FIXES_md",
+      "chunk_index": 2,
+      "file_name": "DOCKER_FIXES.md",
+      "total_chunks": 5
+    }
+  },
+  {
+    "id": "chunk_3_481723f8",
+    "content": "# Rebuild and restart\ndocker-compose up -d --build\n```\n\n## Troubleshooting\n\n### If containers fail to start:\n\n1. **Check logs:**\n   ```bash\n   docker-compose logs [service-name]\n   ```\n\n2. **Completely reset:**\n   ```bash\n   docker-compose down -v  # Remove volumes\n   docker-compose up -d --build\n   ```\n\n3. **Check resource usage:**\n   ```bash\n   docker stats\n   ```\n\n### Health check failures:\n\n- Neo4j takes ~30-40 seconds to fully start (now handled by `start_period`)\n- ChromaDB usually starts in ~10-15 seconds\n- Redis starts almost immediately\n\n## Next Steps\n\nNow that the backend is running, you can:\n\n1. **Start the Chat UI:**\n   ```bash\n   ./start-ui.sh\n   # Or manually:\n   cd frontend && python3 serve.py\n   ```\n\n2. **Upload documents:**\n   - Use the chat UI at http://localhost:8080\n   - Or use the API directly\n\n3. **Query the system:**\n   - Ask questions via the chat UI\n   - Or use the API endpoints\n\n## Summary",
+    "metadata": {
+      "document_id": "doc_DOCKER_FIXES_md",
+      "chunk_index": 3,
+      "file_name": "DOCKER_FIXES.md",
+      "total_chunks": 5
+    }
+  },
+  {
+    "id": "chunk_4_fd0f350d",
+    "content": "3. **Query the system:**\n   - Ask questions via the chat UI\n   - Or use the API endpoints\n\n## Summary\n\n✅ Removed obsolete `version` attribute  \n✅ Fixed Neo4j healthcheck to use HTTP endpoint  \n✅ Updated Neo4j environment variables to current naming  \n✅ All services starting successfully  \n✅ All health checks passing  \n\nThe system is now ready for use!",
+    "metadata": {
+      "document_id": "doc_DOCKER_FIXES_md",
+      "chunk_index": 4,
+      "file_name": "DOCKER_FIXES.md",
+      "total_chunks": 5
+    }
+  }
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "chunk_0_33cd9c61",
+    "content": "# Kinetic Graph Solution: Hybrid RAG System\n\nThis document explains the architecture and performance advantages of the hybrid retrieval model used in **KineticGraph-Vectra**, which combines **Vector Search (ChromaDB)** and **Graph Retrieval (Neo4j)** under a unified **LangGraph** orchestrator, comparing it to vector-only or graph-only pipelines.\n\n---\n\n## 🏗️ Architectural Overview\n\nKineticGraph-Vectra orchestrates queries through a multi-stage LangGraph workflow:",
+    "metadata": {
+      "document_id": "doc_kinetic_graph_solution_md",
+      "chunk_index": 0,
+      "file_name": "kinetic_graph_solution.md",
+      "total_chunks": 6
+    }
+  },
+  {
+    "id": "chunk_1_e54fddc9",
+    "content": "---\n\n## 🏗️ Architectural Overview\n\nKineticGraph-Vectra orchestrates queries through a multi-stage LangGraph workflow:\n\n1. **Intent Classification**: Analyzes query characteristics to choose the best mode (Vector, Graph, or Hybrid).\n2. **Parallel Fetch**: Concurrently executes semantic lookup (ChromaDB) and relational traversal (Neo4j) using `asyncio.gather`.\n3. **Reciprocal Rank Fusion (RRF)**: Merges the ranked lists from both databases using a rank-based smoothing formula.\n4. **Context Reranker**: Filters out noise and orders the most relevant chunks using a semantic cross-encoder or lexical relevance filter.\n5. **Grounded Generation**: Produces a factually supported response based strictly on the fused and reranked context.\n\n---\n\n## 📊 Performance Comparison: Hybrid vs. Individual Baselines",
+    "metadata": {
+      "document_id": "doc_kinetic_graph_solution_md",
+      "chunk_index": 1,
+      "file_name": "kinetic_graph_solution.md",
+      "total_chunks": 6
+    }
+  },
+  {
+    "id": "chunk_2_e1db7e3a",
+    "content": "---\n\n## 📊 Performance Comparison: Hybrid vs. Individual Baselines\n\n| Dimension | Vector Only (ChromaDB) | Graph Only (Neo4j) | Hybrid (KineticGraph-Vectra) |\n| :--- | :--- | :--- | :--- |\n| **Search Mechanism** | Semantic embedding similarity | Cypher pattern & edge traversal | Merged RRF ranking + Reranking |\n| **Strengths** | Fuzzy conceptual queries, definitions | Relational queries, multi-hop facts | Comprehensive fact-grounded synthesis |\n| **Weaknesses** | Poor at multi-hop relationships | Rigid, fragile to semantic variations | Higher implementation complexity |\n| **Context Recall** | 🟡 Moderate (~0.35) | 🔴 Low | 🟢 High (~0.55 – 0.70+) |\n| **Latency** | 🟢 Low | 🟡 Moderate (Cypher LLM gen) | 🟢 Low (via Async parallel fetch) |\n\n---\n\n## 💡 Key Performance Drivers in the Hybrid Solution",
+    "metadata": {
+      "document_id": "doc_kinetic_graph_solution_md",
+      "chunk_index": 2,
+      "file_name": "kinetic_graph_solution.md",
+      "total_chunks": 6
+    }
+  },
+  {
+    "id": "chunk_3_7764d5c8",
+    "content": "---\n\n## 💡 Key Performance Drivers in the Hybrid Solution\n\n### 1. Superior Context Recall (+86% over baseline)\n* **The Problem:** Vector search often misses structural connections that span multiple documents, while graph search misses general semantic context or gets blocked by misspelled terms.\n* **The Hybrid Solution:** Fusing ChromaDB and Neo4j outputs guarantees that both **semantic details** and **exact entity relationships** are captured. The generator is provided with a complete set of source facts, directly minimizing the \"hallucination gap.\"",
+    "metadata": {
+      "document_id": "doc_kinetic_graph_solution_md",
+      "chunk_index": 3,
+      "file_name": "kinetic_graph_solution.md",
+      "total_chunks": 6
+    }
+  },
+  {
+    "id": "chunk_4_6a4a610b",
+    "content": "### 2. Normalized Ranking with Reciprocal Rank Fusion (RRF)\n* **The Problem:** ChromaDB returns distance scores (e.g. `0.23`), while Neo4j returns graph query records without standardized distance metrics. They cannot be averaged or compared directly.\n* **The Hybrid Solution:** RRF merges results by **rank** rather than score:\n  $$\\text{RRF}(d) = \\sum_{m \\in M} \\frac{1}{k + \\text{rank}_m(d)}$$\n  This mathematical fusion ranks items highly only if they perform well across both retrieval systems, effectively weeding out noise.\n\n### 3. Dynamic Intent Routing & Query Expansion\n* **The Problem:** Not all queries benefit from a hybrid search. Graph search on a simple keyword definition is overkill, and Vector search on deep connections is ineffective.\n* **The Hybrid Solution:** The pipeline routes incoming queries dynamically. Furthermore, it rewrites and expands queries specifically to match the target database modality before retrieval.",
+    "metadata": {
+      "document_id": "doc_kinetic_graph_solution_md",
+      "chunk_index": 4,
+      "file_name": "kinetic_graph_solution.md",
+      "total_chunks": 6
+    }
+  },
+  {
+    "id": "chunk_5_8d05a1c0",
+    "content": "### 4. Async Execution (40% – 55% Latency Reduction)\n* **The Problem:** Querying multiple databases sequentially introduces a severe latency penalty.\n* **The Hybrid Solution:** The system retrieves data from ChromaDB and Neo4j concurrently using `asyncio.gather`, ensuring that hybrid search is production-ready and fast.",
+    "metadata": {
+      "document_id": "doc_kinetic_graph_solution_md",
+      "chunk_index": 5,
+      "file_name": "kinetic_graph_solution.md",
+      "total_chunks": 6
+    }
+  }
+]
