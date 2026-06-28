@@ -100,13 +100,20 @@ class RAGASEvaluator:
         model: str = "gpt-4o-mini",
         embedding_model: str = "text-embedding-3-small",
         metrics: Optional[List[str]] = None,
+        critic_model: Optional[str] = None,
+        critic_api_key: Optional[str] = None,
+        critic_base_url: Optional[str] = None,
     ) -> None:
         import os
         self.openai_api_key = openai_api_key or os.getenv("OPENAI_AI_KEY") or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.embedding_model = embedding_model
         self.metrics_names = metrics or DEFAULT_METRICS
+        self.critic_model = critic_model
+        self.critic_api_key = critic_api_key
+        self.critic_base_url = critic_base_url
         self._llm = None
+        self._critic_llm = None
         self._embeddings = None
         self._ragas_metrics: List[Any] = []
         self._setup()
@@ -114,6 +121,7 @@ class RAGASEvaluator:
     def _setup(self) -> None:
         if not (_RAGAS_AVAILABLE and _OPENAI_AVAILABLE):
             return
+        import os
         try:
             is_openrouter = self.openai_api_key and (
                 self.openai_api_key.startswith("sk-or-") or "openrouter" in self.openai_api_key
@@ -128,17 +136,41 @@ class RAGASEvaluator:
 
             if is_openrouter:
                 kw["base_url"] = "https://openrouter.ai/api/v1"
-                if kw["model"] == "gpt-4o-mini":
-                    kw["model"] = "openrouter/free"
-                
                 self._llm = ChatOpenAI(**kw)
                 
                 # Use local free embeddings to avoid OpenRouter 402/payment limit errors
-                from langchain_community.embeddings import HuggingFaceEmbeddings
+                from langchain_huggingface import HuggingFaceEmbeddings
                 self._embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
             else:
                 self._llm = ChatOpenAI(**kw)
                 self._embeddings = OpenAIEmbeddings(**ekw)
+
+            # Setup separate evaluation model (critic) if requested
+            if self.critic_model:
+                ckw: Dict[str, Any] = {"model": self.critic_model, "temperature": 0}
+                c_key = self.critic_api_key or os.getenv("CRITIC_API_KEY") or self.openai_api_key
+                if c_key:
+                    ckw["openai_api_key"] = c_key
+                if self.critic_base_url:
+                    ckw["base_url"] = self.critic_base_url
+                elif c_key and (c_key.startswith("sk-or-") or "openrouter" in c_key):
+                    ckw["base_url"] = "https://openrouter.ai/api/v1"
+
+                if "claude" in self.critic_model.lower():
+                    try:
+                        from langchain_anthropic import ChatAnthropic
+                        self._critic_llm = ChatAnthropic(
+                            model=self.critic_model, 
+                            temperature=0, 
+                            anthropic_api_key=c_key or os.getenv("ANTHROPIC_API_KEY")
+                        )
+                    except ImportError:
+                        logger.warning("langchain-anthropic not installed. Defaulting to ChatOpenAI for critic.")
+                        self._critic_llm = ChatOpenAI(**ckw)
+                else:
+                    self._critic_llm = ChatOpenAI(**ckw)
+            else:
+                self._critic_llm = self._llm
 
             _map = {
                 "faithfulness": faithfulness,
@@ -189,7 +221,7 @@ class RAGASEvaluator:
             result = ragas_evaluate(
                 dataset=dataset,
                 metrics=active,
-                llm=self._llm,
+                llm=self._critic_llm or self._llm,
                 embeddings=self._embeddings,
                 raise_exceptions=False,
             )

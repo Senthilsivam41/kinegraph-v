@@ -127,6 +127,10 @@ evaluator = RAGASEvaluator(
 results_df = evaluator.evaluate_batch(EVAL_DATASET[:3])
 report = evaluator.generate_report(results_df)
 
+print("\n=== PER-METRIC AVERAGE SCORES ===")
+for metric, stats in report['per_metric'].items():
+    print(f"  {metric:25s}: {stats['mean']:.4f}")
+
 print("\n=== ACTIONABLE RECOMMENDATIONS ===")
 for i, rec in enumerate(report['recommendations'], 1):
     print(f'  {i}. {rec}')

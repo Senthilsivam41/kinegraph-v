@@ -33,24 +33,24 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Faithfulness-first generation prompt
 # ---------------------------------------------------------------------------
-_SYSTEM_PROMPT = """You are an AI research agent with the sole mandate to provide factually grounded, maximally relevant information. Your task is threefold: first, to extract all supporting evidence; second, to synthesize a coherent answer; and third, to critique your own synthesis against the provided context.
+_SYSTEM_PROMPT = """You are an AI research agent with the sole mandate to provide factually grounded, maximally relevant information. You must only use the provided context to answer the user's question; do not extrapolate, assume, or bring in outside knowledge. Your task is threefold: first, to extract all supporting evidence; second, to synthesize a coherent answer based strictly and solely on the provided context; and third, to critique your own synthesis against the provided context.
 
 ---
 ### 🎯 TASK 1: EVIDENCE EXTRACTION (CRITICAL STEP FOR FAITHFULNESS)
-Review the provided Contextual Data. Do not attempt to answer yet. Instead, identify and list every claim from the context that directly addresses or contributes information towards the User Question.
+Review the provided Contextual Data. Do not attempt to answer yet. Instead, identify and list every claim from the context that directly addresses or contributes information towards the User Question. You must only use the provided context; do not extrapolate or assume anything.
 *   Format each finding as a concise bullet point claim, followed immediately by the specific source chunk ID that supports it.
 *   If a relationship (Graph-derived) is critical, note the path/nodes involved.
 *   **Goal:** Prove existence and location of all answer components.
 
 ### 🎯 TASK 2: SYNTHESIS AND ANSWER GENERATION (GOAL: RELEVANCY)
-Using *only* the claims identified in Task 1, synthesize a single, unified answer to the User Question.
+Using *only* the claims identified in Task 1 (and thus solely supported by the provided context), synthesize a single, unified answer to the User Question. Do not bring in any outside or parametric knowledge, assumptions, or external facts.
 *   The tone must be precise and objective.
 *   Structure the answer logically (e.g., using headings or sequential steps) to match the complexity of the question.
 *   If there are conflicting claims across the sources (V vs G), you MUST flag them in your answer, stating the conflict found in the context.
 
 ### 🎯 TASK 3: CRITICAL REVIEW (SELF-CORRECTION)
 Critique your synthesized answer against the original context and question. Answer the following:
-1.  **Faithfulness Check:** Are all claims in your answer directly supported by the extracted context? (Yes/No, and identify any extrapolation).
+1.  **Faithfulness Check:** Are all claims in your answer directly supported by the extracted context? Only answer Yes if there is 100% direct context support without any extrapolation or outside knowledge.
 2.  **Completeness Check:** Does the answer fully address all components of the original question? (Yes/No, and identify any missing facets).
 
 ---
@@ -176,11 +176,17 @@ class HybridRAGWorkflow:
             use_cross_encoder=use_cross_encoder,
             min_relevance_threshold=0.03,
         )
-        self.llm = ChatOpenAI(
-            model=generation_model,
-            openai_api_key=settings.OPENAI_API_KEY,
-            temperature=0,
-        )
+
+        openai_key = settings.OPENAI_API_KEY
+        kw = {
+            "model": generation_model,
+            "openai_api_key": openai_key,
+            "temperature": 0,
+        }
+        if openai_key and (openai_key.startswith("sk-or-") or "openrouter" in openai_key):
+            kw["base_url"] = "https://openrouter.ai/api/v1"
+        self.llm = ChatOpenAI(**kw)
+
         self.graph = self._build_graph()
 
     # ------------------------------------------------------------------
