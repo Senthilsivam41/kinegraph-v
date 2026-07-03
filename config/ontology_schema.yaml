@@ -1,0 +1,21 @@
+version: "1.0.0"
+entity_types:
+  - Person
+  - Organization
+  - Component
+  - Concept
+  - Technology
+relation_types:
+  - DEVELOPED
+  - ORCHESTRATES
+  - COMBINES
+  - USES
+  - MENTIONS
+  - INTEGRATES
+valid_triples:
+  - [Component, ORCHESTRATES, Component]
+  - [Component, COMBINES, Component]
+  - [Component, USES, Component]
+  - [Organization, DEVELOPED, Technology]
+  - [Person, DEVELOPED, Concept]
+  - [Component, INTEGRATES, Technology]
