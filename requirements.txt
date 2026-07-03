@@ -12,7 +12,13 @@ langgraph==0.0.20
 langchain-core>=0.1.52
 
 # Vector Database
-chromadb==0.4.22
+chromadb>=0.5.17
+llama-index==0.12.12
+llama-index-llms-openai==0.3.11
+llama-index-embeddings-openai==0.3.1
+llama-index-graph-stores-neo4j==0.4.2
+llama-index-vector-stores-chroma==0.4.1
+pyyaml>=6.0
 
 # Graph Database
 neo4j==5.16.0
