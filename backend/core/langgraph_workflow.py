@@ -27,6 +27,7 @@ from backend.core.intent_classifier import classify_intent, rewrite_query_for_re
 from backend.core.rrf import deduplicate_results, reciprocal_rank_fusion
 from backend.services.chroma_service import ChromaService
 from backend.services.neo4j_service import Neo4jService
+from backend.graph_retrieval.langgraph_node import LangGraphGraphRetrieverNode
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +173,7 @@ class HybridRAGWorkflow:
     ) -> None:
         self.chroma = chroma_service
         self.neo4j = neo4j_service
+        self.graph_retriever_node = LangGraphGraphRetrieverNode(use_cypher=False)
         self.ranker = ContextRanker(
             use_cross_encoder=use_cross_encoder,
             min_relevance_threshold=0.03,
@@ -338,7 +340,7 @@ class HybridRAGWorkflow:
         vector_task = self.chroma.similarity_search(
             query=rq, n_results=fetch_n, filters=state.get("filters")
         )
-        graph_task = self.neo4j.graph_search(query=rq, n_results=fetch_n)
+        graph_task = self.graph_retriever_node.retrieve_chunks(query=rq, n_results=fetch_n)
 
         vector_results, graph_results = await asyncio.gather(
             vector_task, graph_task, return_exceptions=True
@@ -382,7 +384,7 @@ class HybridRAGWorkflow:
         """Graph-only retrieval with expanded fetch for better recall."""
         t0 = time.perf_counter()
         fetch_n = min(state["max_results"] * 2, 20)
-        results = await self.neo4j.graph_search(
+        results = await self.graph_retriever_node.retrieve_chunks(
             query=state["rewritten_query"], n_results=fetch_n
         )
         state["graph_results"] = results
