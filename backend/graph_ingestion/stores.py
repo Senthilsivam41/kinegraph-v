@@ -52,7 +52,7 @@ class CustomNeo4jPropertyGraphStore(Neo4jPropertyGraphStore):
                     UNWIND $data AS row
                     MERGE (e:__Node__ {{id: row.id}})
                     SET e += apoc.map.clean(row.properties, [], [])
-                    SET e.name = row.name, e:`Entity`
+                    SET e.name = row.name, e:`__Entity__`
                     WITH e, row
                     CALL apoc.create.addLabels(e, [row.label])
                     YIELD node
