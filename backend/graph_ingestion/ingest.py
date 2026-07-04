@@ -165,6 +165,7 @@ class IdempotentGraphIngester:
             property_graph_store=self.graph_store,
             vector_store=self.vector_store,
             embed_model=self.embed_model,
+            llm=self.llm,
             show_progress=True
         )
 

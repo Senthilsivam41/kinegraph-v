@@ -1,12 +1,12 @@
 from backend.graph_ingestion.stores import get_neo4j_graph_store, get_chroma_vector_store
 from unittest.mock import MagicMock, patch
 
-@patch("backend.graph_ingestion.stores.Neo4jPropertyGraphStore")
-def test_neo4j_store_initialization(mock_neo4j_store):
-    mock_neo4j_store.return_value = MagicMock()
+@patch("backend.graph_ingestion.stores.CustomNeo4jPropertyGraphStore")
+def test_neo4j_store_initialization(mock_custom_neo4j_store):
+    mock_custom_neo4j_store.return_value = MagicMock()
     store = get_neo4j_graph_store()
     assert store is not None
-    mock_neo4j_store.assert_called_once()
+    mock_custom_neo4j_store.assert_called_once()
 
 @patch("backend.graph_ingestion.stores.chromadb.HttpClient")
 @patch("backend.graph_ingestion.stores.ChromaVectorStore")
