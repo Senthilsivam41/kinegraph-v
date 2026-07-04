@@ -204,15 +204,22 @@ class RAGASEvaluator:
                 "ragas_error": "RAGAS not available or not configured"
             }
 
+        from datasets import Features, Sequence, Value
         row: Dict[str, Any] = {
             "question": [question],
             "answer": [answer],
             "contexts": [contexts],
         }
+        features = Features({
+            "question": Value("string"),
+            "answer": Value("string"),
+            "contexts": Sequence(Value("string")),
+        })
         if ground_truth:
             row["ground_truth"] = [ground_truth]
+            features["ground_truth"] = Value("string")
 
-        dataset = Dataset.from_dict(row)
+        dataset = Dataset.from_dict(row, features=features)
         active = self._ragas_metrics
         if not ground_truth:
             active = [m for m in active if m not in (answer_correctness, context_recall)]
