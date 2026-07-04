@@ -9,10 +9,13 @@ import pytest
 def test_extractor_stack_creation():
     schema = OntologySchema("config/ontology_schema.yaml")
     mock_llm = MockLLM()
-    stack = get_extractor_stack(schema, mock_llm)
-    assert len(stack) == 2
+    mock_resolver = MagicMock()
+    stack = get_extractor_stack(schema, mock_llm, mock_resolver)
+    assert len(stack) == 4
     assert stack[0].__class__.__name__ == "SchemaLLMPathExtractor"
     assert isinstance(stack[1], TaggedSimpleLLMPathExtractor)
+    assert stack[2].__class__.__name__ == "EntityResolutionExtractor"
+    assert stack[3].__class__.__name__ == "ImplicitPathExtractor"
 
 @pytest.mark.asyncio
 async def test_tagged_simple_extractor_acall():

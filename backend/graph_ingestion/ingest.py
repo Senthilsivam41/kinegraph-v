@@ -133,39 +133,18 @@ class IdempotentGraphIngester:
             len(nodes_to_ingest), len(chunks), file_path_obj.name
         )
 
-        # 3. Extract entities and relationships using stacked extractors
-        extractors = get_extractor_stack(self.schema, self.llm)
-        processed_nodes = list(nodes_to_ingest)
-        for extractor in extractors:
-            processed_nodes = extractor(processed_nodes)
+        # 3. Extract and resolve entities using PropertyGraphIndex pipeline
+        extractors = get_extractor_stack(self.schema, self.llm, self.resolver)
 
-        # 4. Resolve entity aliases (Deduplication) in metadata
-        entity_names = set()
-        for node in processed_nodes:
-            if "nodes" in node.metadata:
-                for ent in node.metadata["nodes"]:
-                    entity_names.add(ent.name)
-                    
-        resolution_map = self.resolver.resolve_entities(list(entity_names))
-        
-        # Apply name mapping to entities and relations
-        for node in processed_nodes:
-            if "nodes" in node.metadata:
-                for ent in node.metadata["nodes"]:
-                    ent.name = resolution_map.get(ent.name, ent.name)
-            if "relations" in node.metadata:
-                for rel in node.metadata["relations"]:
-                    rel.source_id = resolution_map.get(rel.source_id, rel.source_id)
-                    rel.target_id = resolution_map.get(rel.target_id, rel.target_id)
-
-        # 5. Build/Update PropertyGraphIndex
+        # 4. Build/Update PropertyGraphIndex
         # LlamaIndex writes nodes to the graph store and vector store
         PropertyGraphIndex(
-            nodes=processed_nodes,
+            nodes=nodes_to_ingest,
             property_graph_store=self.graph_store,
             vector_store=self.vector_store,
             embed_model=self.embed_model,
             llm=self.llm,
+            kg_extractors=extractors,
             show_progress=True
         )
 
@@ -174,23 +153,107 @@ class IdempotentGraphIngester:
             "status": "success",
             "total_chunks": len(chunks),
             "skipped_chunks": skipped_chunks,
-            "ingested_chunks": len(processed_nodes)
+            "ingested_chunks": len(nodes_to_ingest)
         }
 
     def ingest_directory(self, dir_path: str, metadata: Dict[str, Any] = None) -> List[Dict[str, Any]]:
-        """Ingests all supported files from a directory."""
+        """
+        Ingests all supported files from a directory in a single batch to avoid
+        event loop deadlocks and enable global entity resolution.
+        """
         dir_path_obj = Path(dir_path)
         if not dir_path_obj.is_dir():
             raise NotADirectoryError(f"Not a directory: {dir_path}")
             
-        results = []
+        if metadata is None:
+            metadata = {}
+
+        all_nodes_to_ingest = []
+        skipped_chunks = 0
+        total_chunks = 0
+        file_summaries = []
+
+        # 1. Collect and chunk all files, checking content hashes
         for file_path in dir_path_obj.iterdir():
-            if file_path.suffix.lower() in [".pdf", ".md", ".txt"]:
-                logger.info("Processing directory file: %s", file_path.name)
-                try:
-                    res = self.ingest_file(str(file_path), metadata)
-                    results.append(res)
-                except Exception as e:
-                    logger.error("Failed to ingest file %s: %s", file_path.name, e)
-                    results.append({"file_name": file_path.name, "status": "failed", "error": str(e)})
-        return results
+            if file_path.suffix.lower() not in [".pdf", ".md", ".txt"]:
+                continue
+                
+            content = ""
+            if file_path.suffix.lower() == ".pdf":
+                from backend.workers.document_processor import extract_text_from_pdf
+                content = extract_text_from_pdf(str(file_path))
+            else:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    
+            if not content.strip():
+                continue
+                
+            chunks = self.chunk_text(content)
+            total_chunks += len(chunks)
+            file_nodes = []
+            
+            for idx, chunk_text_content in enumerate(chunks):
+                chunk_hash = self.compute_hash(chunk_text_content)
+                if self.is_chunk_ingested(chunk_hash):
+                    skipped_chunks += 1
+                    continue
+                    
+                node_meta = {
+                    "file_name": file_path.name,
+                    "chunk_index": idx,
+                    "total_chunks": len(chunks),
+                    "chunk_hash": chunk_hash,
+                    **metadata
+                }
+                node = TextNode(text=chunk_text_content, metadata=node_meta)
+                file_nodes.append(node)
+                
+            if file_nodes:
+                all_nodes_to_ingest.extend(file_nodes)
+                file_summaries.append({
+                    "file_name": file_path.name,
+                    "status": "pending_ingestion",
+                    "total_chunks": len(chunks),
+                    "skipped_chunks": skipped_chunks,
+                    "ingested_chunks": len(file_nodes)
+                })
+            else:
+                file_summaries.append({
+                    "file_name": file_path.name,
+                    "status": "skipped",
+                    "total_chunks": len(chunks),
+                    "skipped_chunks": len(chunks),
+                    "ingested_chunks": 0
+                })
+
+        if not all_nodes_to_ingest:
+            logger.info("All files in directory already ingested.")
+            return file_summaries
+
+        logger.info(
+            "Batch ingesting %d / %d chunks from %d files...",
+            len(all_nodes_to_ingest), total_chunks, len(file_summaries)
+        )
+
+        # 2. Extract entities and relationships
+        # 2. Extract and resolve entities using PropertyGraphIndex pipeline
+        extractors = get_extractor_stack(self.schema, self.llm, self.resolver)
+
+        # 3. Write to index (ONE SINGLE CALL)
+        PropertyGraphIndex(
+            nodes=all_nodes_to_ingest,
+            property_graph_store=self.graph_store,
+            vector_store=self.vector_store,
+            embed_model=self.embed_model,
+            llm=self.llm,
+            kg_extractors=extractors,
+            show_progress=True
+        )
+
+        # Update statuses in summary
+        for f in file_summaries:
+            if f["status"] == "pending_ingestion":
+                f["status"] = "success"
+
+        return file_summaries
