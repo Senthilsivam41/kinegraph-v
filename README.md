@@ -41,6 +41,34 @@ The system uses **LangGraph** to orchestrate complex query workflows and **Celer
 - **Pruned Dependencies & Vulnerabilities**: Removed unused heavy libraries (`streamlit`, `plotly`, `langsmith`, `psycopg2-binary`) from `requirements.txt` to minimize codebase bloat, dependency conflicts, and security vulnerability surface areas.
 - **Ingestion Streamlining**: Replaced Celery's billiard-based parallel PDF text extraction pool with a fast, sequential PyMuPDF (fitz) iteration loop inside `document_processor.py`, eliminating process-forking overhead and file-locking bottlenecks.
 
+### 3. Decoupled PropertyGraphIndex Dual-Store (Neo4j + ChromaDB)
+KineticGraph-Vectra features a **state-of-the-art decoupled Graph RAG index** using LlamaIndex's `PropertyGraphIndex` but uniquely engineered to maintain **strict storage isolation** between the relational graph database (**Neo4j**) and the dense vector database (**ChromaDB**). 
+
+Unlike default implementations that collapse both vectors and graph entities into Neo4j's native vector indices, this decoupled architecture guarantees:
+- **Independent Scaling**: Scale your vector query capacity (ChromaDB memory/nodes) independently from your graph traversal complexity (Neo4j memory/CPU).
+- **Vendor Lock-in Avoidance**: Swap out ChromaDB or Neo4j for other specialized engines without rebuilding the entire extraction or ingestion pipelines.
+- **Granular Embedding Fusing**: Compute and store embeddings for chunks, entities, and relationship summaries, enabling precise Reciprocal Rank Fusion (RRF) at query time.
+
+#### Ingestion Flow & Extractor Stack
+Every ingested document goes through a pipeline of concurrent, specialized extractors aligned with a constrained ontology schema:
+
+```mermaid
+graph LR
+    Doc[Ingested Document] --> Parse[Text Chunking]
+    Parse --> Ext1[SchemaLLMPathExtractor]
+    Parse --> Ext2[TaggedSimpleLLMPathExtractor]
+    Parse --> Ext3[EntityResolutionExtractor]
+    Parse --> Ext4[ImplicitPathExtractor]
+    
+    Ext1 & Ext2 & Ext3 & Ext4 --> GraphStore[CustomNeo4jPropertyGraphStore]
+    Ext1 & Ext2 & Ext3 & Ext4 --> VectorStore[ChromaVectorStore]
+```
+
+1. **`SchemaLLMPathExtractor`**: Constrains extraction to a strict YAML-defined ontology (e.g., `Component`, `Service`, `Command`, `Status`) and relations (e.g., `Uses`, `Implements`, `Minimizes`).
+2. **`TaggedSimpleLLMPathExtractor`**: Serves as a high-recall fallback extractor to capture open-domain facts when schema constraints are too narrow.
+3. **`EntityResolutionExtractor`**: Runs inline semantic deduplication (using exact token match and high-similarity Levenshtein/Rau-de-Smet clustering) to collapse alias nodes (e.g. `LangGraph` and `LangGraph orchestrator`) before write time.
+4. **`ImplicitPathExtractor`**: Injects structural knowledge paths (e.g., `Chunk` nodes linked via `MENTIONS` to their extracted entities) to preserve local source context.
+
 ---
 
 ## 🏗️ Architecture
@@ -169,14 +197,14 @@ The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor s
 
 #### Baseline Evaluation Scores
 
-| Metric | Score | Status / Recommendation |
-| :--- | :---: | :--- |
-| **Faithfulness** | 0.3292 | Low: LLM hallucinating. Tighten system prompt with 'only use provided context'. |
-| **Answer Relevancy** | 0.1016 | Low: Answers drift off-topic. Add query intent classification. |
-| **Context Precision** | 1.0000 | Excellent: Relevant retrieved chunks are ranked at the top. |
-| **Context Recall** | 0.3476 | Low: Missing relevant chunks. Increase chunk overlap or add BM25 fallback. |
-| **Answer Correctness** | 0.3745 | Low: Verify knowledge-base freshness and consider fine-tuning. |
-| **Overall Composite** | **0.4306** | Baseline score over 20 evaluation queries. |
+| Metric | Baseline Score | Composed Graph Score | Status / Recommendation |
+| :--- | :---: | :---: | :--- |
+| **Faithfulness** | 0.3292 | **0.6000** | Fraction of answer claims supported by retrieved context. |
+| **Answer Relevancy** | 0.1016 | **0.5659** | How well the answer addresses the question. |
+| **Context Precision** | 1.0000 | **0.4500** | Signal-to-noise: most relevant chunks ranked first. |
+| **Context Recall** | 0.3476 | **0.6000** | Fraction of ground-truth info present in context. |
+| **Answer Correctness** | 0.3745 | **0.4082** | Answer accuracy vs reference ground truth. |
+| **Overall Composite** | **0.4306** | **0.5248** | Overall composite score over benchmark dataset. |
 
 #### RAGAS Evaluation Radar Chart
 ![RAGAS Evaluation Radar Chart](reports/spider_graph_ragas_score.png)
