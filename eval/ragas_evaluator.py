@@ -5,6 +5,11 @@ Falls back to keyword-heuristics when ragas/openai are not installed.
 """
 from __future__ import annotations
 
+import os
+import sys
+# Path patch to support running directly or without PYTHONPATH
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import logging
 import time
 from typing import Any, Dict, List, Optional
@@ -204,15 +209,22 @@ class RAGASEvaluator:
                 "ragas_error": "RAGAS not available or not configured"
             }
 
+        from datasets import Features, Sequence, Value
         row: Dict[str, Any] = {
             "question": [question],
             "answer": [answer],
             "contexts": [contexts],
         }
+        features = Features({
+            "question": Value("string"),
+            "answer": Value("string"),
+            "contexts": Sequence(Value("string")),
+        })
         if ground_truth:
             row["ground_truth"] = [ground_truth]
+            features["ground_truth"] = Value("string")
 
-        dataset = Dataset.from_dict(row)
+        dataset = Dataset.from_dict(row, features=features)
         active = self._ragas_metrics
         if not ground_truth:
             active = [m for m in active if m not in (answer_correctness, context_recall)]
@@ -513,3 +525,109 @@ class RAGASEvaluator:
         if not recs:
             recs.append("All metrics are within acceptable ranges. Keep monitoring!")
         return recs
+
+if __name__ == "__main__":
+    import os
+    import sys
+    import asyncio
+    from dotenv import load_dotenv
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from math import pi
+    
+    # Load dotenv
+    load_dotenv(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env")))
+    
+    print("Checking RAGAS Evaluator configuration...")
+    print(f"RAGAS Available: {_RAGAS_AVAILABLE}")
+    print(f"OpenAI API Key Set: {bool(os.getenv('OPENAI_API_KEY'))}")
+    
+    # Run the live pipeline
+    from backend.services.chroma_service import ChromaService
+    from backend.services.neo4j_service import Neo4jService
+    from backend.core.langgraph_workflow import HybridRAGWorkflow
+    
+    chroma = ChromaService()
+    neo4j = Neo4jService()
+    workflow = HybridRAGWorkflow(chroma_service=chroma, neo4j_service=neo4j)
+    
+    csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "kinegraph_benchmark_v1.csv"))
+    if not os.path.exists(csv_path):
+        # Try relative to project root
+        csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "eval", "kinegraph_benchmark_v1.csv"))
+        
+    if os.path.exists(csv_path):
+        print(f"\nFound benchmark dataset at '{csv_path}'. Running live pipeline...")
+        df = pd.read_csv(csv_path)
+        raw_data = [{"question": row["user_input"], "ground_truth": row["reference"]} for _, row in df.iterrows()]
+    else:
+        print("\nBenchmark CSV not found. Using subset of EVAL_DATASET...")
+        raw_data = [
+            {"question": "What is Reciprocal Rank Fusion?", "ground_truth": "RRF is a rank fusion algorithm that combines multiple ranked lists by summing reciprocal ranks."},
+            {"question": "What role does LangGraph play in KineticGraph-Vectra?", "ground_truth": "LangGraph orchestrates queries in KineticGraph-Vectra."},
+            {"question": "What is a knowledge graph?", "ground_truth": "A knowledge graph is a structured representation of entities and their relationships."}
+        ]
+        
+    eval_dataset = []
+    async def run_queries():
+        for idx, row in enumerate(raw_data):
+            q = row["question"]
+            print(f"  [{idx+1}/{len(raw_data)}] Querying live pipeline: {q}")
+            try:
+                res = await workflow.execute_with_answer(query=q)
+                eval_dataset.append({
+                    "question": q,
+                    "answer": res["answer"],
+                    "contexts": [chunk.content for chunk in res.get("chunks", [])],
+                    "ground_truth": row.get("ground_truth", "")
+                })
+            except Exception as e:
+                print(f"    Error: {e}")
+                
+    asyncio.run(run_queries())
+    
+    try:
+        neo4j.close()
+    except Exception:
+        pass
+        
+    if not eval_dataset:
+        print("Error: No evaluation samples generated.")
+        sys.exit(1)
+        
+    evaluator = RAGASEvaluator(
+        openai_api_key=os.getenv("OPENAI_API_KEY"),
+        metrics=['faithfulness', 'answer_relevancy', 'context_precision', 'context_recall', 'answer_correctness']
+    )
+    print("\nRunning Ragas evaluation...")
+    results_df = evaluator.evaluate_batch(eval_dataset, show_progress=False)
+    report = evaluator.generate_report(results_df)
+    
+    print("\n=== PER-METRIC AVERAGE SCORES ===")
+    for metric, stats in report['per_metric'].items():
+        print(f"  {metric:25s}: {stats['mean']:.4f}")
+        
+    print(f"\nOverall Composite Score: {report['summary']['overall_composite_score']:.4f}")
+    
+    # Save the spider graph
+    metric_cols = ['faithfulness', 'answer_relevancy', 'context_precision', 'context_recall', 'answer_correctness']
+    means = [report['per_metric'].get(m, {}).get('mean', 0.0) for m in metric_cols]
+    N = len(metric_cols)
+    angles = [n / float(N) * 2 * pi for n in range(N)] + [2 * pi]
+    means_plot = means + [means[0]]
+    
+    fig, ax = plt.subplots(figsize=(7, 7), subplot_kw=dict(polar=True))
+    ax.plot(angles, means_plot, 'o-', linewidth=2, color='#7c3aed')
+    ax.fill(angles, means_plot, alpha=0.25, color='#7c3aed')
+    ax.set_xticks(angles[:-1])
+    display_names = [m.replace('_', ' ').title() for m in metric_cols]
+    ax.set_xticklabels(display_names, fontsize=10)
+    ax.set_ylim(0, 1)
+    ax.set_title('PropertyGraphIndex Hybrid RAG Scores', size=13, pad=20)
+    plt.tight_layout()
+    
+    reports_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "reports"))
+    os.makedirs(reports_dir, exist_ok=True)
+    graph_path = os.path.join(reports_dir, 'spider_graph_ragas_score.png')
+    plt.savefig(graph_path, dpi=300)
+    print(f"\nSpider graph saved to {graph_path}")

@@ -11,6 +11,10 @@ class CustomNeo4jPropertyGraphStore(Neo4jPropertyGraphStore):
     Subclass of Neo4jPropertyGraphStore that overrides upsert_nodes to fix
     Cypher subquery syntax compatibility with Neo4j 5.x.
     """
+    @property
+    def supports_vector_queries(self) -> bool:
+        return False
+
     def upsert_nodes(self, nodes: List[LabelledNode]) -> None:
         entity_dicts: List[dict] = []
         chunk_dicts: List[dict] = []
@@ -48,7 +52,7 @@ class CustomNeo4jPropertyGraphStore(Neo4jPropertyGraphStore):
                     UNWIND $data AS row
                     MERGE (e:__Node__ {{id: row.id}})
                     SET e += apoc.map.clean(row.properties, [], [])
-                    SET e.name = row.name, e:`Entity`
+                    SET e.name = row.name, e:`__Entity__`
                     WITH e, row
                     CALL apoc.create.addLabels(e, [row.label])
                     YIELD node
