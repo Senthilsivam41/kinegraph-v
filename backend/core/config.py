@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
     
+    # LiteParse (local layout-aware document parsing service)
+    PARSER_URL: str = "http://localhost:5707"
+    PARSER_TIMEOUT_SECONDS: int = 120
+
     # RRF Configuration
     RRF_K: int = 60
     MAX_RESULTS: int = 10

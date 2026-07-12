@@ -6,7 +6,7 @@
 
 *Combining Vector Search (ChromaDB) and Graph Reasoning (Neo4j) with LangGraph Orchestration*
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.109.0-009688.svg)](https://fastapi.tiangolo.com)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.111+-009688.svg)](https://fastapi.tiangolo.com)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://www.docker.com)
 [![RAGAS](https://img.shields.io/badge/RAGAS-Evaluated-7c3aed.svg)](https://docs.ragas.io)
@@ -54,7 +54,9 @@ Every ingested document goes through a pipeline of concurrent, specialized extra
 
 ```mermaid
 graph LR
-    Doc[Ingested Document] --> Parse[Text Chunking]
+    Doc[Ingested Document] --> LP[LiteParse Service]
+    LP -->|Layout-aware Markdown| Parse[Text Chunking]
+    LP -.->|Fallback: PyMuPDF| Parse
     Parse --> Ext1[SchemaLLMPathExtractor]
     Parse --> Ext2[TaggedSimpleLLMPathExtractor]
     Parse --> Ext3[EntityResolutionExtractor]
@@ -112,9 +114,32 @@ graph TD
 | **Orchestration** | LangGraph | Intent routing, parallel retrieval, rerank, generate |
 | **Vector DB** | ChromaDB | Semantic search |
 | **Graph DB** | Neo4j | Entity relationships |
-| **Task Queue** | Celery + Redis | Async document processing (sequential PyMuPDF extraction) |
+| **Task Queue** | Celery + Redis | Async document processing |
+| **Document Parser** | LiteParse (self-hosted) | Layout-aware PDF → Markdown (tables, multi-column) |
 | **Containerization** | Docker Compose | Local deployment and testing |
 | **Evaluation** | RAGAS | Offline/live evaluation (faithfulness, relevancy, recall, correctness) |
+
+### 📄 LiteParse — Local Document Parsing Service
+
+KineticGraph-Vectra uses a **self-hosted [LiteParse](https://github.com/run-llama/liteparse-server) container** as its primary PDF extraction engine. Unlike traditional text-extraction libraries (PyMuPDF, pypdf) that flatten multi-column layouts and drop table formatting, LiteParse uses PDFium coordinate-aware layout analysis and embedded OCR to produce clean, structure-preserving **Markdown**.
+
+**Why this matters for GraphRAG:**
+- **Table Context Isolation:** Tables output as `| Entity | Relation | Entity |` syntax — column values map directly to their header semantic bounds during entity extraction.
+- **Multi-column Rectification:** Absolute bounding-box tracing prevents unrelated paragraphs from being joined across columns.
+- **Zero Data Egress:** Processing runs entirely within the local Docker network — no cloud API calls, no per-page costs.
+
+**Resilient Fallback:** If the LiteParse container is unavailable, `extract_text_from_pdf` silently falls back to PyMuPDF and logs a warning — ingestion never hard-fails due to parser availability.
+
+```
+[ Local PDF ] ──► [ LiteParse Container :5707 ] ──► [ Structured Markdown ]
+                           │ (unavailable)
+                           └──► [ PyMuPDF fallback ] ──► [ Plain text ]
+```
+
+**Key files:**
+- [`backend/graph_ingestion/lite_parser.py`](backend/graph_ingestion/lite_parser.py) — `LiteParseClient` HTTP wrapper
+- [`backend/workers/document_processor.py`](backend/workers/document_processor.py) — `extract_text_from_pdf` with LiteParse-first strategy
+- [`infra/docker-compose.yml`](infra/docker-compose.yml) — `liteparse` service definition
 
 ---
 
@@ -132,6 +157,8 @@ graph TD
 cp .env.example .env
 
 # Edit .env and add your OpenAI API key
+# PARSER_URL is pre-configured to http://liteparse:5707 inside Docker
+# For local dev outside Docker, set PARSER_URL=http://localhost:5707
 nano .env
 ```
 
@@ -145,10 +172,19 @@ docker compose up --build -d
 
 ### 3. Verify Health
 
-- **Swagger Documentation:** http://localhost:8000/docs
-- **Neo4j Browser:** http://localhost:7474 (user: `neo4j`, password: see `.env`)
-- **ChromaDB API:** http://localhost:8001
-- **Chat UI:** http://localhost:8080 (Start via `cd frontend && python3 serve.py`)
+| Service | URL | Notes |
+|---------|-----|-------|
+| **Swagger UI** | http://localhost:8000/docs | FastAPI API docs |
+| **Neo4j Browser** | http://localhost:7474 | user: `neo4j`, password: see `.env` |
+| **ChromaDB API** | http://localhost:8001 | Heartbeat: `/api/v1/heartbeat` |
+| **LiteParse** | http://localhost:5707 | Liveness: `POST /parse` → `400` = alive |
+| **Chat UI** | http://localhost:8080 | Start via `cd frontend && python3 serve.py` |
+
+```bash
+# Quick LiteParse liveness check
+curl -s -o /dev/null -w "LiteParse: %{http_code}\n" -X POST http://localhost:5707/parse
+# Expected: LiteParse: 400
+```
 
 ---
 

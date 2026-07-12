@@ -67,3 +67,8 @@ notebooks/*_fixed.ipynb
 # OS
 .DS_Store
 Thumbs.db
+
+# AI agent tooling (runtime state — never commit)
+.autoclaw/
+.agent/
+.claude/
