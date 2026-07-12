@@ -1,4 +1,23 @@
 services:
+  # Self-hosted, local document parsing engine
+  # Actual listening port is 5707 (image logs: "App listening on port 5707")
+  # curl/wget are absent in the image — health check uses python3 instead
+  liteparse:
+    image: ghcr.io/run-llama/liteparse-server:main
+    container_name: kinegraph_liteparse_engine
+    ports:
+      - "5707:5707"   # host 5707 → container 5707 (port 5000 occupied by macOS AirPlay)
+    restart: unless-stopped
+    healthcheck:
+      # /parse returns 400 (missing file) when alive — no dedicated /health endpoint exists
+      test: ["CMD", "python3", "-c", "import urllib.request,urllib.error\ntry:\n urllib.request.urlopen(urllib.request.Request('http://localhost:5707/parse',data=b'',method='POST'),timeout=4)\nexcept urllib.error.HTTPError as e:\n exit(0 if e.code==400 else 1)\nexcept: exit(1)"]
+      interval: 15s
+      timeout: 8s
+      retries: 5
+      start_period: 20s
+    networks:
+      - kinetic-network
+
   # Redis for Celery broker and result backend
   redis:
     image: redis:7-alpine
@@ -84,12 +103,15 @@ services:
       - REDIS_PORT=6379
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PARSER_URL=http://liteparse:5707
     depends_on:
       redis:
         condition: service_healthy
       chroma:
         condition: service_healthy
       neo4j:
+        condition: service_healthy
+      liteparse:
         condition: service_healthy
     networks:
       - kinetic-network
@@ -114,12 +136,15 @@ services:
       - REDIS_PORT=6379
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PARSER_URL=http://liteparse:5707
     depends_on:
       redis:
         condition: service_healthy
       chroma:
         condition: service_healthy
       neo4j:
+        condition: service_healthy
+      liteparse:
         condition: service_healthy
     networks:
       - kinetic-network

@@ -8,17 +8,42 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from backend.core.config import settings
+from backend.graph_ingestion.lite_parser import LiteParseClient, LiteParseUnavailableError
 import json
 import hashlib
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def extract_text_from_pdf(pdf_path: str) -> str:
-    """Extract text from a PDF file sequentially using PyMuPDF."""
+    """
+    Extract text from a PDF file.
+
+    Tries the self-hosted LiteParse service first, which produces
+    layout-preserved, table-aware Markdown suitable for graph ingestion.
+    Falls back to PyMuPDF sequentially if LiteParse is unavailable.
+    """
+    client = LiteParseClient()
+    try:
+        return client.extract_to_markdown(pdf_path)
+    except LiteParseUnavailableError:
+        logger.warning(
+            "LiteParse unavailable — falling back to PyMuPDF for '%s'", pdf_path
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "LiteParse extraction failed (%s) — falling back to PyMuPDF for '%s'",
+            exc,
+            pdf_path,
+        )
+
+    # PyMuPDF fallback — sequential page extraction
     try:
         with fitz.open(pdf_path) as doc:
             return "\n".join(page.get_text() for page in doc)
     except Exception as e:
-        print(f"Error during PDF text extraction: {e}")
+        logger.error("PyMuPDF also failed for '%s': %s", pdf_path, e)
         return ""
 
 
