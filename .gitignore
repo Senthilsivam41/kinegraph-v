@@ -72,3 +72,9 @@ Thumbs.db
 .autoclaw/
 .agent/
 .claude/
+
+# Alternatively, ignore only generated databases
+.autoclaw/**/*.db
+.autoclaw/**/*.sqlite
+.autoclaw/vector/*.*
+
