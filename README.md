@@ -206,7 +206,7 @@ After upgrading an existing v2 deployment, preview the migration before applying
 
 ```bash
 # Report migration candidates without changing Neo4j
-PYTHONPATH=. python scripts/enrich_kinetic_v_nodes.py --dry-run
+PYTHONPATH=. python scripts/enrich_kinetic_v_nodes.py --dry-run --batch-size 200
 
 # Apply the additive v3 enrichment
 PYTHONPATH=. python scripts/enrich_kinetic_v_nodes.py
@@ -215,10 +215,10 @@ PYTHONPATH=. python scripts/enrich_kinetic_v_nodes.py
 Example result:
 
 ```text
-{'enriched': 128, 'skipped_without_context': 7, 'scanned': 135}
+{'enriched': 128, 'skipped_without_verified_context': 7, 'scanned': 135, 'verified_vector_links': 384, 'missing_vector_links': 7, 'complete': False}
 ```
 
-New ingestion remains idempotent across both `Chunk` and legacy `__Chunk__` Neo4j labels. Existing entities without a linked source chunk are deliberately skipped so the migration never invents supporting evidence.
+New ingestion remains idempotent across both `Chunk` and legacy `__Chunk__` Neo4j labels and runs enrichment automatically. Links missing from ChromaDB—or present without an embedding—are rejected and counted. Existing entities without verified source chunks are deliberately skipped so the migration never invents supporting evidence.
 
 ---
 

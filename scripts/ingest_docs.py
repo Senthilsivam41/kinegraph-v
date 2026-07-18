@@ -89,7 +89,9 @@ async def ingest_file(filename: str):
                 "total_chunks": len(chunks)
             },
             entities=entities,
-            relationships=relationships
+            relationships=relationships,
+            chunks=chunks,
+            chunk_ids=chunk_ids,
         )
         if success:
             print("  Successfully stored in Neo4j.")

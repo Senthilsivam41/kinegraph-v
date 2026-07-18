@@ -17,6 +17,7 @@ from backend.graph_ingestion.stores import get_neo4j_graph_store, get_chroma_vec
 from backend.graph_ingestion.schema import OntologySchema
 from backend.graph_ingestion.extractors import get_extractor_stack
 from backend.graph_ingestion.dedup import EntityResolver
+from backend.graph_ingestion.enrichment import NodeEnricher
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,27 @@ class IdempotentGraphIngester:
             settings.NEO4J_URI,
             auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD)
         )
+
+    def _enrich_ingested_nodes(self, nodes: List[TextNode]) -> Dict[str, Any]:
+        """Enrich only entities touched by this ingestion and verify Chroma links."""
+        chunk_ids = [node.node_id for node in nodes]
+        try:
+            result = NodeEnricher(
+                driver=self.neo4j_driver,
+                chroma_client=self.chroma_service.client,
+            ).enrich(chunk_ids=chunk_ids)
+            result["status"] = "success" if result["complete"] else "incomplete"
+            return result
+        except Exception as exc:
+            logger.exception("Automatic v3 node enrichment failed")
+            return {
+                "enriched": 0,
+                "verified_vector_links": 0,
+                "missing_vector_links": len(chunk_ids),
+                "complete": False,
+                "status": "failed",
+                "error": str(exc),
+            }
 
     def close(self):
         if self.neo4j_driver:
@@ -153,12 +175,15 @@ class IdempotentGraphIngester:
             show_progress=True
         )
 
+        enrichment = self._enrich_ingested_nodes(nodes_to_ingest)
+
         return {
             "file_name": file_path_obj.name,
             "status": "success",
             "total_chunks": len(chunks),
             "skipped_chunks": skipped_chunks,
-            "ingested_chunks": len(nodes_to_ingest)
+            "ingested_chunks": len(nodes_to_ingest),
+            "enrichment": enrichment,
         }
 
     def ingest_directory(self, dir_path: str, metadata: Dict[str, Any] = None) -> List[Dict[str, Any]]:
@@ -256,9 +281,12 @@ class IdempotentGraphIngester:
             show_progress=True
         )
 
+        enrichment = self._enrich_ingested_nodes(all_nodes_to_ingest)
+
         # Update statuses in summary
         for f in file_summaries:
             if f["status"] == "pending_ingestion":
                 f["status"] = "success"
+                f["enrichment"] = enrichment
 
         return file_summaries
