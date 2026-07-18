@@ -40,6 +40,8 @@ async def query_system(query_request: QueryRequest, request: Request):
             max_hops=query_request.max_hops,
             traversal_strategy=query_request.traversal_strategy,
             community_id=query_request.community_id,
+            enable_conditional_recovery=query_request.enable_conditional_recovery,
+            enable_hyde_fallback=query_request.enable_hyde_fallback,
             filters=query_request.filters,
             attachment_content=query_request.attachment_content,
             attachment_name=query_request.attachment_name,
@@ -57,6 +59,8 @@ async def query_system(query_request: QueryRequest, request: Request):
             answer_confidence=result["confidence"],
             intent=result["intent"],
             latency_breakdown=result["latency"],
+            recovery_triggered=result["recovery_triggered"],
+            recovery_details=result["recovery"],
         )
 
     except Exception as e:
