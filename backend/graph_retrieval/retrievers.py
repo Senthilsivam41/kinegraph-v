@@ -1,4 +1,5 @@
 from typing import List, Dict, Any
+import json
 import logging
 
 from llama_index.core.indices.property_graph import (
@@ -13,6 +14,19 @@ from backend.graph_ingestion.embedding_wrapper import LangChainEmbeddingWrapper
 from backend.services.chroma_service import ChromaService
 
 logger = logging.getLogger(__name__)
+
+
+def contextualize_graph_result(content: str, metadata: Dict[str, Any]) -> str:
+    """Attach persisted evidence chunks to an entity result for grounded generation."""
+    description = metadata.get("description", "")
+    raw_chunks = metadata.get("parent_context_chunks_json", "")
+    try:
+        chunks = json.loads(raw_chunks) if isinstance(raw_chunks, str) else raw_chunks
+    except (TypeError, json.JSONDecodeError):
+        chunks = []
+    evidence = [f"[{c.get('chunk_id', 'graph-context')}] {c.get('text', '')}" for c in chunks[:3] if c.get("text")]
+    sections = [part for part in (description, content, "\n".join(evidence)) if part]
+    return "\n\n".join(sections)
 
 class ComposedGraphRetriever:
     """
@@ -74,7 +88,8 @@ class ComposedGraphRetriever:
             formatted_results = []
             seen_contents = set()
             for r in results:
-                content = r.node.get_content()
+                metadata = r.node.metadata or {}
+                content = contextualize_graph_result(r.node.get_content(), metadata)
                 if not content.strip():
                     continue
                 if content not in seen_contents:
@@ -83,7 +98,7 @@ class ComposedGraphRetriever:
                     # Convert LlamaIndex NodeWithScore to our project standard dictionary format
                     formatted_results.append({
                         "content": content,
-                        "metadata": r.node.metadata,
+                        "metadata": metadata,
                         "score": r.score if r.score is not None else 1.0,
                         "source": "graph"
                     })
