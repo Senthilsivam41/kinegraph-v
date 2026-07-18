@@ -23,6 +23,8 @@ class QueryRequest(BaseModel):
     max_hops: int = Field(default=3, ge=1, le=5, description="Maximum graph traversal depth")
     traversal_strategy: TraversalStrategy = Field(default=TraversalStrategy.BFS, description="Graph traversal strategy")
     community_id: Optional[str] = Field(default=None, description="Optional graph community restriction")
+    enable_conditional_recovery: bool = Field(default=True, description="Recover weak retrieval before RRF")
+    enable_hyde_fallback: bool = Field(default=False, description="Opt-in constrained HyDE vector fallback")
     filters: Optional[Dict[str, Any]] = Field(default=None, description="Additional filters")
     attachment_content: Optional[str] = Field(default=None, description="Raw text of the document attachment")
     attachment_name: Optional[str] = Field(default=None, description="Name of the document attachment")
@@ -48,6 +50,8 @@ class QueryResponse(BaseModel):
     answer_confidence: Optional[float] = None
     intent: Optional[str] = None
     latency_breakdown: Optional[Dict[str, float]] = None
+    recovery_triggered: bool = False
+    recovery_details: Optional[Dict[str, Any]] = None
 
 
 class IngestRequest(BaseModel):

@@ -110,6 +110,34 @@ After RRF, candidates pass through a relevance gate based on the original user q
 
 The reranker preserves `score`, `rrf_score`, `original_score`, and source provenance. It adds `semantic_score`, `graph_signal_score`, `rerank_score`, `rerank_components`, and `rerank_mode` for observability. Cross-encoder scoring is enabled by default in the normal workflow; if its optional model is unavailable, Kinegraph logs the fallback and reports `graph_aware_keyword` mode.
 
+### 7. Conditional Query Recovery Before RRF
+
+Kinegraph evaluates ordinary vector and graph retrieval before fusion. Recovery runs only when observable signals indicate weak results, such as too few candidates, low top score, no graph seed/path, or low source diversity.
+
+The recovery order is deliberately conservative:
+
+```text
+Normal retrieval
+    → weakness assessment
+    → query decomposition + subquery execution
+    → structured vocabulary expansion (vector only)
+    → reassessment
+    → optional constrained HyDE (vector only)
+    → subquery-result fusion
+    → cross-channel RRF
+```
+
+The original query remains authoritative for final reranking. Generated vocabulary never becomes graph seed input. A HyDE hypothesis is an opt-in search probe (`enable_hyde_fallback: true`), is never added to answer context, and is explicitly marked `hypothesis_is_evidence: false`. Recovery metadata reports its trigger reasons, subqueries, vocabulary, hypothesis usage, assessments, and latency.
+
+```json
+{
+  "query": "How do Neo4j and ChromaDB work together?",
+  "mode": "hybrid",
+  "enable_conditional_recovery": true,
+  "enable_hyde_fallback": false
+}
+```
+
 ---
 
 ## 🏗️ Architecture

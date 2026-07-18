@@ -7,6 +7,7 @@ Improvements over v1:
   ④ Post-fusion reranker         → higher context_precision
   ⑤ Grounded generation node     → faithfulness-first system prompt
   ⑥ Deeper retrieval (2× fetch)  → higher context_recall before filtering
+  ⑦ Conditional query recovery   → decomposition/vocabulary, opt-in HyDE before RRF
 """
 from __future__ import annotations
 
@@ -26,6 +27,7 @@ from backend.core.config import settings
 from backend.core.context_ranker import ContextRanker
 from backend.core.intent_classifier import classify_intent, rewrite_query_for_retrieval
 from backend.core.rrf import deduplicate_results, reciprocal_rank_fusion
+from backend.core.query_recovery import QueryRecoveryEngine
 from backend.services.chroma_service import ChromaService
 from backend.services.neo4j_service import Neo4jService
 from backend.graph_retrieval.langgraph_node import LangGraphGraphRetrieverNode
@@ -88,9 +90,13 @@ class WorkflowState(TypedDict):
     max_hops: int
     traversal_strategy: TraversalStrategy
     community_id: Optional[str]
+    enable_conditional_recovery: bool
+    enable_hyde_fallback: bool
     filters: Optional[Dict[str, Any]]
     vector_results: List[Dict[str, Any]]
     graph_results: List[Dict[str, Any]]
+    recovery_triggered: bool
+    recovery_details: Dict[str, Any]
     fused_results: List[Dict[str, Any]]
     reranked_results: List[Dict[str, Any]]
     generated_answer: str
@@ -194,6 +200,7 @@ class HybridRAGWorkflow:
         if openai_key and (openai_key.startswith("sk-or-") or "openrouter" in openai_key):
             kw["base_url"] = "https://openrouter.ai/api/v1"
         self.llm = ChatOpenAI(**kw)
+        self.recovery = QueryRecoveryEngine(self.llm)
 
         self.graph = self._build_graph()
 
@@ -205,10 +212,11 @@ class HybridRAGWorkflow:
         """
         Build the improved LangGraph workflow.
 
-        Flow (v2):
+        Flow (v3):
         START
           → intent_router          (classify + rewrite query)
           → [vector_agent ‖ graph_agent]   (parallel via asyncio.gather)
+          → query_recovery         (only when initial retrieval is weak)
           → fusion_node            (RRF merge)
           → rerank_node            (cross-encoder / keyword reranker)
           → generate_node          (grounded LLM answer)
@@ -222,6 +230,7 @@ class HybridRAGWorkflow:
         workflow.add_node("graph_agent",     self._graph_agent)
         workflow.add_node("parallel_fetch",  self._parallel_fetch)
         workflow.add_node("vectorless_agent", self._vectorless_agent)
+        workflow.add_node("query_recovery", self._query_recovery)
         workflow.add_node("fusion_node",     self._fusion_node)
         workflow.add_node("rerank_node",     self._rerank_node)
         workflow.add_node("generate_node",   self._generate_node)
@@ -242,12 +251,13 @@ class HybridRAGWorkflow:
         )
 
         # Single-mode paths
-        workflow.add_edge("vector_agent", "fusion_node")
-        workflow.add_edge("graph_agent",  "fusion_node")
-        workflow.add_edge("vectorless_agent", "fusion_node")
+        workflow.add_edge("vector_agent", "query_recovery")
+        workflow.add_edge("graph_agent",  "query_recovery")
+        workflow.add_edge("vectorless_agent", "query_recovery")
 
         # Hybrid parallel path
-        workflow.add_edge("parallel_fetch", "fusion_node")
+        workflow.add_edge("parallel_fetch", "query_recovery")
+        workflow.add_edge("query_recovery", "fusion_node")
 
         # Common tail
         workflow.add_edge("fusion_node",    "rerank_node")
@@ -456,6 +466,148 @@ class HybridRAGWorkflow:
         return state
 
     # ------------------------------------------------------------------
+    # Node: query_recovery (conditional, immediately before RRF)
+    # ------------------------------------------------------------------
+
+    async def _query_recovery(self, state: WorkflowState) -> WorkflowState:
+        """Recover weak retrieval through decomposition, vocabulary, then optional HyDE."""
+        t0 = time.perf_counter()
+        mode = state["mode"]
+        require_graph = mode in (QueryMode.GRAPH, QueryMode.HYBRID)
+        initial = self.recovery.assess(
+            state["vector_results"],
+            state["graph_results"],
+            require_graph=require_graph,
+            require_source_diversity=mode == QueryMode.HYBRID,
+        )
+        details: Dict[str, Any] = {
+            "initial_assessment": initial.to_dict(),
+            "structured_recovery_used": False,
+            "hyde_used": False,
+            "subqueries": [],
+            "vocabulary": [],
+            "generated_hypothesis": None,
+        }
+        state["recovery_triggered"] = False
+
+        if (
+            not state["enable_conditional_recovery"]
+            or mode == QueryMode.VECTORLESS
+            or not initial.weak
+        ):
+            details["final_assessment"] = initial.to_dict()
+            state["recovery_details"] = details
+            state["latency_breakdown"]["query_recovery_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return state
+
+        state["recovery_triggered"] = True
+        plan = await self.recovery.create_plan(state["query"], state["intent"])
+        details["subqueries"] = plan.subqueries
+        details["vocabulary"] = plan.vocabulary
+        details["structured_recovery_used"] = bool(plan.subqueries or plan.vocabulary)
+        fetch_n = min(state["max_results"] * 2, 20)
+        vector_lists = [state["vector_results"]] if state["vector_results"] else []
+        graph_lists = [state["graph_results"]] if state["graph_results"] else []
+
+        async def execute_subquery(subquery: str):
+            vector_task = None
+            graph_task = None
+            if mode in (QueryMode.VECTOR, QueryMode.HYBRID):
+                vector_task = self.chroma.similarity_search(
+                    query=subquery, n_results=fetch_n, filters=state.get("filters")
+                )
+            if mode in (QueryMode.GRAPH, QueryMode.HYBRID):
+                graph_task = self.graph_retriever_node.retrieve_chunks(
+                    query=subquery,
+                    n_results=fetch_n,
+                    max_hops=state["max_hops"],
+                    traversal_strategy=state["traversal_strategy"],
+                    community_id=state.get("community_id"),
+                )
+            tasks = [task for task in (vector_task, graph_task) if task is not None]
+            values = await asyncio.gather(*tasks, return_exceptions=True)
+            vector_value, graph_value = [], []
+            index = 0
+            if vector_task is not None:
+                value = values[index]
+                vector_value = value if isinstance(value, list) else []
+                index += 1
+            if graph_task is not None:
+                value = values[index]
+                graph_value = value if isinstance(value, list) else []
+            return vector_value, graph_value
+
+        if plan.subqueries:
+            recovered = await asyncio.gather(*(execute_subquery(query) for query in plan.subqueries))
+            for subquery, (vector_value, graph_value) in zip(plan.subqueries, recovered):
+                if vector_value:
+                    vector_lists.append(self.recovery.annotate_results(
+                        vector_value, state["query"], subquery, "decomposition"
+                    ))
+                if graph_value:
+                    graph_lists.append(self.recovery.annotate_results(
+                        graph_value, state["query"], subquery, "decomposition"
+                    ))
+
+        if plan.vocabulary and mode in (QueryMode.VECTOR, QueryMode.HYBRID):
+            vocabulary_query = f"{state['query']} {' '.join(plan.vocabulary)}"
+            vocabulary_results = await self.chroma.similarity_search(
+                query=vocabulary_query, n_results=fetch_n, filters=state.get("filters")
+            )
+            if vocabulary_results:
+                vector_lists.append(self.recovery.annotate_results(
+                    vocabulary_results, state["query"], vocabulary_query, "vocabulary"
+                ))
+
+        if vector_lists:
+            state["vector_results"] = (
+                reciprocal_rank_fusion(vector_lists) if len(vector_lists) > 1 else vector_lists[0]
+            )
+        if graph_lists:
+            state["graph_results"] = (
+                reciprocal_rank_fusion(graph_lists) if len(graph_lists) > 1 else graph_lists[0]
+            )
+
+        after_structured = self.recovery.assess(
+            state["vector_results"],
+            state["graph_results"],
+            require_graph=require_graph,
+            require_source_diversity=mode == QueryMode.HYBRID,
+        )
+        details["structured_assessment"] = after_structured.to_dict()
+
+        if (
+            after_structured.weak
+            and state["enable_hyde_fallback"]
+            and mode in (QueryMode.VECTOR, QueryMode.HYBRID)
+        ):
+            hypothesis = await self.recovery.generate_hypothesis(state["query"])
+            if hypothesis:
+                hyde_results = await self.chroma.similarity_search(
+                    query=hypothesis, n_results=fetch_n, filters=state.get("filters")
+                )
+                if hyde_results:
+                    annotated_hyde = self.recovery.annotate_results(
+                        hyde_results, state["query"], hypothesis, "hyde"
+                    )
+                    state["vector_results"] = reciprocal_rank_fusion([
+                        state["vector_results"], annotated_hyde
+                    ]) if state["vector_results"] else annotated_hyde
+                    details["hyde_used"] = True
+                    details["generated_hypothesis"] = hypothesis
+
+        final_assessment = self.recovery.assess(
+            state["vector_results"],
+            state["graph_results"],
+            require_graph=require_graph,
+            require_source_diversity=mode == QueryMode.HYBRID,
+        )
+        details["final_assessment"] = final_assessment.to_dict()
+        state["recovery_details"] = details
+        state["latency_breakdown"]["query_recovery_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+        return state
+
+    # ------------------------------------------------------------------
     # Node: fusion_node
     # ------------------------------------------------------------------
 
@@ -598,6 +750,8 @@ class HybridRAGWorkflow:
         max_hops: int = 3,
         traversal_strategy: TraversalStrategy = TraversalStrategy.BFS,
         community_id: Optional[str] = None,
+        enable_conditional_recovery: bool = True,
+        enable_hyde_fallback: bool = False,
         filters: Optional[Dict[str, Any]] = None,
         attachment_content: Optional[str] = None,
         attachment_name: Optional[str] = None,
@@ -613,9 +767,13 @@ class HybridRAGWorkflow:
             max_hops=max_hops,
             traversal_strategy=traversal_strategy,
             community_id=community_id,
+            enable_conditional_recovery=enable_conditional_recovery,
+            enable_hyde_fallback=enable_hyde_fallback,
             filters=filters,
             vector_results=[],
             graph_results=[],
+            recovery_triggered=False,
+            recovery_details={},
             fused_results=[],
             reranked_results=[],
             generated_answer="",
@@ -636,6 +794,8 @@ class HybridRAGWorkflow:
         max_hops: int = 3,
         traversal_strategy: TraversalStrategy = TraversalStrategy.BFS,
         community_id: Optional[str] = None,
+        enable_conditional_recovery: bool = True,
+        enable_hyde_fallback: bool = False,
         filters: Optional[Dict[str, Any]] = None,
         attachment_content: Optional[str] = None,
         attachment_name: Optional[str] = None,
@@ -663,9 +823,13 @@ class HybridRAGWorkflow:
             max_hops=max_hops,
             traversal_strategy=traversal_strategy,
             community_id=community_id,
+            enable_conditional_recovery=enable_conditional_recovery,
+            enable_hyde_fallback=enable_hyde_fallback,
             filters=filters,
             vector_results=[],
             graph_results=[],
+            recovery_triggered=False,
+            recovery_details={},
             fused_results=[],
             reranked_results=[],
             generated_answer="",
@@ -682,4 +846,6 @@ class HybridRAGWorkflow:
             "chunks":     final_state["final_results"],
             "intent":     final_state["intent"],
             "latency":    final_state["latency_breakdown"],
+            "recovery_triggered": final_state["recovery_triggered"],
+            "recovery": final_state["recovery_details"],
         }
