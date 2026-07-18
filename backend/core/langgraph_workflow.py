@@ -21,6 +21,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 
 from backend.app.models import DocumentChunk, QueryMode
+from backend.graph_retrieval.multi_hop import TraversalStrategy
 from backend.core.config import settings
 from backend.core.context_ranker import ContextRanker
 from backend.core.intent_classifier import classify_intent, rewrite_query_for_retrieval
@@ -84,6 +85,9 @@ class WorkflowState(TypedDict):
     suggested_mode: str
     mode: QueryMode
     max_results: int
+    max_hops: int
+    traversal_strategy: TraversalStrategy
+    community_id: Optional[str]
     filters: Optional[Dict[str, Any]]
     vector_results: List[Dict[str, Any]]
     graph_results: List[Dict[str, Any]]
@@ -173,7 +177,9 @@ class HybridRAGWorkflow:
     ) -> None:
         self.chroma = chroma_service
         self.neo4j = neo4j_service
-        self.graph_retriever_node = LangGraphGraphRetrieverNode(use_cypher=False)
+        self.graph_retriever_node = LangGraphGraphRetrieverNode(
+            use_cypher=False, neo4j_driver=neo4j_service.driver
+        )
         self.ranker = ContextRanker(
             use_cross_encoder=use_cross_encoder,
             min_relevance_threshold=0.03,
@@ -340,7 +346,13 @@ class HybridRAGWorkflow:
         vector_task = self.chroma.similarity_search(
             query=rq, n_results=fetch_n, filters=state.get("filters")
         )
-        graph_task = self.graph_retriever_node.retrieve_chunks(query=rq, n_results=fetch_n)
+        graph_task = self.graph_retriever_node.retrieve_chunks(
+            query=rq,
+            n_results=fetch_n,
+            max_hops=state["max_hops"],
+            traversal_strategy=state["traversal_strategy"],
+            community_id=state.get("community_id"),
+        )
 
         vector_results, graph_results = await asyncio.gather(
             vector_task, graph_task, return_exceptions=True
@@ -385,7 +397,11 @@ class HybridRAGWorkflow:
         t0 = time.perf_counter()
         fetch_n = min(state["max_results"] * 2, 20)
         results = await self.graph_retriever_node.retrieve_chunks(
-            query=state["rewritten_query"], n_results=fetch_n
+            query=state["rewritten_query"],
+            n_results=fetch_n,
+            max_hops=state["max_hops"],
+            traversal_strategy=state["traversal_strategy"],
+            community_id=state.get("community_id"),
         )
         state["graph_results"] = results
         state["vector_results"] = []
@@ -573,6 +589,9 @@ class HybridRAGWorkflow:
         query: str,
         mode: QueryMode = QueryMode.HYBRID,
         max_results: int = 10,
+        max_hops: int = 3,
+        traversal_strategy: TraversalStrategy = TraversalStrategy.BFS,
+        community_id: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,
         attachment_content: Optional[str] = None,
         attachment_name: Optional[str] = None,
@@ -585,6 +604,9 @@ class HybridRAGWorkflow:
             suggested_mode="",
             mode=mode,
             max_results=max_results,
+            max_hops=max_hops,
+            traversal_strategy=traversal_strategy,
+            community_id=community_id,
             filters=filters,
             vector_results=[],
             graph_results=[],
@@ -605,6 +627,9 @@ class HybridRAGWorkflow:
         query: str,
         mode: QueryMode = QueryMode.HYBRID,
         max_results: int = 10,
+        max_hops: int = 3,
+        traversal_strategy: TraversalStrategy = TraversalStrategy.BFS,
+        community_id: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,
         attachment_content: Optional[str] = None,
         attachment_name: Optional[str] = None,
@@ -629,6 +654,9 @@ class HybridRAGWorkflow:
             suggested_mode="",
             mode=mode,
             max_results=max_results,
+            max_hops=max_hops,
+            traversal_strategy=traversal_strategy,
+            community_id=community_id,
             filters=filters,
             vector_results=[],
             graph_results=[],

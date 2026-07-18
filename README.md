@@ -85,6 +85,23 @@ graph LR
 3. **`EntityResolutionExtractor`**: Runs inline semantic deduplication (using exact token match and high-similarity Levenshtein/Rau-de-Smet clustering) to collapse alias nodes (e.g. `LangGraph` and `LangGraph orchestrator`) before write time.
 4. **`ImplicitPathExtractor`**: Injects structural knowledge paths (e.g., `Chunk` nodes linked via `MENTIONS` to their extracted entities) to preserve local source context.
 
+### 5. Configurable Multi-Hop Graph Traversal
+
+Graph and hybrid queries can expand from matched entities across one to five relationship hops. The default is a bounded three-hop breadth-first traversal; depth-first and community-restricted traversal are also available. Every traversal result includes `relationship_path`, `traversal_depth`, `traversal_strategy`, `max_hops`, `seed_node_id`, and `community_id` metadata, together with directional relationship evidence.
+
+```json
+{
+  "query": "How are LangGraph, Neo4j, and RRF connected?",
+  "mode": "graph",
+  "max_results": 10,
+  "max_hops": 3,
+  "traversal_strategy": "bfs",
+  "community_id": null
+}
+```
+
+Use `"dfs"` to prioritize deep paths or `"community"` to restrict expansion to the seed entity's computed community. Traversal rejects cycles and enforces a maximum of five hops.
+
 ---
 
 ## 🏗️ Architecture
