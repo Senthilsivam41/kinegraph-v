@@ -30,18 +30,32 @@ The system uses **LangGraph** to orchestrate complex query workflows and **Celer
 
 ## ✨ Codebase Highlights & Optimization
 
-### 1. Robust RAGAS Evaluation & Diagnostics
-- **Live Failure Interception**: Updated `RAGASEvaluator` ([ragas_evaluator.py](file:///Users/sendils/work/repo/kinetic-v/kinegraph-v/eval/ragas_evaluator.py)) to catch evaluation failures, logging detailed warnings showing the exact query and the specific metrics that failed (e.g. returning `NaN` or raising exceptions) while falling back cleanly to keyword heuristics.
+### 1. Kinetic-V v3 Context-Enriched Graph Nodes
+
+Kinetic-V v3 closes a key grounding gap in the graph retrieval path: entity results now carry the source chunks needed to support and cite their claims. The additive v2 → v3 migration enriches existing Neo4j entities with:
+
+- A concise `description` generated from existing graph evidence.
+- Stable `parent_context_chunk_ids` linking graph entities to their source chunks.
+- A compact JSON evidence snapshot for retrieval-time grounding while ChromaDB remains the authoritative store for embeddings and full vector content.
+- Relationship evidence and graph-positioning fields (`community_id`, `centrality_score`, and `depth_from_root`).
+- A `schema_version` marker so migrated nodes can be audited safely.
+
+Neo4j cannot store nested maps as native properties, so context links and relationship evidence are serialized while stable chunk IDs remain directly queryable. Graph retrieval expands these persisted evidence chunks into the generation context with chunk IDs such as `[chunk_id]`, making answers easier to ground and cite.
+
+The migration is additive and idempotent: it updates entities with existing `MENTIONS` links, reports entities without source context, and does not delete or re-embed data. See [`docs/v3_schema_audit.md`](docs/v3_schema_audit.md) for the schema-gap audit and design rationale.
+
+### 2. Robust RAGAS Evaluation & Diagnostics
+- **Live Failure Interception**: Updated [`RAGASEvaluator`](eval/ragas_evaluator.py) to catch evaluation failures, logging detailed warnings showing the exact query and the specific metrics that failed (e.g. returning `NaN` or raising exceptions) while falling back cleanly to keyword heuristics.
 - **Concurrent Batch Eval**: Added `evaluate_live_workflow` and `evaluate_live_single` supporting concurrent, rate-limited live workflow evaluations asynchronously, resulting in faster and safer benchmark runs.
 - **Model-Agnostic Critic Settings**: Configures separate evaluation LLMs (critic/judge) via the `critic_model` parameter, enabling stable benchmark tracking (e.g., using Claude Haiku) even while testing various generation engines.
 - **OpenRouter Compatibility**: Detects OpenRouter environments and automatically configures base URLs accordingly, enabling direct usage of stable and extremely cheap paid OpenRouter endpoints (e.g., `gpt-4o-mini` or `meta-llama/llama-3.3-70b-instruct`) without hitting free-tier congestion or 429 rate-limiting.
 
-### 2. "Ponytail" YAGNI Optimization
+### 3. "Ponytail" YAGNI Optimization
 - **Purged Over-Engineering**: Cleaned up the repository by deleting speculative Kubernetes manifests, custom telemetry databases, Streamlit dashboard instances, and LangSmith tracing wrappers.
 - **Pruned Dependencies & Vulnerabilities**: Removed unused heavy libraries (`streamlit`, `plotly`, `langsmith`, `psycopg2-binary`) from `requirements.txt` to minimize codebase bloat, dependency conflicts, and security vulnerability surface areas.
 - **Ingestion Streamlining**: Replaced Celery's billiard-based parallel PDF text extraction pool with a fast, sequential PyMuPDF (fitz) iteration loop inside `document_processor.py`, eliminating process-forking overhead and file-locking bottlenecks.
 
-### 3. Decoupled PropertyGraphIndex Dual-Store (Neo4j + ChromaDB)
+### 4. Decoupled PropertyGraphIndex Dual-Store (Neo4j + ChromaDB)
 KineticGraph-Vectra features a **state-of-the-art decoupled Graph RAG index** using LlamaIndex's `PropertyGraphIndex` but uniquely engineered to maintain **strict storage isolation** between the relational graph database (**Neo4j**) and the dense vector database (**ChromaDB**). 
 
 Unlike default implementations that collapse both vectors and graph entities into Neo4j's native vector indices, this decoupled architecture guarantees:
@@ -186,6 +200,26 @@ curl -s -o /dev/null -w "LiteParse: %{http_code}\n" -X POST http://localhost:570
 # Expected: LiteParse: 400
 ```
 
+### 4. Enrich Existing Graph Nodes for v3
+
+After upgrading an existing v2 deployment, preview the migration before applying it:
+
+```bash
+# Report migration candidates without changing Neo4j
+PYTHONPATH=. python scripts/enrich_kinetic_v_nodes.py --dry-run
+
+# Apply the additive v3 enrichment
+PYTHONPATH=. python scripts/enrich_kinetic_v_nodes.py
+```
+
+Example result:
+
+```text
+{'enriched': 128, 'skipped_without_context': 7, 'scanned': 135}
+```
+
+New ingestion remains idempotent across both `Chunk` and legacy `__Chunk__` Neo4j labels. Existing entities without a linked source chunk are deliberately skipped so the migration never invents supporting evidence.
+
 ---
 
 ## 📚 Usage
@@ -228,8 +262,10 @@ The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor s
   ```bash
   python scratch/run_evaluation.py
   ```
-- **Live Diagnostics**: The `RAGASEvaluator` ([ragas_evaluator.py](file:///Users/sendils/work/repo/kinetic-v/kinegraph-v/eval/ragas_evaluator.py)) automatically catches evaluation errors/NaN scores and warns on the console with the exact query and failed metrics details, falling back cleanly to keyword heuristics.
+- **Live Diagnostics**: [`RAGASEvaluator`](eval/ragas_evaluator.py) automatically catches evaluation errors/NaN scores and warns on the console with the exact query and failed metrics details, falling back cleanly to keyword heuristics.
 - **Concurrent Batch Eval**: Supports asynchronous concurrent live evaluation of the RAG workflow via the `evaluate_live_workflow` method.
+
+The v3 benchmark targets are **Faithfulness ≥ 0.75**, **Answer Relevancy ≥ 0.65**, and **Context Recall ≥ 0.65**. The scores below are the latest recorded pre-v3/composed baseline; rerun the live benchmark after migrating production data to measure progress against those targets.
 
 #### Baseline Evaluation Scores
 
@@ -262,6 +298,9 @@ uvicorn backend.app.main:app --reload --port 8000
 
 # Run Celery worker
 celery -A backend.workers.celery_app worker --loglevel=info
+
+# Run the v3 enrichment and retrieval regression tests
+PYTHONPATH=. pytest -q tests/test_enrichment.py tests/test_retrievers.py tests/test_ingest_idempotency.py tests/test_stores.py
 ```
 
 ---
