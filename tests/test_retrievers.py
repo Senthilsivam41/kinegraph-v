@@ -1,4 +1,5 @@
 from backend.graph_retrieval.retrievers import ComposedGraphRetriever
+from backend.graph_retrieval.multi_hop import TraversalStrategy
 from llama_index.core.schema import TextNode, NodeWithScore
 from unittest.mock import MagicMock, patch
 import pytest
@@ -38,7 +39,13 @@ def test_composed_retriever(
     ]
     
     # Instantiate ComposedGraphRetriever
-    retriever = ComposedGraphRetriever(use_cypher=True)
+    retriever = ComposedGraphRetriever(use_cypher=True, neo4j_driver=MagicMock())
+    retriever.multi_hop_retriever.retrieve = MagicMock(return_value=[{
+        "content": "Traversal path (depth 1): A -[USES]-> B",
+        "metadata": {"traversal_depth": 1, "relationship_path": [{"relationship_type": "USES"}]},
+        "score": 0.6,
+        "source": "graph_traversal",
+    }])
     results = retriever.retrieve("query text", n_results=5)
     
     # Verify sub-retrievers were constructed and index was initialized
@@ -48,7 +55,7 @@ def test_composed_retriever(
     mock_cypher_retriever.assert_called_once()
     
     # Verify outputs are formatted properly
-    assert len(results) == 2
+    assert len(results) == 3
     assert results[0]["content"] == "first chunk content"
     assert results[0]["metadata"]["key"] == "val1"
     assert results[0]["score"] == 0.9
@@ -57,3 +64,13 @@ def test_composed_retriever(
     assert results[1]["metadata"]["key"] == "val2"
     assert results[1]["score"] == 0.7
     assert results[1]["source"] == "graph"
+    assert results[2]["source"] == "graph_traversal"
+    assert results[2]["metadata"]["traversal_depth"] == 1
+    retriever.multi_hop_retriever.retrieve.assert_called_once_with(
+        query="query text",
+        n_results=5,
+        max_hops=3,
+        strategy=TraversalStrategy.BFS,
+        seed_node_ids=[],
+        community_id=None,
+    )

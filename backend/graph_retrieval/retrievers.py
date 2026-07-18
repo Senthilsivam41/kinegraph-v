@@ -12,6 +12,9 @@ from llama_index.core.indices.property_graph import (
 from backend.graph_ingestion.stores import get_neo4j_graph_store, get_chroma_vector_store, get_llm
 from backend.graph_ingestion.embedding_wrapper import LangChainEmbeddingWrapper
 from backend.services.chroma_service import ChromaService
+from backend.graph_retrieval.multi_hop import MultiHopGraphRetriever, TraversalStrategy
+from backend.core.config import settings
+from neo4j import GraphDatabase
 
 logger = logging.getLogger(__name__)
 
@@ -33,15 +36,36 @@ class ComposedGraphRetriever:
     Composed retriever for the hybrid RAG system using PropertyGraphIndex.
     Combines vector search, synonym-expansion graph traversal, and optional Text-to-Cypher.
     """
-    def __init__(self, use_cypher: bool = False):
+    def __init__(
+        self,
+        use_cypher: bool = False,
+        neo4j_driver: Any = None,
+        max_hops: int = 3,
+        traversal_strategy: TraversalStrategy | str = TraversalStrategy.BFS,
+    ):
         self.chroma_service = ChromaService()
         self.embed_model = LangChainEmbeddingWrapper(self.chroma_service.embeddings)
         self.graph_store = get_neo4j_graph_store()
         self.vector_store = get_chroma_vector_store()
         self.llm = get_llm()
         self.use_cypher = use_cypher
+        self._owns_driver = neo4j_driver is None
+        self.neo4j_driver = neo4j_driver or GraphDatabase.driver(
+            settings.NEO4J_URI,
+            auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD),
+        )
+        self.multi_hop_retriever = MultiHopGraphRetriever(
+            self.neo4j_driver, max_hops=max_hops, strategy=traversal_strategy
+        )
 
-    def retrieve(self, query: str, n_results: int = 10) -> List[Dict[str, Any]]:
+    def retrieve(
+        self,
+        query: str,
+        n_results: int = 10,
+        max_hops: int = 3,
+        traversal_strategy: TraversalStrategy | str = TraversalStrategy.BFS,
+        community_id: str | None = None,
+    ) -> List[Dict[str, Any]]:
         """
         Retrieves relevant document chunks and context using composed retrievers.
         """
@@ -103,8 +127,32 @@ class ComposedGraphRetriever:
                         "source": "graph"
                     })
                     
-            return formatted_results[:n_results]
+            seed_ids = []
+            for result in formatted_results:
+                metadata = result["metadata"]
+                for key in ("id", "name", "entity_id", "vector_source_id"):
+                    if metadata.get(key):
+                        seed_ids.append(str(metadata[key]))
+            try:
+                traversal_results = self.multi_hop_retriever.retrieve(
+                    query=query,
+                    n_results=n_results,
+                    max_hops=max_hops,
+                    strategy=traversal_strategy,
+                    seed_node_ids=seed_ids,
+                    community_id=community_id,
+                )
+            except Exception as exc:
+                logger.warning("Multi-hop traversal failed; returning composed base results: %s", exc)
+                traversal_results = []
+            traversal_limit = min(len(traversal_results), max(1, n_results // 2))
+            base_limit = max(0, n_results - traversal_limit)
+            return [*formatted_results[:base_limit], *traversal_results[:traversal_limit]]
             
         except Exception as e:
             logger.error("Error during composed graph retrieval: %s", e)
             return []
+
+    def close(self) -> None:
+        if self._owns_driver:
+            self.neo4j_driver.close()
