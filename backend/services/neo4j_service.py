@@ -63,7 +63,9 @@ class Neo4jService:
         content: str,
         metadata: Dict[str, Any],
         entities: List[Dict[str, Any]],
-        relationships: List[Dict[str, Any]]
+        relationships: List[Dict[str, Any]],
+        chunks: Optional[List[str]] = None,
+        chunk_ids: Optional[List[str]] = None,
     ) -> bool:
         """
         Add a document and its entities/relationships to the graph
@@ -74,11 +76,17 @@ class Neo4jService:
             metadata: Document metadata
             entities: List of extracted entities
             relationships: List of relationships between entities
+            chunks: Source chunk bodies already written to ChromaDB
+            chunk_ids: ChromaDB identifiers corresponding to ``chunks``
             
         Returns:
             Success status
         """
         try:
+            chunks = chunks or []
+            chunk_ids = chunk_ids or []
+            if len(chunks) != len(chunk_ids):
+                raise ValueError("chunks and chunk_ids must have the same length")
             with self.driver.session() as session:
                 # Create document node
                 session.run("""
@@ -87,26 +95,64 @@ class Neo4jService:
                         d += $metadata,
                         d.created_at = datetime()
                 """, doc_id=doc_id, content=content, metadata=metadata)
+
+                if chunks:
+                    session.run("""
+                        UNWIND $chunks AS chunk
+                        MERGE (c:__Node__:Chunk {id: chunk.id})
+                        SET c.text = chunk.text, c.document_id = $doc_id
+                        WITH c
+                        MATCH (d:Document {id: $doc_id})
+                        MERGE (d)-[:HAS_CHUNK]->(c)
+                    """, doc_id=doc_id, chunks=[
+                        {"id": chunk_id, "text": chunk}
+                        for chunk_id, chunk in zip(chunk_ids, chunks)
+                    ])
                 
                 # Create entity nodes and link to document
                 for entity in entities:
+                    matching_chunk_ids = [
+                        chunk_id for chunk_id, chunk in zip(chunk_ids, chunks)
+                        if entity["name"].lower() in chunk.lower()
+                    ]
+                    if not matching_chunk_ids and chunk_ids:
+                        matching_chunk_ids = [chunk_ids[0]]
                     session.run("""
                         MERGE (e:Entity {name: $name, type: $type})
                         WITH e
                         MATCH (d:Document {id: $doc_id})
                         MERGE (d)-[:MENTIONS]->(e)
-                    """, name=entity['name'], type=entity['type'], doc_id=doc_id)
+                        WITH e
+                        UNWIND $chunk_ids AS chunk_id
+                        MATCH (c:Chunk {id: chunk_id})
+                        MERGE (c)-[:MENTIONS]->(e)
+                    """, name=entity['name'], type=entity['type'], doc_id=doc_id, chunk_ids=matching_chunk_ids)
                 
                 # Create relationships between entities
                 for rel in relationships:
+                    evidence = rel.get("evidence_text") or rel.get("evidence") or (
+                        f"{rel['source']} {rel['type']} {rel['target']} was extracted from document {doc_id}."
+                    )
                     session.run("""
                         MATCH (e1:Entity {name: $source})
                         MATCH (e2:Entity {name: $target})
                         MERGE (e1)-[r:RELATES_TO {type: $rel_type}]->(e2)
+                        SET r.evidence_text = $evidence_text,
+                            r.weight = $weight
                         ON CREATE SET r.created_at = datetime()
-                    """, source=rel['source'], target=rel['target'], rel_type=rel['type'])
-                
-                return True
+                    """, source=rel['source'], target=rel['target'], rel_type=rel['type'],
+                         evidence_text=evidence, weight=float(rel.get("weight", 0.75)))
+
+            self.last_enrichment_result = None
+            if chunk_ids:
+                from backend.graph_ingestion.enrichment import NodeEnricher
+                from backend.services.chroma_service import ChromaService
+
+                chroma = ChromaService()
+                self.last_enrichment_result = NodeEnricher(
+                    self.driver, chroma.client
+                ).enrich(chunk_ids=chunk_ids)
+            return True
         except Exception as e:
             print(f"Error adding document to Neo4j: {e}")
             return False

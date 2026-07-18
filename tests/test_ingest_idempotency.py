@@ -43,7 +43,8 @@ def test_ingest_idempotency_skip(mock_get_llm, mock_get_chroma_store, mock_get_n
 @patch("backend.graph_ingestion.ingest.get_llm")
 @patch("backend.graph_ingestion.ingest.PropertyGraphIndex")
 @patch("backend.graph_ingestion.ingest.get_extractor_stack")
-def test_ingest_idempotency_ingest(mock_get_extractors, mock_property_graph_index, mock_get_llm, mock_get_chroma_store, mock_get_neo4j_store, mock_chroma_service, mock_driver_cls):
+@patch("backend.graph_ingestion.ingest.NodeEnricher")
+def test_ingest_idempotency_ingest(mock_node_enricher, mock_get_extractors, mock_property_graph_index, mock_get_llm, mock_get_chroma_store, mock_get_neo4j_store, mock_chroma_service, mock_driver_cls):
     # Setup mock driver to return count = 0 (meaning NOT ingested)
     mock_driver = MagicMock()
     mock_session = MagicMock()
@@ -57,6 +58,10 @@ def test_ingest_idempotency_ingest(mock_get_extractors, mock_property_graph_inde
     mock_extractor = MagicMock()
     mock_extractor.side_effect = lambda nodes: nodes
     mock_get_extractors.return_value = [mock_extractor]
+    mock_node_enricher.return_value.enrich.return_value = {
+        "enriched": 1, "verified_vector_links": 1, "missing_vector_links": 0,
+        "complete": True,
+    }
 
     # Instantiate ingester
     ingester = IdempotentGraphIngester()
@@ -70,8 +75,11 @@ def test_ingest_idempotency_ingest(mock_get_extractors, mock_property_graph_inde
         assert res["total_chunks"] == 1
         assert res["skipped_chunks"] == 0
         assert res["ingested_chunks"] == 1
+        assert res["enrichment"]["verified_vector_links"] == 1
+        assert res["enrichment"]["status"] == "success"
         
         # Verify PropertyGraphIndex was built
         mock_property_graph_index.assert_called_once()
+        mock_node_enricher.return_value.enrich.assert_called_once()
             
     ingester.close()

@@ -11,10 +11,12 @@
 
 ## v3 contract
 
-`KineticVNode` adds `description`, citable `parent_context_chunk_ids`, a JSON context snapshot, relationship evidence, and graph-positioning fields. Chroma remains the authoritative home for embeddings and full chunk bodies; Neo4j holds stable IDs and a small evidence snapshot. This is intentional: Neo4j properties cannot safely store nested maps and duplicating vectors would introduce drift.
+`KineticVNode` adds `description`, citable `parent_context_chunk_ids`, a JSON context snapshot, relationship evidence, and graph-positioning fields. Chroma remains the authoritative home for embeddings and full chunk bodies; Neo4j holds stable IDs and a small evidence snapshot. A link is persisted only after its Chroma record and embedding are found in `kg_nodes` or `kinetic_vectors`. This is intentional: Neo4j properties cannot safely store nested maps and duplicating vectors would introduce drift.
 
 ## Migration and validation
 
-Run `python scripts/enrich_kinetic_v_nodes.py --dry-run`, inspect the counts, then rerun without `--dry-run`. The migration is additive and idempotent. It migrates only entities with existing `MENTIONS` links; nodes without source evidence are reported rather than inventing citations.
+Run `python scripts/enrich_kinetic_v_nodes.py --dry-run --batch-size 200`, inspect `verified_vector_links` and `missing_vector_links`, then rerun without `--dry-run`. The migration is additive, idempotent, and paginated. It computes connected-component communities, normalized degree centrality, and distance from chunk roots without requiring Neo4j GDS. Missing relationship evidence receives a context-grounded fallback and a derived confidence weight.
+
+Both PropertyGraphIndex ingestion and the legacy worker ingestion path invoke enrichment automatically after graph and vector writes. Their result includes an `enrichment` summary (or `last_enrichment_result` for `Neo4jService`) so a vector-link failure cannot remain invisible.
 
 For the requested six-query baseline, use `eval/kinegraph_benchmark_v1.csv` as the source and record vector, graph, hybrid, and vectorless outputs after services are running. The repository cannot establish the live DB link from source inspection alone; run the migration dry-run against the target environment to verify it.

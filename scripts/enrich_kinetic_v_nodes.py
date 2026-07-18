@@ -12,10 +12,17 @@ from backend.services.neo4j_service import Neo4jService
 def main() -> None:
     parser = argparse.ArgumentParser(description="Add v3 context metadata to graph entities")
     parser.add_argument("--dry-run", action="store_true", help="report candidates without writing")
+    parser.add_argument("--batch-size", type=int, default=200, help="Neo4j/Chroma read and write batch size")
     args = parser.parse_args()
     service = Neo4jService()
     try:
-        print(NodeEnricher(service.driver).enrich(dry_run=args.dry_run))
+        from backend.services.chroma_service import ChromaService
+
+        chroma = ChromaService()
+        print(NodeEnricher(service.driver, chroma.client).enrich(
+            dry_run=args.dry_run,
+            batch_size=args.batch_size,
+        ))
     finally:
         service.close()
 

@@ -150,7 +150,9 @@ def process_document(self, file_path: str, metadata: Dict[str, Any]) -> Dict[str
                         **metadata
                     },
                     entities=entities,
-                    relationships=relationships
+                    relationships=relationships,
+                    chunks=chunks,
+                    chunk_ids=chunk_ids,
                 )
             )
             
