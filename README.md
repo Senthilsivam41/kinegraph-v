@@ -47,7 +47,7 @@ Neo4j cannot store nested maps as native properties, so context links and relati
 The migration is additive and idempotent: it updates entities with existing `MENTIONS` links, reports entities without source context, and does not delete or re-embed data. See [`docs/v3_schema_audit.md`](docs/v3_schema_audit.md) for the schema-gap audit and design rationale.
 
 ### 2. Robust RAGAS Evaluation & Diagnostics
-- **Live Failure Interception**: Updated [`RAGASEvaluator`](eval/ragas_evaluator.py) to catch evaluation failures, logging detailed warnings showing the exact query and the specific metrics that failed (e.g. returning `NaN` or raising exceptions) while falling back cleanly to keyword heuristics.
+- **Live Failure Interception**: [`RAGASEvaluator`](eval/ragas_evaluator.py) records evaluation failures and may compute keyword heuristics for diagnostics, but the benchmark gate rejects any row with `ragas_failed=True`. Fallback scores cannot be reported as RAGAS.
 - **Concurrent Batch Eval**: Added `evaluate_live_workflow` and `evaluate_live_single` supporting concurrent, rate-limited live workflow evaluations asynchronously, resulting in faster and safer benchmark runs.
 - **Model-Agnostic Critic Settings**: Configures separate evaluation LLMs (critic/judge) via the `critic_model` parameter, enabling stable benchmark tracking (e.g., using Claude Haiku) even while testing various generation engines.
 - **OpenRouter Compatibility**: Detects OpenRouter environments and automatically configures base URLs accordingly, enabling direct usage of stable and extremely cheap paid OpenRouter endpoints (e.g., `gpt-4o-mini` or `meta-llama/llama-3.3-70b-instruct`) without hitting free-tier congestion or 429 rate-limiting.
@@ -301,38 +301,43 @@ curl -X POST "http://localhost:8000/api/v1/query" \
 
 ## 🔬 Evaluation & Diagnostics
 
-The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor system performance offline and live.
+The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor system performance offline and live. The checked-in benchmark is [`eval/kinegraph_benchmark_v1.csv`](eval/kinegraph_benchmark_v1.csv); it currently has **5 queries** with the generated schema `user_input`, `reference_contexts`, `reference`, `persona_name`, `query_style`, `query_length`, and `synthesizer_name`.
 
 - **Synthetic Testset Generation**: Create rich multi-hop and specific factual benchmark questions directly from the project's documentation using:
   ```bash
-  python scripts/generate_testset.py --size 5 --output eval/kinegraph_benchmark_v1.csv
+  PYTHONPATH=. python scripts/generate_testset.py --size 20 --output eval/kinegraph_benchmark_v1.csv
   ```
 - **Direct Database Ingestion**: Populate ChromaDB and Neo4j locally with documentation:
   ```bash
-  python scripts/ingest_docs.py
+  PYTHONPATH=. python scripts/ingest_docs.py
   ```
-- **Live Pipeline Benchmarking**: Execute the live RAG pipeline on your benchmark questions and compute RAGAS metrics:
+- **Live Pipeline Benchmarking**: Execute the live RAG pipeline on the checked-in benchmark questions and compute RAGAS metrics:
   ```bash
-  python scratch/run_evaluation.py
+  PYTHONPATH=. python eval/ragas_evaluator.py
   ```
-- **Live Diagnostics**: [`RAGASEvaluator`](eval/ragas_evaluator.py) automatically catches evaluation errors/NaN scores and warns on the console with the exact query and failed metrics details, falling back cleanly to keyword heuristics.
-- **Concurrent Batch Eval**: Supports asynchronous concurrent live evaluation of the RAG workflow via the `evaluate_live_workflow` method.
+- **Live Diagnostics**: Single-query and concurrent live execution are implemented by `evaluate_live_single` and `evaluate_live_workflow`. The CLI loads the real CSV and executes `HybridRAGWorkflow`; it does not depend on nonexistent `src/`, `benchmarks/`, or `scratch/run_evaluation.py` paths.
+- **Acceptance Gate**: Diagnostic keyword fallbacks remain available, but the CLI exits with status `2` and refuses to update the report or chart when any result has `ragas_failed=True`.
+- **Result Contract**: Evaluation consumes the workflow's `answer` and retrieved `chunks`. Fields such as `max_hops_used`, `hyde_generated`, and `retrieved_nodes` are not top-level evaluator results. Traversal and recovery diagnostics live in chunk metadata or `recovery_details` and require a separate retrieval-path audit.
 
-The v3 benchmark targets are **Faithfulness ≥ 0.75**, **Answer Relevancy ≥ 0.65**, and **Context Recall ≥ 0.65**. The scores below are the latest recorded pre-v3/composed baseline; rerun the live benchmark after migrating production data to measure progress against those targets.
+### Benchmark Status
 
-#### Baseline Evaluation Scores
+The latest persisted RAGAS report predates the v3 implementation. There is currently **no accepted post-v3 result proving improvement**. The table therefore compares the two recorded pre-v3 series with the complete v3 target set; it must not be read as a v3 evaluation.
 
-| Metric | Baseline Score | Composed Graph Score | Status / Recommendation |
-| :--- | :---: | :---: | :--- |
-| **Faithfulness** | 0.3292 | **0.6000** | Fraction of answer claims supported by retrieved context. |
-| **Answer Relevancy** | 0.1016 | **0.5659** | How well the answer addresses the question. |
-| **Context Precision** | 1.0000 | **0.4500** | Signal-to-noise: most relevant chunks ranked first. |
-| **Context Recall** | 0.3476 | **0.6000** | Fraction of ground-truth info present in context. |
-| **Answer Correctness** | 0.3745 | **0.4082** | Answer accuracy vs reference ground truth. |
-| **Overall Composite** | **0.4306** | **0.5248** | Overall composite score over benchmark dataset. |
+| Metric | Recorded baseline | Recorded composed | v3 target | Composed vs target |
+| :--- | :---: | :---: | :---: | :---: |
+| **Faithfulness** | 0.3292 | 0.6000 | ≥ 0.75 | **Fail** |
+| **Answer Relevancy** | 0.1016 | 0.5659 | ≥ 0.65 | **Fail** |
+| **Context Precision** | 1.0000 | 0.4500 | ≥ 0.90 | **Fail** |
+| **Context Recall** | 0.3476 | 0.6000 | ≥ 0.65 | **Fail** |
+| **Answer Correctness** | 0.3745 | 0.4082 | ≥ 0.60 | **Fail** |
 
-#### RAGAS Evaluation Radar Chart
-![RAGAS Evaluation Radar Chart](reports/spider_graph_ragas_score.png)
+Recorded overall composites are **0.4306 baseline** and **0.5248 composed**. A post-v3 run is accepted only when all 20 intended benchmark rows execute against the live hybrid workflow, every required metric is finite, no workflow error occurs, and every row explicitly reports `ragas_failed=False`.
+
+#### Benchmark Spider Graph
+
+![Kinegraph pre-v3 benchmark scores compared with v3 targets](reports/spider_graph_ragas_score.png)
+
+The chart is reproducible with `PYTHONPATH=. python scripts/generate_benchmark_spider.py`. It visualizes persisted pre-v3 evidence and targets only; a future accepted post-v3 run may replace the recorded series.
 
 ---
 
