@@ -52,7 +52,12 @@ class IdempotentGraphIngester:
         """Check if a chunk with the given hash is already in the graph database."""
         try:
             with self.neo4j_driver.session() as session:
-                query = "MATCH (n:`__Chunk__`) WHERE n.chunk_hash = $hash RETURN count(n) as count"
+                # LlamaIndex versions have used both labels; accept either so
+                # re-ingestion cannot silently duplicate a known chunk.
+                query = """
+                    MATCH (n) WHERE (n:Chunk OR n:`__Chunk__`) AND n.chunk_hash = $hash
+                    RETURN count(n) as count
+                """
                 res = session.run(query, hash=chunk_hash)
                 record = res.single()
                 return record["count"] > 0 if record else False
