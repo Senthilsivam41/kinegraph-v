@@ -52,6 +52,46 @@ METRIC_DESCRIPTIONS = {
 }
 
 
+class RAGASValidationError(RuntimeError):
+    """Raised when a benchmark contains fallback scores presented as RAGAS."""
+
+
+def require_successful_ragas(
+    results: pd.DataFrame,
+    expected_rows: Optional[int] = None,
+) -> None:
+    """Fail closed unless every evaluated row is a successful RAGAS result."""
+    if results.empty:
+        raise RAGASValidationError("No evaluation rows were produced.")
+    if expected_rows is not None and len(results) != expected_rows:
+        raise RAGASValidationError(
+            f"Expected {expected_rows} evaluation rows but received {len(results)}."
+        )
+    if "workflow_error" in results.columns:
+        workflow_failures = results[results["workflow_error"].fillna("").astype(str).str.strip() != ""]
+        if not workflow_failures.empty:
+            raise RAGASValidationError(
+                f"Rejected {len(workflow_failures)}/{len(results)} rows because the live workflow failed."
+            )
+    if "ragas_failed" not in results.columns:
+        raise RAGASValidationError(
+            "Missing ragas_failed provenance; this run cannot be accepted as RAGAS."
+        )
+
+    failed = results[results["ragas_failed"].fillna(True).astype(bool)]
+    if failed.empty:
+        return
+
+    errors = sorted({
+        str(error) for error in failed.get("ragas_error", pd.Series(dtype=str)).dropna()
+    })
+    detail = f" Errors: {'; '.join(errors)}" if errors else ""
+    raise RAGASValidationError(
+        f"Rejected {len(failed)}/{len(results)} rows because RAGAS failed and "
+        f"heuristic fallback scores are not benchmark evidence.{detail}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Heuristic fallback helpers
 # ---------------------------------------------------------------------------
@@ -488,13 +528,24 @@ class RAGASEvaluator:
 
         recs = self._recommendations(per_metric)
 
+        workflow_accepted = (
+            "workflow_error" not in results.columns
+            or not results["workflow_error"].fillna("").astype(str).str.strip().ne("").any()
+        )
+        ragas_accepted = (
+            "ragas_failed" in results.columns
+            and not results["ragas_failed"].fillna(True).astype(bool).any()
+            and workflow_accepted
+        )
+
         return {
             "summary": {
                 "total_samples": len(results),
                 "overall_composite_score": round(float(results["composite_score"].mean()), 4),
                 "metrics_evaluated": metric_cols,
                 "quality_distribution": results["quality_tier"].value_counts().to_dict(),
-                "eval_mode": "ragas" if _RAGAS_AVAILABLE else "heuristic",
+                "eval_mode": "ragas" if ragas_accepted else "heuristic_or_mixed",
+                "accepted_as_ragas": ragas_accepted,
             },
             "per_metric": per_metric,
             "worst_samples": results.nsmallest(5, "composite_score")[
@@ -531,9 +582,6 @@ if __name__ == "__main__":
     import sys
     import asyncio
     from dotenv import load_dotenv
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    from math import pi
     
     # Load dotenv
     load_dotenv(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env")))
@@ -547,60 +595,64 @@ if __name__ == "__main__":
     from backend.services.neo4j_service import Neo4jService
     from backend.core.langgraph_workflow import HybridRAGWorkflow
     
-    chroma = ChromaService()
-    neo4j = Neo4jService()
-    workflow = HybridRAGWorkflow(chroma_service=chroma, neo4j_service=neo4j)
-    
     csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "kinegraph_benchmark_v1.csv"))
     if not os.path.exists(csv_path):
         # Try relative to project root
         csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "eval", "kinegraph_benchmark_v1.csv"))
         
-    if os.path.exists(csv_path):
-        print(f"\nFound benchmark dataset at '{csv_path}'. Running live pipeline...")
-        df = pd.read_csv(csv_path)
-        raw_data = [{"question": row["user_input"], "ground_truth": row["reference"]} for _, row in df.iterrows()]
-    else:
-        print("\nBenchmark CSV not found. Using subset of EVAL_DATASET...")
-        raw_data = [
-            {"question": "What is Reciprocal Rank Fusion?", "ground_truth": "RRF is a rank fusion algorithm that combines multiple ranked lists by summing reciprocal ranks."},
-            {"question": "What role does LangGraph play in KineticGraph-Vectra?", "ground_truth": "LangGraph orchestrates queries in KineticGraph-Vectra."},
-            {"question": "What is a knowledge graph?", "ground_truth": "A knowledge graph is a structured representation of entities and their relationships."}
-        ]
-        
-    eval_dataset = []
-    async def run_queries():
-        for idx, row in enumerate(raw_data):
-            q = row["question"]
-            print(f"  [{idx+1}/{len(raw_data)}] Querying live pipeline: {q}")
-            try:
-                res = await workflow.execute_with_answer(query=q)
-                eval_dataset.append({
-                    "question": q,
-                    "answer": res["answer"],
-                    "contexts": [chunk.content for chunk in res.get("chunks", [])],
-                    "ground_truth": row.get("ground_truth", "")
-                })
-            except Exception as e:
-                print(f"    Error: {e}")
-                
-    asyncio.run(run_queries())
-    
-    try:
-        neo4j.close()
-    except Exception:
-        pass
-        
-    if not eval_dataset:
-        print("Error: No evaluation samples generated.")
-        sys.exit(1)
-        
+    if not os.path.exists(csv_path):
+        print(f"Benchmark CSV not found: {csv_path}", file=sys.stderr)
+        sys.exit(2)
+
+    print(f"\nFound benchmark dataset at '{csv_path}'.")
+    df = pd.read_csv(csv_path)
+    required_columns = {"user_input", "reference"}
+    missing_columns = required_columns - set(df.columns)
+    if missing_columns:
+        print(f"Benchmark CSV missing columns: {sorted(missing_columns)}", file=sys.stderr)
+        sys.exit(2)
+    if len(df) != 20:
+        print(
+            f"Benchmark rejected: expected 20 rows but found {len(df)}. "
+            "Generate the complete testset before running the live benchmark.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    raw_data = [
+        {"question": row["user_input"], "ground_truth": row["reference"]}
+        for _, row in df.iterrows()
+    ]
+
+    chroma = ChromaService()
+    neo4j = Neo4jService()
+    workflow = HybridRAGWorkflow(chroma_service=chroma, neo4j_service=neo4j)
+
     evaluator = RAGASEvaluator(
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         metrics=['faithfulness', 'answer_relevancy', 'context_precision', 'context_recall', 'answer_correctness']
     )
-    print("\nRunning Ragas evaluation...")
-    results_df = evaluator.evaluate_batch(eval_dataset, show_progress=False)
+    print("\nRunning concurrent live workflow and RAGAS evaluation...")
+    try:
+        results_df = asyncio.run(evaluator.evaluate_live_workflow(
+            workflow=workflow,
+            dataset=raw_data,
+            mode=QueryMode.HYBRID,
+            concurrency_limit=3,
+        ))
+    finally:
+        try:
+            neo4j.close()
+        except Exception:
+            pass
+    try:
+        require_successful_ragas(results_df, expected_rows=len(raw_data))
+    except RAGASValidationError as exc:
+        print(f"\nBENCHMARK REJECTED: {exc}", file=sys.stderr)
+        print(
+            "No report or spider graph was updated. Resolve the judge failure and rerun.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
     report = evaluator.generate_report(results_df)
     
     print("\n=== PER-METRIC AVERAGE SCORES ===")
@@ -610,6 +662,9 @@ if __name__ == "__main__":
     print(f"\nOverall Composite Score: {report['summary']['overall_composite_score']:.4f}")
     
     # Save the spider graph
+    import matplotlib.pyplot as plt
+    from math import pi
+
     metric_cols = ['faithfulness', 'answer_relevancy', 'context_precision', 'context_recall', 'answer_correctness']
     means = [report['per_metric'].get(m, {}).get('mean', 0.0) for m in metric_cols]
     N = len(metric_cols)
