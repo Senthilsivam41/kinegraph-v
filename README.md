@@ -104,6 +104,12 @@ Graph and hybrid queries can expand from matched entities across one to five rel
 
 Use `"dfs"` to prioritize deep paths or `"community"` to restrict expansion to the seed entity's computed community. Traversal rejects cycles and enforces a maximum of five hops.
 
+### 6. Semantic-First Graph-Aware Reranking
+
+After RRF, candidates pass through a relevance gate based on the original user query. Surviving graph results receive bounded secondary signals from node centrality, community support, relationship weight, and traversal distance. Semantic relevance retains 70% of the configured weight, so a highly connected but irrelevant node cannot displace directly relevant evidence.
+
+The reranker preserves `score`, `rrf_score`, `original_score`, and source provenance. It adds `semantic_score`, `graph_signal_score`, `rerank_score`, `rerank_components`, and `rerank_mode` for observability. Cross-encoder scoring is enabled by default in the normal workflow; if its optional model is unavailable, Kinegraph logs the fallback and reports `graph_aware_keyword` mode.
+
 ---
 
 ## 🏗️ Architecture

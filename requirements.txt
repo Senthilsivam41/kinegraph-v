@@ -51,8 +51,8 @@ datasets>=2.18.0
 langchain-huggingface>=0.0.1,<0.1.0
 rapidfuzz
 
-# Context reranker (optional — improves context_precision significantly)
-sentence-transformers>=2.6.0   ; extra == "rerank"
+# Default cross-encoder for semantic-first graph-aware reranking
+sentence-transformers>=2.6.0
 
 # Notebook evaluation
 jupyter>=1.0.0
