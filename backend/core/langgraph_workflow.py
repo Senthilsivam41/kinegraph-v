@@ -172,7 +172,7 @@ class HybridRAGWorkflow:
         self,
         chroma_service: ChromaService,
         neo4j_service: Neo4jService,
-        use_cross_encoder: bool = False,
+        use_cross_encoder: bool = True,
         generation_model: str = "gpt-4o-mini",
     ) -> None:
         self.chroma = chroma_service
@@ -495,6 +495,7 @@ class HybridRAGWorkflow:
             query=state["query"],           # use original query for relevance check
             chunks=state["fused_results"],
             top_k=state["max_results"],
+            preferred_community_id=state.get("community_id"),
         )
         state["reranked_results"] = reranked
         state["latency_breakdown"]["rerank_ms"] = round(
@@ -571,6 +572,11 @@ class HybridRAGWorkflow:
                 metadata={
                     **result.get("metadata", {}),
                     "rerank_score": result.get("rerank_score", 0.0),
+                    "semantic_score": result.get("semantic_score", 0.0),
+                    "graph_signal_score": result.get("graph_signal_score"),
+                    "graph_signals_applied": result.get("graph_signals_applied", False),
+                    "rerank_mode": result.get("rerank_mode", "unknown"),
+                    "rerank_components": result.get("rerank_components", {}),
                     "intent": state.get("intent", ""),
                 },
                 score=result.get("score", 0.0),
