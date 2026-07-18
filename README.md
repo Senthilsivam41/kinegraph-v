@@ -26,6 +26,8 @@
 
 The system uses **LangGraph** to orchestrate complex query workflows and **Celery** for asynchronous document processing.
 
+Development is guided by the evidence-first [Kinegraph Architecture Principles](docs/ARCHITECTURE_PRINCIPLES.md), including explicit product vision, measurable goals, and a decision gate for new retrieval features.
+
 ---
 
 ## ✨ Codebase Highlights & Optimization
