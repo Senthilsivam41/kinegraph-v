@@ -137,9 +137,9 @@ class Neo4jService:
                         MATCH (e1:Entity {name: $source})
                         MATCH (e2:Entity {name: $target})
                         MERGE (e1)-[r:RELATES_TO {type: $rel_type}]->(e2)
+                        ON CREATE SET r.created_at = datetime()
                         SET r.evidence_text = $evidence_text,
                             r.weight = $weight
-                        ON CREATE SET r.created_at = datetime()
                     """, source=rel['source'], target=rel['target'], rel_type=rel['type'],
                          evidence_text=evidence, weight=float(rel.get("weight", 0.75)))
 

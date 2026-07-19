@@ -181,3 +181,36 @@ def test_legacy_document_ingestion_creates_chunks_and_runs_enrichment():
     assert any("MERGE (c:__Node__:Chunk" in call.args[0] for call in session.run.call_args_list)
     enricher_cls.return_value.enrich.assert_called_once_with(chunk_ids=["chunk-1"])
     assert chroma_cls.called
+
+
+def test_legacy_relationship_upsert_uses_valid_merge_clause_order():
+    service = Neo4jService.__new__(Neo4jService)
+    session = MagicMock()
+    service.driver = MagicMock()
+    service.driver.session.return_value.__enter__.return_value = session
+
+    result = asyncio.run(service.add_document_graph(
+        doc_id="doc-relationship",
+        content="Kinegraph uses Neo4j.",
+        metadata={"file_name": "test.md"},
+        entities=[
+            {"name": "Kinegraph", "type": "System"},
+            {"name": "Neo4j", "type": "Technology"},
+        ],
+        relationships=[{
+            "source": "Kinegraph",
+            "target": "Neo4j",
+            "type": "USES",
+            "evidence_text": "Kinegraph uses Neo4j.",
+            "weight": 0.9,
+        }],
+    ))
+
+    assert result is True
+    relationship_query = next(
+        call.args[0] for call in session.run.call_args_list
+        if "MERGE (e1)-[r:RELATES_TO" in call.args[0]
+    )
+    assert relationship_query.index("ON CREATE SET") < relationship_query.index(
+        "SET r.evidence_text"
+    )
