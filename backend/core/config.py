@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     GRAPH_MAX_HOPS: int = 2
     RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     RERANKER_MIN_RELEVANCE: float = 0.20
+    FUSION_VECTOR_WEIGHT: float = 1.0
+    FUSION_GRAPH_WEIGHT: float = 1.0
+    FUSION_LEXICAL_WEIGHT: float = 0.7
 
     # LangSmith (optional — leave blank to disable remote tracing)
     LANGSMITH_API_KEY: Optional[str] = None

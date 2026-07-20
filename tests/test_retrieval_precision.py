@@ -1,7 +1,7 @@
 import asyncio
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from backend.app.models import QueryRequest
+from backend.app.models import QueryMode, QueryRequest
 from backend.core.langgraph_workflow import HybridRAGWorkflow
 from backend.core.rrf import deduplicate_results
 from backend.graph_retrieval.multi_hop import TraversalStrategy
@@ -86,3 +86,44 @@ def test_parallel_fetch_uses_candidate_pool_independent_of_generator_top_k():
     assert workflow.chroma.similarity_search.await_args.kwargs["n_results"] == 25
     assert workflow.graph_retriever_node.retrieve_chunks.await_args.kwargs["n_results"] == 25
     assert workflow.graph_retriever_node.retrieve_chunks.await_args.kwargs["max_hops"] == 2
+
+
+def test_opt_in_lexical_channel_enters_weighted_fusion():
+    workflow = HybridRAGWorkflow.__new__(HybridRAGWorkflow)
+    workflow.chroma = MagicMock()
+    workflow.chroma.similarity_search = AsyncMock(return_value=[
+        {"content": "vector evidence", "score": 0.9, "source": "vector"}
+    ])
+    workflow.graph_retriever_node = MagicMock()
+    workflow.graph_retriever_node.retrieve_chunks = AsyncMock(return_value=[
+        {"content": "graph evidence", "score": 0.8, "source": "graph"}
+    ])
+    state = {
+        "rewritten_query": "kinegraph retrieval",
+        "max_results": 6,
+        "candidate_pool_size": 25,
+        "max_hops": 2,
+        "traversal_strategy": TraversalStrategy.BFS,
+        "community_id": None,
+        "filters": None,
+        "enable_lexical_fusion": True,
+        "latency_breakdown": {},
+    }
+
+    with patch("backend.core.langgraph_workflow.VectorlessService") as lexical_cls:
+        lexical_cls.return_value.search_chunks.return_value = [
+            {"content": "lexical evidence", "score": 0.7, "source": "vectorless"}
+        ]
+        fetched = asyncio.run(workflow._parallel_fetch(state))
+
+    fetched.update({
+        "mode": QueryMode.HYBRID,
+        "vector_fusion_weight": 1.0,
+        "graph_fusion_weight": 1.2,
+        "lexical_fusion_weight": 0.6,
+    })
+    fused = asyncio.run(workflow._fusion_node(fetched))
+
+    assert fetched["lexical_results"][0]["content"] == "lexical evidence"
+    assert fused["fused_results"][0]["content"] == "graph evidence"
+    assert fused["fused_results"][0]["rrf_contributions"]["graph"] > 0

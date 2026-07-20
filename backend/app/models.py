@@ -1,7 +1,7 @@
 """
 Pydantic Models for API Requests and Responses
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional, Dict, Any
 from enum import Enum
 from backend.core.config import settings
@@ -42,9 +42,22 @@ class QueryRequest(BaseModel):
     community_id: Optional[str] = Field(default=None, description="Optional graph community restriction")
     enable_conditional_recovery: bool = Field(default=True, description="Recover weak retrieval before RRF")
     enable_hyde_fallback: bool = Field(default=False, description="Opt-in constrained HyDE vector fallback")
+    enable_lexical_fusion: bool = Field(default=False, description="Opt-in BM25 channel for hybrid fusion")
+    vector_fusion_weight: float = Field(default=settings.FUSION_VECTOR_WEIGHT, ge=0, le=5)
+    graph_fusion_weight: float = Field(default=settings.FUSION_GRAPH_WEIGHT, ge=0, le=5)
+    lexical_fusion_weight: float = Field(default=settings.FUSION_LEXICAL_WEIGHT, ge=0, le=5)
     filters: Optional[Dict[str, Any]] = Field(default=None, description="Additional filters")
     attachment_content: Optional[str] = Field(default=None, description="Raw text of the document attachment")
     attachment_name: Optional[str] = Field(default=None, description="Name of the document attachment")
+
+    @model_validator(mode="after")
+    def validate_active_fusion_weights(self):
+        active_total = self.vector_fusion_weight + self.graph_fusion_weight
+        if self.enable_lexical_fusion:
+            active_total += self.lexical_fusion_weight
+        if active_total <= 0:
+            raise ValueError("at least one active fusion weight must be positive")
+        return self
 
 
 class DocumentChunk(BaseModel):
@@ -69,6 +82,7 @@ class QueryResponse(BaseModel):
     latency_breakdown: Optional[Dict[str, float]] = None
     recovery_triggered: bool = False
     recovery_details: Optional[Dict[str, Any]] = None
+    fusion_details: Optional[Dict[str, Any]] = None
 
 
 class IngestRequest(BaseModel):

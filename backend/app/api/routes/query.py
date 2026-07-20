@@ -43,6 +43,10 @@ async def query_system(query_request: QueryRequest, request: Request):
             community_id=query_request.community_id,
             enable_conditional_recovery=query_request.enable_conditional_recovery,
             enable_hyde_fallback=query_request.enable_hyde_fallback,
+            enable_lexical_fusion=query_request.enable_lexical_fusion,
+            vector_fusion_weight=query_request.vector_fusion_weight,
+            graph_fusion_weight=query_request.graph_fusion_weight,
+            lexical_fusion_weight=query_request.lexical_fusion_weight,
             filters=query_request.filters,
             attachment_content=query_request.attachment_content,
             attachment_name=query_request.attachment_name,
@@ -62,6 +66,7 @@ async def query_system(query_request: QueryRequest, request: Request):
             latency_breakdown=result["latency"],
             recovery_triggered=result["recovery_triggered"],
             recovery_details=result["recovery"],
+            fusion_details=result["fusion"],
         )
 
     except Exception as e:

@@ -100,3 +100,21 @@ def test_max_hops_is_exposed_and_validated_by_api_model():
         QueryRequest(query="invalid", max_hops=6)
     with pytest.raises(ValueError, match="max_hops"):
         MultiHopGraphRetriever(MagicMock(), max_hops=0)
+
+
+def test_query_model_validates_active_fusion_weights():
+    request = QueryRequest(
+        query="combine channels",
+        enable_lexical_fusion=True,
+        vector_fusion_weight=0.8,
+        graph_fusion_weight=1.2,
+        lexical_fusion_weight=0.5,
+    )
+    assert request.graph_fusion_weight == 1.2
+
+    with pytest.raises(ValueError, match="active fusion weight"):
+        QueryRequest(
+            query="invalid weights",
+            vector_fusion_weight=0,
+            graph_fusion_weight=0,
+        )

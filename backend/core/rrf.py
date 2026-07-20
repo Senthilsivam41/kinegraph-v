@@ -2,13 +2,15 @@
 import math
 import re
 from collections import Counter
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from backend.core.config import settings
 
 
 def reciprocal_rank_fusion(
     results_list: List[List[Dict[str, Any]]],
-    k: int = None
+    k: Optional[int] = None,
+    weights: Optional[List[float]] = None,
+    source_names: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Perform Reciprocal Rank Fusion on multiple result lists
@@ -18,25 +20,40 @@ def reciprocal_rank_fusion(
     Args:
         results_list: List of result lists from different sources
         k: Constant for RRF formula (default from settings)
+        weights: Optional non-negative multiplier for each result list.
+        source_names: Optional names used to expose per-channel contributions.
         
     Returns:
         Fused and ranked results
     """
     if k is None:
         k = settings.RRF_K
-    
+    if weights is None:
+        weights = [1.0] * len(results_list)
+    if len(weights) != len(results_list):
+        raise ValueError("weights must match results_list length")
+    if any(weight < 0 for weight in weights) or (weights and not any(weights)):
+        raise ValueError("weights must be non-negative with at least one positive value")
+    if source_names is None:
+        source_names = [f"source_{index}" for index in range(len(results_list))]
+    if len(source_names) != len(results_list):
+        raise ValueError("source_names must match results_list length")
+
     # Dictionary to store RRF scores
     rrf_scores: Dict[str, float] = {}
     document_data: Dict[str, Dict[str, Any]] = {}
+    contributions: Dict[str, Dict[str, float]] = {}
     
     # Calculate RRF scores for each result list
-    for results in results_list:
+    for results, weight, source_name in zip(results_list, weights, source_names):
+        if weight == 0:
+            continue
         for rank, result in enumerate(results, start=1):
             # Use content as unique identifier
             doc_id = result.get('content', '')[:100]  # Use first 100 chars as ID
             
             # Calculate RRF score
-            score = 1 / (k + rank)
+            score = weight / (k + rank)
             
             # Accumulate scores
             if doc_id in rrf_scores:
@@ -44,6 +61,11 @@ def reciprocal_rank_fusion(
             else:
                 rrf_scores[doc_id] = score
                 document_data[doc_id] = result
+            source_contributions = contributions.setdefault(doc_id, {})
+            source_contributions[source_name] = round(
+                source_contributions.get(source_name, 0.0) + score,
+                8,
+            )
     
     # Sort by RRF score (descending)
     sorted_docs = sorted(
@@ -60,6 +82,7 @@ def reciprocal_rank_fusion(
         # Keep original score as well
         result['original_score'] = result.get('score', 0)
         result['score'] = rrf_score  # Use RRF score as primary score
+        result['rrf_contributions'] = contributions.get(doc_id, {})
         fused_results.append(result)
     
     return fused_results
