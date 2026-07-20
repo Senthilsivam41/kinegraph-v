@@ -30,6 +30,7 @@ from backend.core.rrf import deduplicate_results, reciprocal_rank_fusion
 from backend.core.query_recovery import QueryRecoveryEngine
 from backend.services.chroma_service import ChromaService
 from backend.services.neo4j_service import Neo4jService
+from backend.services.vectorless_service import VectorlessService
 from backend.graph_retrieval.langgraph_node import LangGraphGraphRetrieverNode
 
 logger = logging.getLogger(__name__)
@@ -96,6 +97,11 @@ class WorkflowState(TypedDict):
     filters: Optional[Dict[str, Any]]
     vector_results: List[Dict[str, Any]]
     graph_results: List[Dict[str, Any]]
+    lexical_results: List[Dict[str, Any]]
+    enable_lexical_fusion: bool
+    vector_fusion_weight: float
+    graph_fusion_weight: float
+    lexical_fusion_weight: float
     recovery_triggered: bool
     recovery_details: Dict[str, Any]
     fused_results: List[Dict[str, Any]]
@@ -366,18 +372,28 @@ class HybridRAGWorkflow:
             community_id=state.get("community_id"),
         )
 
-        vector_results, graph_results = await asyncio.gather(
-            vector_task, graph_task, return_exceptions=True
-        )
+        tasks = [vector_task, graph_task]
+        if state.get("enable_lexical_fusion", False):
+            tasks.append(asyncio.to_thread(
+                VectorlessService().search_chunks,
+                query=rq,
+                top_k=fetch_n,
+                filters=state.get("filters"),
+            ))
+
+        retrieved = await asyncio.gather(*tasks, return_exceptions=True)
+        vector_results, graph_results = retrieved[:2]
+        lexical_results = retrieved[2] if len(retrieved) > 2 else []
 
         state["vector_results"] = vector_results if isinstance(vector_results, list) else []
         state["graph_results"]  = graph_results  if isinstance(graph_results,  list) else []
+        state["lexical_results"] = lexical_results if isinstance(lexical_results, list) else []
         state["latency_breakdown"]["parallel_fetch_ms"] = round(
             (time.perf_counter() - t0) * 1000, 2
         )
         logger.info(
-            "[ParallelFetch] vector=%d graph=%d (%.0fms)",
-            len(state["vector_results"]), len(state["graph_results"]),
+            "[ParallelFetch] vector=%d graph=%d lexical=%d (%.0fms)",
+            len(state["vector_results"]), len(state["graph_results"]), len(state["lexical_results"]),
             state["latency_breakdown"]["parallel_fetch_ms"],
         )
         return state
@@ -397,6 +413,7 @@ class HybridRAGWorkflow:
         )
         state["vector_results"] = results
         state["graph_results"] = []
+        state["lexical_results"] = []
         state["latency_breakdown"]["vector_agent_ms"] = round(
             (time.perf_counter() - t0) * 1000, 2
         )
@@ -417,6 +434,7 @@ class HybridRAGWorkflow:
         )
         state["graph_results"] = results
         state["vector_results"] = []
+        state["lexical_results"] = []
         state["latency_breakdown"]["graph_agent_ms"] = round(
             (time.perf_counter() - t0) * 1000, 2
         )
@@ -462,6 +480,7 @@ class HybridRAGWorkflow:
 
         state["vector_results"] = results
         state["graph_results"] = []
+        state["lexical_results"] = []
         state["latency_breakdown"]["vectorless_agent_ms"] = round(
             (time.perf_counter() - t0) * 1000, 2
         )
@@ -623,8 +642,17 @@ class HybridRAGWorkflow:
         elif mode == QueryMode.GRAPH:
             fused = state["graph_results"]
         else:
-            lists = [r for r in [state["vector_results"], state["graph_results"]] if r]
-            fused = reciprocal_rank_fusion(lists) if lists else []
+            channels = [
+                ("vector", state["vector_results"], state.get("vector_fusion_weight", 1.0)),
+                ("graph", state["graph_results"], state.get("graph_fusion_weight", 1.0)),
+                ("lexical", state.get("lexical_results", []), state.get("lexical_fusion_weight", 0.0)),
+            ]
+            active = [(name, results, weight) for name, results, weight in channels if results and weight > 0]
+            fused = reciprocal_rank_fusion(
+                [results for _, results, _ in active],
+                weights=[weight for _, _, weight in active],
+                source_names=[name for name, _, _ in active],
+            ) if active else []
 
         fused = deduplicate_results(
             fused,
@@ -734,6 +762,7 @@ class HybridRAGWorkflow:
                     "graph_signals_applied": result.get("graph_signals_applied", False),
                     "rerank_mode": result.get("rerank_mode", "unknown"),
                     "rerank_components": result.get("rerank_components", {}),
+                    "rrf_contributions": result.get("rrf_contributions", {}),
                     "intent": state.get("intent", ""),
                 },
                 score=result.get("score", 0.0),
@@ -754,6 +783,10 @@ class HybridRAGWorkflow:
         max_results: int = settings.CONTEXT_TOP_K,
         candidate_pool_size: int = settings.RETRIEVAL_CANDIDATE_LIMIT,
         max_hops: int = settings.GRAPH_MAX_HOPS,
+        enable_lexical_fusion: bool = False,
+        vector_fusion_weight: float = settings.FUSION_VECTOR_WEIGHT,
+        graph_fusion_weight: float = settings.FUSION_GRAPH_WEIGHT,
+        lexical_fusion_weight: float = settings.FUSION_LEXICAL_WEIGHT,
         traversal_strategy: TraversalStrategy = TraversalStrategy.BFS,
         community_id: Optional[str] = None,
         enable_conditional_recovery: bool = True,
@@ -779,6 +812,11 @@ class HybridRAGWorkflow:
             filters=filters,
             vector_results=[],
             graph_results=[],
+            lexical_results=[],
+            enable_lexical_fusion=enable_lexical_fusion,
+            vector_fusion_weight=vector_fusion_weight,
+            graph_fusion_weight=graph_fusion_weight,
+            lexical_fusion_weight=lexical_fusion_weight,
             recovery_triggered=False,
             recovery_details={},
             fused_results=[],
@@ -800,6 +838,10 @@ class HybridRAGWorkflow:
         max_results: int = settings.CONTEXT_TOP_K,
         candidate_pool_size: int = settings.RETRIEVAL_CANDIDATE_LIMIT,
         max_hops: int = settings.GRAPH_MAX_HOPS,
+        enable_lexical_fusion: bool = False,
+        vector_fusion_weight: float = settings.FUSION_VECTOR_WEIGHT,
+        graph_fusion_weight: float = settings.FUSION_GRAPH_WEIGHT,
+        lexical_fusion_weight: float = settings.FUSION_LEXICAL_WEIGHT,
         traversal_strategy: TraversalStrategy = TraversalStrategy.BFS,
         community_id: Optional[str] = None,
         enable_conditional_recovery: bool = True,
@@ -837,6 +879,11 @@ class HybridRAGWorkflow:
             filters=filters,
             vector_results=[],
             graph_results=[],
+            lexical_results=[],
+            enable_lexical_fusion=enable_lexical_fusion,
+            vector_fusion_weight=vector_fusion_weight,
+            graph_fusion_weight=graph_fusion_weight,
+            lexical_fusion_weight=lexical_fusion_weight,
             recovery_triggered=False,
             recovery_details={},
             fused_results=[],
@@ -857,4 +904,10 @@ class HybridRAGWorkflow:
             "latency":    final_state["latency_breakdown"],
             "recovery_triggered": final_state["recovery_triggered"],
             "recovery": final_state["recovery_details"],
+            "fusion": {
+                "lexical_enabled": final_state["enable_lexical_fusion"],
+                "vector_weight": final_state["vector_fusion_weight"],
+                "graph_weight": final_state["graph_fusion_weight"],
+                "lexical_weight": final_state["lexical_fusion_weight"],
+            },
         }

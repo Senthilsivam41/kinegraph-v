@@ -369,6 +369,10 @@ class RAGASEvaluator:
         max_results: int = settings.CONTEXT_TOP_K,
         max_hops: int = settings.GRAPH_MAX_HOPS,
         candidate_pool_size: int = settings.RETRIEVAL_CANDIDATE_LIMIT,
+        enable_lexical_fusion: bool = False,
+        vector_fusion_weight: float = settings.FUSION_VECTOR_WEIGHT,
+        graph_fusion_weight: float = settings.FUSION_GRAPH_WEIGHT,
+        lexical_fusion_weight: float = settings.FUSION_LEXICAL_WEIGHT,
     ) -> Dict[str, Any]:
         """
         Run the live workflow on a single query and evaluate the output with RAGAS.
@@ -381,6 +385,10 @@ class RAGASEvaluator:
                 max_results=max_results,
                 max_hops=max_hops,
                 candidate_pool_size=candidate_pool_size,
+                enable_lexical_fusion=enable_lexical_fusion,
+                vector_fusion_weight=vector_fusion_weight,
+                graph_fusion_weight=graph_fusion_weight,
+                lexical_fusion_weight=lexical_fusion_weight,
             )
             answer = res.get("answer", "")
             chunks = res.get("chunks", [])
@@ -416,6 +424,10 @@ class RAGASEvaluator:
             "max_results": max_results,
             "max_hops": max_hops,
             "candidate_pool_size": candidate_pool_size,
+            "enable_lexical_fusion": enable_lexical_fusion,
+            "vector_fusion_weight": vector_fusion_weight,
+            "graph_fusion_weight": graph_fusion_weight,
+            "lexical_fusion_weight": lexical_fusion_weight,
             **scores,
         }
 
@@ -427,6 +439,10 @@ class RAGASEvaluator:
         max_results: int = settings.CONTEXT_TOP_K,
         max_hops: int = settings.GRAPH_MAX_HOPS,
         candidate_pool_size: int = settings.RETRIEVAL_CANDIDATE_LIMIT,
+        enable_lexical_fusion: bool = False,
+        vector_fusion_weight: float = settings.FUSION_VECTOR_WEIGHT,
+        graph_fusion_weight: float = settings.FUSION_GRAPH_WEIGHT,
+        lexical_fusion_weight: float = settings.FUSION_LEXICAL_WEIGHT,
         concurrency_limit: int = 3,
         show_progress: bool = True,
     ) -> pd.DataFrame:
@@ -440,6 +456,7 @@ class RAGASEvaluator:
             max_results: Maximum retrieved context chunks.
             max_hops: Maximum graph traversal depth.
             candidate_pool_size: Per-channel candidates fetched before reranking.
+            enable_lexical_fusion: Include the local BM25 channel in hybrid fusion.
             concurrency_limit: Concurrency limit for executing queries against the LLM/databases.
             show_progress: Whether to print progress to stdout.
         """
@@ -461,6 +478,10 @@ class RAGASEvaluator:
                         max_results=max_results,
                         max_hops=max_hops,
                         candidate_pool_size=candidate_pool_size,
+                        enable_lexical_fusion=enable_lexical_fusion,
+                        vector_fusion_weight=vector_fusion_weight,
+                        graph_fusion_weight=graph_fusion_weight,
+                        lexical_fusion_weight=lexical_fusion_weight,
                     )
                     answer = res.get("answer", "")
                     chunks = res.get("chunks", [])
@@ -498,6 +519,10 @@ class RAGASEvaluator:
                 "max_results": max_results,
                 "max_hops": max_hops,
                 "candidate_pool_size": candidate_pool_size,
+                "enable_lexical_fusion": enable_lexical_fusion,
+                "vector_fusion_weight": vector_fusion_weight,
+                "graph_fusion_weight": graph_fusion_weight,
+                "lexical_fusion_weight": lexical_fusion_weight,
                 **scores,
             }
             
@@ -615,6 +640,10 @@ if __name__ == "__main__":
         default=settings.RETRIEVAL_CANDIDATE_LIMIT,
     )
     parser.add_argument("--run-label", default="latest", help="Safe label used for persisted result files")
+    parser.add_argument("--enable-lexical-fusion", action="store_true")
+    parser.add_argument("--vector-weight", type=float, default=settings.FUSION_VECTOR_WEIGHT)
+    parser.add_argument("--graph-weight", type=float, default=settings.FUSION_GRAPH_WEIGHT)
+    parser.add_argument("--lexical-weight", type=float, default=settings.FUSION_LEXICAL_WEIGHT)
     args = parser.parse_args()
     if not 1 <= args.max_hops <= 5:
         parser.error("--max-hops must be between 1 and 5")
@@ -622,6 +651,11 @@ if __name__ == "__main__":
         parser.error("--max-results must be between 1 and 100")
     if not 5 <= args.candidate_pool_size <= 100:
         parser.error("--candidate-pool-size must be between 5 and 100")
+    weights = [args.vector_weight, args.graph_weight]
+    if args.enable_lexical_fusion:
+        weights.append(args.lexical_weight)
+    if any(weight < 0 or weight > 5 for weight in weights) or not any(weights):
+        parser.error("active fusion weights must be between 0 and 5 with at least one positive value")
     run_label = re.sub(r"[^a-zA-Z0-9_-]+", "-", args.run_label).strip("-") or "latest"
     
     print("Checking RAGAS Evaluator configuration...")
@@ -678,6 +712,10 @@ if __name__ == "__main__":
             max_results=args.max_results,
             max_hops=args.max_hops,
             candidate_pool_size=args.candidate_pool_size,
+            enable_lexical_fusion=args.enable_lexical_fusion,
+            vector_fusion_weight=args.vector_weight,
+            graph_fusion_weight=args.graph_weight,
+            lexical_fusion_weight=args.lexical_weight,
             concurrency_limit=3,
         ))
     finally:

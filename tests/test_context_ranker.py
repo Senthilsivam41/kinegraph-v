@@ -97,3 +97,18 @@ def test_cross_encoder_logits_use_query_independent_sigmoid_scores():
     assert [item[0]["content"] for item in scored] == ["strong", "weak"]
     assert scored[0][1] == pytest.approx(0.8808, abs=0.0001)
     assert scored[1][1] == pytest.approx(0.1192, abs=0.0001)
+
+
+def test_weighted_rrf_changes_channel_priority_and_reports_contributions():
+    vector = [{"content": "vector evidence", "score": 0.8, "source": "vector"}]
+    graph = [{"content": "graph evidence", "score": 0.7, "source": "graph"}]
+
+    fused = reciprocal_rank_fusion(
+        [vector, graph],
+        k=60,
+        weights=[1.0, 2.0],
+        source_names=["vector", "graph"],
+    )
+
+    assert [item["content"] for item in fused] == ["graph evidence", "vector evidence"]
+    assert fused[0]["rrf_contributions"] == {"graph": pytest.approx(2 / 61)}

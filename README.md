@@ -140,6 +140,31 @@ The original query remains authoritative for final reranking. Generated vocabula
 }
 ```
 
+### 8. Recall Controls and Schema Coverage
+
+Weak compound and multi-hop queries are decomposed before RRF. Each validated subquery retrieves independently from the active vector and graph channels, then per-channel results are fused before cross-channel fusion. Strong initial retrieval skips decomposition, preserving the evidence-first recovery gate.
+
+Hybrid RRF weights are request-tunable and expose per-result `rrf_contributions`. Vector and graph remain equally weighted by default. Local BM25 participation is opt-in so lexical expansion can be measured without silently changing normal hybrid behavior.
+
+```json
+{
+  "query": "How do graph traversal and vector retrieval contribute to Kinegraph?",
+  "mode": "hybrid",
+  "vector_fusion_weight": 1.0,
+  "graph_fusion_weight": 1.2,
+  "enable_lexical_fusion": true,
+  "lexical_fusion_weight": 0.6
+}
+```
+
+Audit strict ontology coverage, recurring fallback relation types, and golden questions without graph entity mentions using:
+
+```bash
+PYTHONPATH=. python scripts/audit_schema_coverage.py
+```
+
+The audit is diagnostic rather than an automatic schema mutation. Entity-mention coverage is not a RAGAS score; repeated fallback types and uncovered golden questions must be reviewed before expanding `config/ontology_schema.yaml`.
+
 ---
 
 ## 🏗️ Architecture
@@ -325,6 +350,11 @@ The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor s
   ```bash
   PYTHONPATH=. python eval/ragas_evaluator.py --max-hops 1 --max-results 6 --candidate-pool-size 25 --run-label hop1
   PYTHONPATH=. python eval/ragas_evaluator.py --max-hops 2 --max-results 6 --candidate-pool-size 25 --run-label hop2
+  ```
+- **Fusion recall experiment**: Sweep weights while preserving separate accepted outputs:
+  ```bash
+  PYTHONPATH=. python eval/ragas_evaluator.py --vector-weight 1.0 --graph-weight 1.2 --run-label graph12
+  PYTHONPATH=. python eval/ragas_evaluator.py --enable-lexical-fusion --vector-weight 1.0 --graph-weight 1.0 --lexical-weight 0.6 --run-label lexical06
   ```
 - **Live Diagnostics**: Single-query and concurrent live execution are implemented by `evaluate_live_single` and `evaluate_live_workflow`. The CLI loads the real CSV and executes `HybridRAGWorkflow`; it does not depend on nonexistent `src/`, `benchmarks/`, or `scratch/run_evaluation.py` paths.
 - **Acceptance Gate**: Diagnostic keyword fallbacks remain available, but the CLI exits with status `2` and refuses to update the report or chart when any result has `ragas_failed=True`.

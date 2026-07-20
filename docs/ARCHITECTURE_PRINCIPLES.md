@@ -108,6 +108,8 @@ Every graph result should be able to answer: “How did the system reach this no
 
 - Only valid candidates enter RRF.
 - Preserve source-specific and pre-fusion scores.
+- Keep channel weights explicit, tunable, and recorded with benchmark runs.
+- Add lexical/BM25 fusion only behind an experiment flag until it proves recall gain without precision regression.
 - Track contributing retrieval channels.
 - Deduplicate using stable identifiers where possible.
 - Apply relevance filtering after fusion.
