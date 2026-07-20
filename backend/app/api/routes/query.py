@@ -71,6 +71,7 @@ async def query_system(query_request: QueryRequest, request: Request):
             grounded_claims=result["grounded_claims"],
             citation_validation=result["citation_validation"],
             grounding_critique=result["grounding_critique"],
+            answer_relevancy=result["answer_relevancy"],
         )
 
     except Exception as e:

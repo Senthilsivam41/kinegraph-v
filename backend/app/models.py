@@ -90,6 +90,7 @@ class QueryResponse(BaseModel):
     grounded_claims: Optional[List[Dict[str, Any]]] = None
     citation_validation: Optional[Dict[str, Any]] = None
     grounding_critique: Optional[Dict[str, Any]] = None
+    answer_relevancy: Optional[Dict[str, Any]] = None
 
 
 class IngestRequest(BaseModel):

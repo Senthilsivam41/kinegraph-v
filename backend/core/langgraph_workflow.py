@@ -51,6 +51,11 @@ provided context. Write atomic claims that directly answer the question, and att
 one or more exact context chunk IDs to every claim. Never invent, shorten, translate,
 or renumber a chunk ID. Omit claims that the context does not support.
 
+Answer the literal question asked. Do not summarize the retrieved context, add
+background, or include merely related facts. For a narrow question, return only the
+narrow answer. For a compound question, include only claims that resolve an explicit
+question component.
+
 Return JSON only, with exactly this shape:
 {{"claims":[{{"text":"one atomic supported claim","chunk_ids":["exact-chunk-id"]}}],"confidence":0.0}}
 
@@ -71,16 +76,24 @@ GENERATION_PROMPT = ChatPromptTemplate.from_messages([
     ("human",  _HUMAN_PROMPT),
 ])
 
-_CRITIC_SYSTEM_PROMPT = """You are Kinegraph's grounding critic. Check each existing
-claim only against the text of its cited chunks. Retain a claim only when every
-material statement is directly supported. You may remove claims, but must never
-rewrite a claim, add a claim, or add a citation.
+_CRITIC_SYSTEM_PROMPT = """You are Kinegraph's grounding and answer-relevance critic.
+Evaluate each existing claim against two independent objective criteria:
+1. Grounding: every material statement is directly supported by its cited chunks.
+2. Direct relevance: the claim answers the literal user question or one explicit
+   component of a compound question. Related background and context summaries are
+   not directly relevant.
+
+You may filter existing claims, but must never rewrite a claim, add a claim, or add a
+citation. Judge relevance independently of length, detail, tone, or writing quality.
 
 Return JSON only:
-{{"supported_claim_ids":["claim-1"],"unsupported_reasons":{{"claim-2":"concise reason"}}}}
+{{"supported_claim_ids":["claim-1"],"directly_relevant_claim_ids":["claim-1"],"unsupported_reasons":{{"claim-2":"concise reason"}},"irrelevant_reasons":{{"claim-3":"concise reason"}},"question_coverage":"complete","missing_question_facets":[]}}
 """
 
-_CRITIC_HUMAN_PROMPT = """Each claim below includes only the chunks it cited.
+_CRITIC_HUMAN_PROMPT = """## LITERAL USER QUESTION
+{question}
+
+Each claim below includes only the chunks it cited.
 Do not use one claim's evidence to support another claim.
 
 ## CLAIMS WITH CITED CONTEXT
@@ -127,6 +140,7 @@ class WorkflowState(TypedDict):
     citation_context: Dict[str, str]
     citation_validation: Dict[str, Any]
     grounding_critique: Dict[str, Any]
+    answer_relevancy: Dict[str, Any]
     generated_answer: str
     answer_confidence: float
     latency_breakdown: Dict[str, float]
@@ -803,6 +817,12 @@ class HybridRAGWorkflow:
                 "reason": "disabled" if claims else "no_validated_claims",
                 "removed_claim_ids": [],
             }
+            state["answer_relevancy"] = {
+                "completed": False,
+                "reason": "disabled" if claims else "no_validated_claims",
+                "question_coverage": "none" if not claims else "unverified",
+                "removed_irrelevant_claim_ids": [],
+            }
             state["latency_breakdown"]["grounding_critique_ms"] = round(
                 (time.perf_counter() - t0) * 1000, 2
             )
@@ -823,11 +843,22 @@ class HybridRAGWorkflow:
                 for claim in claims
             ]
             response = await self._invoke_prompt(CRITIC_PROMPT, self.critic_llm, {
+                "question": state["query"],
                 "claims_json": json.dumps(critic_claims, ensure_ascii=False),
             })
             retained, critique = apply_critic_response(claims, str(response.content))
             state["grounded_claims"] = retained
             state["grounding_critique"] = critique
+            state["answer_relevancy"] = {
+                "completed": critique.get("completed", False),
+                "question_coverage": critique.get("question_coverage", "unverified"),
+                "missing_question_facets": critique.get("missing_question_facets", []),
+                "retained_relevant_claim_ids": critique.get("retained_claim_ids", []),
+                "removed_irrelevant_claim_ids": critique.get(
+                    "removed_irrelevant_claim_ids", []
+                ),
+                "irrelevant_reasons": critique.get("irrelevant_reasons", {}),
+            }
             state["generated_answer"] = (
                 format_grounded_claims(retained)
                 if retained
@@ -844,6 +875,12 @@ class HybridRAGWorkflow:
                 "reason": "critic_failed",
                 "error": str(exc),
                 "removed_claim_ids": [],
+            }
+            state["answer_relevancy"] = {
+                "completed": False,
+                "reason": "critic_failed",
+                "question_coverage": "unverified",
+                "removed_irrelevant_claim_ids": [],
             }
 
         state["latency_breakdown"]["grounding_critique_ms"] = round(
@@ -935,6 +972,7 @@ class HybridRAGWorkflow:
             citation_context={},
             citation_validation={},
             grounding_critique={},
+            answer_relevancy={},
             generated_answer="",
             answer_confidence=0.0,
             latency_breakdown={},
@@ -1008,6 +1046,7 @@ class HybridRAGWorkflow:
             citation_context={},
             citation_validation={},
             grounding_critique={},
+            answer_relevancy={},
             generated_answer="",
             answer_confidence=0.0,
             latency_breakdown={},
@@ -1027,6 +1066,7 @@ class HybridRAGWorkflow:
             "grounded_claims": final_state["grounded_claims"],
             "citation_validation": final_state["citation_validation"],
             "grounding_critique": final_state["grounding_critique"],
+            "answer_relevancy": final_state["answer_relevancy"],
             "fusion": {
                 "lexical_enabled": final_state["enable_lexical_fusion"],
                 "vector_weight": final_state["vector_fusion_weight"],

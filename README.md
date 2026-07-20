@@ -69,17 +69,25 @@ Unlike default implementations that collapse both vectors and graph entities int
 Every ingested document goes through a pipeline of concurrent, specialized extractors aligned with a constrained ontology schema:
 
 ```mermaid
-graph LR
-    Doc[Ingested Document] --> LP[LiteParse Service]
-    LP -->|Layout-aware Markdown| Parse[Text Chunking]
-    LP -.->|Fallback: PyMuPDF| Parse
-    Parse --> Ext1[SchemaLLMPathExtractor]
-    Parse --> Ext2[TaggedSimpleLLMPathExtractor]
-    Parse --> Ext3[EntityResolutionExtractor]
-    Parse --> Ext4[ImplicitPathExtractor]
-    
-    Ext1 & Ext2 & Ext3 & Ext4 --> GraphStore[CustomNeo4jPropertyGraphStore]
-    Ext1 & Ext2 & Ext3 & Ext4 --> VectorStore[ChromaVectorStore]
+flowchart LR
+    Doc["PDF, Markdown, or text"] --> Parse{"PDF?"}
+    Parse -->|"yes"| LiteParse["LiteParse: layout-aware Markdown"]
+    LiteParse -.->|"unavailable or failed"| PyMuPDF["PyMuPDF fallback"]
+    Parse -->|"no"| SourceText["Source text"]
+    LiteParse --> Chunking["Recursive chunking + SHA-256 content hashes"]
+    PyMuPDF --> Chunking
+    SourceText --> Chunking
+    Chunking --> Idempotency{"Chunk already in Neo4j?"}
+    Idempotency -->|"yes"| Skip["Skip duplicate"]
+    Idempotency -->|"no"| Extractors["Schema + tagged + resolution + implicit-path extractors"]
+    Extractors --> PGI["LlamaIndex PropertyGraphIndex"]
+    PGI --> GraphStore[("Neo4j graph + MENTIONS links")]
+    PGI --> VectorStore[("ChromaDB embeddings")]
+    GraphStore --> Enricher["NodeEnricher for touched entities"]
+    VectorStore --> Verify["Exact-ID / provenance verification"]
+    Verify --> Enricher
+    Enricher -->|"verified context IDs, descriptions, relationship evidence, positioning"| GraphStore
+    Enricher --> Audit["Complete / incomplete enrichment report"]
 ```
 
 1. **`SchemaLLMPathExtractor`**: Constrains extraction to a strict YAML-defined ontology (e.g., `Component`, `Service`, `Command`, `Status`) and relations (e.g., `Uses`, `Implements`, `Minimizes`).
@@ -169,9 +177,9 @@ The audit is diagnostic rather than an automatic schema mutation. Entity-mention
 
 The synthesis node now returns atomic claims as structured JSON, with every claim carrying one or more exact IDs from the reranked context. Chroma result IDs and graph node IDs are preserved through retrieval; a deterministic validator rejects claims with missing or unknown citations before any answer text is returned. Accepted claims are rendered with their verified IDs, such as `[vec_0452]`.
 
-A separate temperature-0 grounding critic then checks each accepted claim against only its cited chunk text. The critic may retain or remove existing claims, but cannot rewrite them, add facts, or introduce citations. If the critic is unavailable, Kinegraph visibly reports the failure and returns only the claims that passed deterministic citation validation. Set `enable_grounding_critique: false` only for controlled benchmark comparisons.
+A separate temperature-0 critic then checks each accepted claim against only its cited chunk text and the literal user question. A claim survives only when it is both grounded and directly answers the question (or an explicit component of a compound question); grounded background and broad context summaries are removed. The critic may retain or remove existing claims, but cannot rewrite them, add facts, or introduce citations. If the critic is unavailable, Kinegraph visibly reports the failure and returns only the claims that passed deterministic citation validation. Set `enable_grounding_critique: false` only for controlled benchmark comparisons.
 
-Both synthesis and critique default to temperature `0.0`. Configure them with `GENERATION_TEMPERATURE`, `FAITHFULNESS_CRITIC_MODEL`, and `FAITHFULNESS_CRITIC_TEMPERATURE`. API responses expose `citation_validation`, `grounding_critique`, and per-stage critique latency so faithfulness behavior can be audited per query.
+Both synthesis and critique default to temperature `0.0`. Configure them with `GENERATION_TEMPERATURE`, `FAITHFULNESS_CRITIC_MODEL`, and `FAITHFULNESS_CRITIC_TEMPERATURE`. API responses expose `citation_validation`, `grounding_critique`, `answer_relevancy`, and per-stage critique latency. Relevancy metadata distinguishes unsupported claims from supported-but-irrelevant claims and reports complete, partial, or missing question coverage.
 
 ```json
 {
@@ -188,38 +196,50 @@ Both synthesis and critique default to temperature `0.0`. Configure them with `G
 ### System Components
 
 ```mermaid
-graph TD
-    User([User Query]) --> Router{Intent Router}
-    
-    Router -->|Vector Mode| VA[Vector Agent]
-    Router -->|Hybrid/Parallel Mode| PF[Parallel Fetch]
-    Router -->|Vectorless Mode| VLA[Vectorless Agent]
-    
-    VA --> Chroma[(ChromaDB Vector Store)]
-    
+flowchart TD
+    User(["User query"]) --> API["FastAPI query endpoint"]
+    API --> Router{"Intent classification + query rewrite"}
+
+    Router -->|"vector"| VA["Vector agent"]
+    Router -->|"graph"| GA["Graph agent"]
+    Router -->|"hybrid"| PF["Parallel vector + graph fetch"]
+    Router -->|"vectorless"| VLA["Vectorless agent"]
+
+    VA --> Chroma[("ChromaDB")]
+    GA --> GraphRetriever["PropertyGraph retrieval + bounded multi-hop traversal"]
+    GraphRetriever --> Neo4j[("Neo4j")]
     PF --> Chroma
-    PF --> Neo4j[(Neo4j Graph Database)]
-    
-    VLA --> Lexical[BM25 Local Lexical Cache]
-    
-    Chroma --> Fusion[Fusion Node - Reciprocal Rank Fusion]
-    Neo4j --> Fusion
-    Lexical --> Fusion
-    
-    Fusion --> Rerank[Rerank Node - sentence-transformers]
-    Rerank --> Generate[Structured Claims plus Exact Chunk IDs]
-    Generate --> Validate[Deterministic Citation Validation]
-    Validate --> Critic[Grounding Critic - Filter Only]
-    Critic --> Output([Verified Answer])
-    
+    PF --> GraphRetriever
+    VLA --> BM25["Local BM25 / attachment search"]
+    PF -.->|"optional lexical channel"| BM25
+
+    Chroma --> Recovery{"Retrieval weak?"}
+    Neo4j --> Recovery
+    BM25 --> Recovery
+    Recovery -->|"no"| RRF["Weighted reciprocal-rank fusion"]
+    Recovery -->|"yes"| Structured["Query decomposition + vocabulary expansion"]
+    Structured --> Subqueries["Per-subquery vector / graph retrieval"]
+    Subqueries --> Recovery
+    Recovery -.->|"still weak + opt-in"| HyDE["Constrained HyDE search probe"]
+    HyDE --> Chroma
+
+    RRF --> Dedup["Stable-ID + near-duplicate filtering"]
+    Dedup --> Rerank["Semantic-first graph-aware reranker"]
+    Rerank --> Context["Top contexts with stable citation IDs"]
+    Context --> Generate["Temperature-0 structured atomic claims"]
+    Generate --> Validate{"All cited IDs exist in supplied context?"}
+    Validate -->|"reject invalid claims"| NoEvidence["Supported-evidence fallback"]
+    Validate -->|"valid claims"| Critic["Grounding + literal-question critic"]
+    Critic -->|"remove unsupported / irrelevant claims"| Format["Verified answer + observability metadata"]
+    NoEvidence --> Format
+    Format --> Output(["API response"])
+
     style User fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff
     style Router fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
-    style Fusion fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff
+    style Recovery fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
+    style RRF fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff
+    style Validate fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
     style Output fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff
-```
-
-```
-<img width="1024" height="962" alt="image" src="https://github.com/user-attachments/assets/810d3540-c0e8-43c8-b223-dd0eb00f7376" />
 ```
 
 ### Infrastructure Stack
@@ -246,10 +266,14 @@ KineticGraph-Vectra uses a **self-hosted [LiteParse](https://github.com/run-llam
 
 **Resilient Fallback:** If the LiteParse container is unavailable, `extract_text_from_pdf` silently falls back to PyMuPDF and logs a warning — ingestion never hard-fails due to parser availability.
 
-```
-[ Local PDF ] ──► [ LiteParse Container :5707 ] ──► [ Structured Markdown ]
-                           │ (unavailable)
-                           └──► [ PyMuPDF fallback ] ──► [ Plain text ]
+```mermaid
+flowchart LR
+    PDF["Local PDF"] --> LP["LiteParse container :5707"]
+    LP -->|"success"| Markdown["Layout-aware Markdown"]
+    LP -.->|"unavailable or parse error"| Fallback["Sequential PyMuPDF extraction"]
+    Fallback --> Plain["Plain text"]
+    Markdown --> Ingestion["Shared chunking and ingestion pipeline"]
+    Plain --> Ingestion
 ```
 
 **Key files:**

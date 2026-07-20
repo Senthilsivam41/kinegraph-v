@@ -65,7 +65,11 @@ def test_critic_can_only_filter_existing_claims():
         claims,
         json.dumps({
             "supported_claim_ids": ["claim-2", "invented-claim"],
+            "directly_relevant_claim_ids": ["claim-2", "invented-claim"],
             "unsupported_reasons": {"claim-1": "not entailed"},
+            "irrelevant_reasons": {},
+            "question_coverage": "complete",
+            "missing_question_facets": [],
         }),
     )
 
@@ -103,13 +107,18 @@ async def test_critique_removes_unsupported_claim_without_rewriting():
     workflow.critic_llm = object()
     workflow._invoke_prompt = AsyncMock(return_value=SimpleNamespace(content=json.dumps({
         "supported_claim_ids": ["claim-1"],
+        "directly_relevant_claim_ids": ["claim-1"],
         "unsupported_reasons": {"claim-2": "not directly supported"},
+        "irrelevant_reasons": {},
+        "question_coverage": "complete",
+        "missing_question_facets": [],
     })))
     claims = [
         {"claim_id": "claim-1", "text": "Keep", "chunk_ids": ["a"]},
         {"claim_id": "claim-2", "text": "Drop", "chunk_ids": ["b"]},
     ]
     state = {
+        "query": "What should be kept?",
         "enable_grounding_critique": True,
         "grounded_claims": claims,
         "citation_context": {"a": "Keep", "b": "unrelated"},
@@ -126,6 +135,28 @@ async def test_critique_removes_unsupported_claim_without_rewriting():
     critic_payload = json.loads(workflow._invoke_prompt.await_args.args[2]["claims_json"])
     assert critic_payload[0]["cited_context"] == {"a": "Keep"}
     assert critic_payload[1]["cited_context"] == {"b": "unrelated"}
+    assert workflow._invoke_prompt.await_args.args[2]["question"] == "What should be kept?"
+
+
+def test_critic_rejects_grounded_but_irrelevant_claims():
+    claims = [
+        {"claim_id": "claim-1", "text": "Direct answer", "chunk_ids": ["a"]},
+        {"claim_id": "claim-2", "text": "Related background", "chunk_ids": ["b"]},
+    ]
+
+    retained, details = apply_critic_response(claims, json.dumps({
+        "supported_claim_ids": ["claim-1", "claim-2"],
+        "directly_relevant_claim_ids": ["claim-1"],
+        "unsupported_reasons": {},
+        "irrelevant_reasons": {"claim-2": "background does not answer the question"},
+        "question_coverage": "complete",
+        "missing_question_facets": [],
+    }))
+
+    assert retained == [claims[0]]
+    assert details["removed_irrelevant_claim_ids"] == ["claim-2"]
+    assert details["removed_unsupported_claim_ids"] == []
+    assert details["question_coverage"] == "complete"
 
 
 def test_synthesis_and_critic_temperatures_are_deterministic():

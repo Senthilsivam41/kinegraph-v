@@ -212,6 +212,13 @@ curl -X POST "http://localhost:8000/api/v1/query" \
     "completed": true,
     "retained_claim_ids": ["claim-1"],
     "removed_claim_ids": []
+  },
+  "answer_relevancy": {
+    "completed": true,
+    "question_coverage": "complete",
+    "missing_question_facets": [],
+    "retained_relevant_claim_ids": ["claim-1"],
+    "removed_irrelevant_claim_ids": []
   }
 }
 ```
