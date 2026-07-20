@@ -31,6 +31,7 @@ def _state(**overrides):
         "intent": "relationship",
         "mode": QueryMode.HYBRID,
         "max_results": 5,
+        "candidate_pool_size": 20,
         "max_hops": 3,
         "traversal_strategy": TraversalStrategy.BFS,
         "community_id": None,

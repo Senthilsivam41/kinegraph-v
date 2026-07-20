@@ -1,4 +1,7 @@
 import inspect
+from unittest.mock import MagicMock
+
+import pytest
 
 from backend.core.context_ranker import ContextRanker
 from backend.core.langgraph_workflow import HybridRAGWorkflow
@@ -80,3 +83,17 @@ def test_rrf_and_original_scores_survive_graph_aware_reranking():
 def test_normal_workflow_enables_cross_encoder_by_default():
     default = inspect.signature(HybridRAGWorkflow.__init__).parameters["use_cross_encoder"].default
     assert default is True
+
+
+def test_cross_encoder_logits_use_query_independent_sigmoid_scores():
+    ranker = ContextRanker(use_cross_encoder=False, min_relevance_threshold=0)
+    ranker.use_cross_encoder = True
+    ranker._encoder = MagicMock()
+    ranker._encoder.predict.return_value = [-2.0, 2.0]
+    chunks = [{"content": "weak"}, {"content": "strong"}]
+
+    scored = ranker._score_chunks("query", chunks)
+
+    assert [item[0]["content"] for item in scored] == ["strong", "weak"]
+    assert scored[0][1] == pytest.approx(0.8808, abs=0.0001)
+    assert scored[1][1] == pytest.approx(0.1192, abs=0.0001)

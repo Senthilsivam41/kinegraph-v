@@ -89,7 +89,10 @@ class ContextRanker:
         if semantic_weight < 0.5:
             raise ValueError("semantic_weight must remain at least 0.5")
         self.use_cross_encoder = use_cross_encoder and _CE_AVAILABLE
+        if not 0.0 <= min_relevance_threshold <= 1.0:
+            raise ValueError("min_relevance_threshold must be between 0 and 1")
         self.min_relevance_threshold = min_relevance_threshold
+        self.model_name = model_name
         self.weights = weights
         self._encoder = None
 
@@ -109,10 +112,14 @@ class ContextRanker:
         if self.use_cross_encoder and self._encoder:
             pairs = [(query, c.get("content", "")) for c in chunks]
             scores = self._encoder.predict(pairs)
-            # Normalise cross-encoder logit scores to 0-1
-            min_s, max_s = min(scores), max(scores)
-            span = (max_s - min_s) or 1.0
-            norm = [max(0.0, min(float((s - min_s) / span), 1.0)) for s in scores]
+            # Preserve calibrated probability scores. Convert raw logits with a
+            # sigmoid rather than batch-relative min/max scaling so relevance
+            # thresholds mean the same thing across queries.
+            raw_scores = [float(score) for score in scores]
+            if all(0.0 <= score <= 1.0 for score in raw_scores):
+                norm = raw_scores
+            else:
+                norm = [1.0 / (1.0 + math.exp(-max(-60.0, min(score, 60.0)))) for score in raw_scores]
             scored = list(zip(chunks, norm))
         else:
             scored = [

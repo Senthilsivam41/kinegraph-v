@@ -11,10 +11,13 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import logging
+import json
+import re
 import time
 from typing import Any, Dict, List, Optional
 
 from backend.app.models import QueryMode
+from backend.core.config import settings
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -363,7 +366,9 @@ class RAGASEvaluator:
         question: str,
         ground_truth: Optional[str] = None,
         mode: QueryMode = QueryMode.HYBRID,
-        max_results: int = 10,
+        max_results: int = settings.CONTEXT_TOP_K,
+        max_hops: int = settings.GRAPH_MAX_HOPS,
+        candidate_pool_size: int = settings.RETRIEVAL_CANDIDATE_LIMIT,
     ) -> Dict[str, Any]:
         """
         Run the live workflow on a single query and evaluate the output with RAGAS.
@@ -374,6 +379,8 @@ class RAGASEvaluator:
                 query=question,
                 mode=mode,
                 max_results=max_results,
+                max_hops=max_hops,
+                candidate_pool_size=candidate_pool_size,
             )
             answer = res.get("answer", "")
             chunks = res.get("chunks", [])
@@ -406,6 +413,9 @@ class RAGASEvaluator:
             "workflow_latency_ms": run_latency_ms,
             "eval_latency_ms": eval_latency_ms,
             "workflow_error": workflow_error,
+            "max_results": max_results,
+            "max_hops": max_hops,
+            "candidate_pool_size": candidate_pool_size,
             **scores,
         }
 
@@ -414,7 +424,9 @@ class RAGASEvaluator:
         workflow: Any,
         dataset: List[Dict[str, Any]],
         mode: QueryMode = QueryMode.HYBRID,
-        max_results: int = 10,
+        max_results: int = settings.CONTEXT_TOP_K,
+        max_hops: int = settings.GRAPH_MAX_HOPS,
+        candidate_pool_size: int = settings.RETRIEVAL_CANDIDATE_LIMIT,
         concurrency_limit: int = 3,
         show_progress: bool = True,
     ) -> pd.DataFrame:
@@ -426,6 +438,8 @@ class RAGASEvaluator:
             dataset: List of dicts, each containing at least 'question' and optionally 'ground_truth'.
             mode: QueryMode to run the workflow (e.g. QueryMode.HYBRID).
             max_results: Maximum retrieved context chunks.
+            max_hops: Maximum graph traversal depth.
+            candidate_pool_size: Per-channel candidates fetched before reranking.
             concurrency_limit: Concurrency limit for executing queries against the LLM/databases.
             show_progress: Whether to print progress to stdout.
         """
@@ -445,6 +459,8 @@ class RAGASEvaluator:
                         query=question,
                         mode=mode,
                         max_results=max_results,
+                        max_hops=max_hops,
+                        candidate_pool_size=candidate_pool_size,
                     )
                     answer = res.get("answer", "")
                     chunks = res.get("chunks", [])
@@ -479,6 +495,9 @@ class RAGASEvaluator:
                 "workflow_latency_ms": run_latency_ms,
                 "eval_latency_ms": eval_latency_ms,
                 "workflow_error": workflow_error,
+                "max_results": max_results,
+                "max_hops": max_hops,
+                "candidate_pool_size": candidate_pool_size,
                 **scores,
             }
             
@@ -578,6 +597,7 @@ class RAGASEvaluator:
         return recs
 
 if __name__ == "__main__":
+    import argparse
     import os
     import sys
     import asyncio
@@ -585,6 +605,24 @@ if __name__ == "__main__":
     
     # Load dotenv
     load_dotenv(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env")))
+
+    parser = argparse.ArgumentParser(description="Run the accepted live Kinegraph RAGAS benchmark.")
+    parser.add_argument("--max-hops", type=int, default=settings.GRAPH_MAX_HOPS)
+    parser.add_argument("--max-results", type=int, default=settings.CONTEXT_TOP_K)
+    parser.add_argument(
+        "--candidate-pool-size",
+        type=int,
+        default=settings.RETRIEVAL_CANDIDATE_LIMIT,
+    )
+    parser.add_argument("--run-label", default="latest", help="Safe label used for persisted result files")
+    args = parser.parse_args()
+    if not 1 <= args.max_hops <= 5:
+        parser.error("--max-hops must be between 1 and 5")
+    if not 1 <= args.max_results <= 100:
+        parser.error("--max-results must be between 1 and 100")
+    if not 5 <= args.candidate_pool_size <= 100:
+        parser.error("--candidate-pool-size must be between 5 and 100")
+    run_label = re.sub(r"[^a-zA-Z0-9_-]+", "-", args.run_label).strip("-") or "latest"
     
     print("Checking RAGAS Evaluator configuration...")
     print(f"RAGAS Available: {_RAGAS_AVAILABLE}")
@@ -637,6 +675,9 @@ if __name__ == "__main__":
             workflow=workflow,
             dataset=raw_data,
             mode=QueryMode.HYBRID,
+            max_results=args.max_results,
+            max_hops=args.max_hops,
+            candidate_pool_size=args.candidate_pool_size,
             concurrency_limit=3,
         ))
     finally:
@@ -654,6 +695,14 @@ if __name__ == "__main__":
         )
         sys.exit(2)
     report = evaluator.generate_report(results_df)
+
+    reports_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "reports"))
+    os.makedirs(reports_dir, exist_ok=True)
+    results_path = os.path.join(reports_dir, f"ragas_{run_label}_results.csv")
+    report_path = os.path.join(reports_dir, f"ragas_{run_label}_report.json")
+    results_df.to_csv(results_path, index=False)
+    with open(report_path, "w", encoding="utf-8") as report_file:
+        json.dump(report, report_file, indent=2)
     
     print("\n=== PER-METRIC AVERAGE SCORES ===")
     for metric, stats in report['per_metric'].items():
@@ -681,8 +730,8 @@ if __name__ == "__main__":
     ax.set_title('PropertyGraphIndex Hybrid RAG Scores', size=13, pad=20)
     plt.tight_layout()
     
-    reports_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "reports"))
-    os.makedirs(reports_dir, exist_ok=True)
-    graph_path = os.path.join(reports_dir, 'spider_graph_ragas_score.png')
+    graph_path = os.path.join(reports_dir, f"spider_graph_ragas_{run_label}.png")
     plt.savefig(graph_path, dpi=300)
-    print(f"\nSpider graph saved to {graph_path}")
+    print(f"\nResults saved to {results_path}")
+    print(f"Report saved to {report_path}")
+    print(f"Spider graph saved to {graph_path}")

@@ -37,6 +37,7 @@ async def query_system(query_request: QueryRequest, request: Request):
             query=query_request.query,
             mode=query_request.mode,
             max_results=query_request.max_results,
+            candidate_pool_size=query_request.candidate_pool_size,
             max_hops=query_request.max_hops,
             traversal_strategy=query_request.traversal_strategy,
             community_id=query_request.community_id,

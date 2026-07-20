@@ -96,7 +96,7 @@ class ChromaService:
                 query_embeddings=[query_embedding],
                 n_results=n_results,
                 where=filters if filters else None,
-                include=["documents", "metadatas", "distances"]
+                include=["documents", "metadatas", "distances", "embeddings"]
             )
             
             # Format results
@@ -108,7 +108,10 @@ class ChromaService:
                         'metadata': results['metadatas'][0][i],
                         'distance': results['distances'][0][i],
                         'score': 1 / (1 + results['distances'][0][i]),  # Convert distance to score
-                        'source': 'vector'
+                        'source': 'vector',
+                        # Internal retrieval signal used for near-duplicate
+                        # filtering; it is not copied into generation metadata.
+                        'embedding': results['embeddings'][0][i],
                     })
             
             return formatted_results
