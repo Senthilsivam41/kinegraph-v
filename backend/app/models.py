@@ -42,6 +42,10 @@ class QueryRequest(BaseModel):
     community_id: Optional[str] = Field(default=None, description="Optional graph community restriction")
     enable_conditional_recovery: bool = Field(default=True, description="Recover weak retrieval before RRF")
     enable_hyde_fallback: bool = Field(default=False, description="Opt-in constrained HyDE vector fallback")
+    enable_grounding_critique: bool = Field(
+        default=True,
+        description="Verify structured citations and filter unsupported claims before returning the answer",
+    )
     enable_lexical_fusion: bool = Field(default=False, description="Opt-in BM25 channel for hybrid fusion")
     vector_fusion_weight: float = Field(default=settings.FUSION_VECTOR_WEIGHT, ge=0, le=5)
     graph_fusion_weight: float = Field(default=settings.FUSION_GRAPH_WEIGHT, ge=0, le=5)
@@ -83,6 +87,9 @@ class QueryResponse(BaseModel):
     recovery_triggered: bool = False
     recovery_details: Optional[Dict[str, Any]] = None
     fusion_details: Optional[Dict[str, Any]] = None
+    grounded_claims: Optional[List[Dict[str, Any]]] = None
+    citation_validation: Optional[Dict[str, Any]] = None
+    grounding_critique: Optional[Dict[str, Any]] = None
 
 
 class IngestRequest(BaseModel):

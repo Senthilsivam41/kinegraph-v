@@ -157,7 +157,9 @@ curl -X POST "http://localhost:8000/api/v1/query" \
   -d '{
     "query": "What are the main findings?",
     "mode": "hybrid",
-    "max_results": 10,
+    "max_results": 6,
+    "candidate_pool_size": 25,
+    "enable_grounding_critique": true,
     "filters": {"category": "research"}
   }'
 ```
@@ -165,7 +167,9 @@ curl -X POST "http://localhost:8000/api/v1/query" \
 **Body Parameters:**
 - `query` (required): Natural language query string
 - `mode` (optional): Query mode - `vector`, `graph`, or `hybrid` (default: `hybrid`)
-- `max_results` (optional): Maximum results to return (1-100, default: 10)
+- `max_results` (optional): Maximum reranked contexts sent to generation (1-100, default: 6)
+- `candidate_pool_size` (optional): Per-channel candidates retrieved before fusion (default: 25)
+- `enable_grounding_critique` (optional): Filter structured claims against their cited chunks (default: `true`)
 - `filters` (optional): Metadata filters as key-value pairs
 
 **Response:**
@@ -188,8 +192,27 @@ curl -X POST "http://localhost:8000/api/v1/query" \
       "source": "vector"
     }
   ],
-  "total_results": 10,
-  "execution_time_ms": 234.56
+  "total_results": 6,
+  "execution_time_ms": 234.56,
+  "generated_answer": "The main finding is directly supported. [chunk_xyz789_5]",
+  "grounded_claims": [
+    {
+      "claim_id": "claim-1",
+      "text": "The main finding is directly supported.",
+      "chunk_ids": ["chunk_xyz789_5"]
+    }
+  ],
+  "citation_validation": {
+    "structured_output_valid": true,
+    "accepted_claims": 1,
+    "rejected_claims": [],
+    "valid_chunk_ids": ["chunk_xyz789_5"]
+  },
+  "grounding_critique": {
+    "completed": true,
+    "retained_claim_ids": ["claim-1"],
+    "removed_claim_ids": []
+  }
 }
 ```
 

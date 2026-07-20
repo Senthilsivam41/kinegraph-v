@@ -103,9 +103,17 @@ class ChromaService:
             formatted_results = []
             if results and results['documents'] and len(results['documents']) > 0:
                 for i, doc in enumerate(results['documents'][0]):
+                    metadata = results['metadatas'][0][i]
+                    stored_ids = results.get('ids') or []
+                    stored_id = (
+                        stored_ids[0][i]
+                        if stored_ids and stored_ids[0]
+                        else metadata.get('chunk_id') or metadata.get('id')
+                    )
                     formatted_results.append({
+                        'id': stored_id,
                         'content': doc,
-                        'metadata': results['metadatas'][0][i],
+                        'metadata': metadata,
                         'distance': results['distances'][0][i],
                         'score': 1 / (1 + results['distances'][0][i]),  # Convert distance to score
                         'source': 'vector',

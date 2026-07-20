@@ -128,6 +128,10 @@ When context is incomplete:
 - Lower confidence.
 - Avoid filling gaps with model knowledge.
 - Do not manufacture relationships to create a coherent narrative.
+- Require every generated atomic claim to cite an exact identifier from the context actually sent to synthesis.
+- Deterministically reject missing or unknown citation identifiers before returning an answer.
+- Permit a grounding critic to remove existing claims, but never to rewrite claims, add facts, or invent citations.
+- Keep synthesis and grounding critique deterministic at temperature 0.0 by default.
 
 ### 11. Confidence is based on observable signals
 
@@ -161,6 +165,7 @@ Each query should expose enough information to reconstruct the decision:
 - RRF contribution and reranker score
 - Graph seed, path, strategy, and depth
 - Supporting chunk identifiers
+- Citation validation rejections and grounding-critic removals
 - Stage-level latency
 
 ### 15. Failure is visible
