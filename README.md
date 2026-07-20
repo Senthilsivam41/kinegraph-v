@@ -169,9 +169,9 @@ The audit is diagnostic rather than an automatic schema mutation. Entity-mention
 
 The synthesis node now returns atomic claims as structured JSON, with every claim carrying one or more exact IDs from the reranked context. Chroma result IDs and graph node IDs are preserved through retrieval; a deterministic validator rejects claims with missing or unknown citations before any answer text is returned. Accepted claims are rendered with their verified IDs, such as `[vec_0452]`.
 
-A separate temperature-0 grounding critic then checks each accepted claim against only its cited chunk text. The critic may retain or remove existing claims, but cannot rewrite them, add facts, or introduce citations. If the critic is unavailable, Kinegraph visibly reports the failure and returns only the claims that passed deterministic citation validation. Set `enable_grounding_critique: false` only for controlled benchmark comparisons.
+A separate temperature-0 critic then checks each accepted claim against only its cited chunk text and the literal user question. A claim survives only when it is both grounded and directly answers the question (or an explicit component of a compound question); grounded background and broad context summaries are removed. The critic may retain or remove existing claims, but cannot rewrite them, add facts, or introduce citations. If the critic is unavailable, Kinegraph visibly reports the failure and returns only the claims that passed deterministic citation validation. Set `enable_grounding_critique: false` only for controlled benchmark comparisons.
 
-Both synthesis and critique default to temperature `0.0`. Configure them with `GENERATION_TEMPERATURE`, `FAITHFULNESS_CRITIC_MODEL`, and `FAITHFULNESS_CRITIC_TEMPERATURE`. API responses expose `citation_validation`, `grounding_critique`, and per-stage critique latency so faithfulness behavior can be audited per query.
+Both synthesis and critique default to temperature `0.0`. Configure them with `GENERATION_TEMPERATURE`, `FAITHFULNESS_CRITIC_MODEL`, and `FAITHFULNESS_CRITIC_TEMPERATURE`. API responses expose `citation_validation`, `grounding_critique`, `answer_relevancy`, and per-stage critique latency. Relevancy metadata distinguishes unsupported claims from supported-but-irrelevant claims and reports complete, partial, or missing question coverage.
 
 ```json
 {
@@ -209,7 +209,7 @@ graph TD
     Fusion --> Rerank[Rerank Node - sentence-transformers]
     Rerank --> Generate[Structured Claims plus Exact Chunk IDs]
     Generate --> Validate[Deterministic Citation Validation]
-    Validate --> Critic[Grounding Critic - Filter Only]
+    Validate --> Critic[Grounding plus Literal-Question Critic]
     Critic --> Output([Verified Answer])
     
     style User fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff

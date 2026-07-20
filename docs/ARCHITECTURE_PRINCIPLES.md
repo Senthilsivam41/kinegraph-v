@@ -131,6 +131,8 @@ When context is incomplete:
 - Require every generated atomic claim to cite an exact identifier from the context actually sent to synthesis.
 - Deterministically reject missing or unknown citation identifiers before returning an answer.
 - Permit a grounding critic to remove existing claims, but never to rewrite claims, add facts, or invent citations.
+- Require surviving claims to answer the literal question; retrieved background is not an answer merely because it is grounded.
+- Report unsupported and supported-but-irrelevant removals separately, together with missing question facets.
 - Keep synthesis and grounding critique deterministic at temperature 0.0 by default.
 
 ### 11. Confidence is based on observable signals

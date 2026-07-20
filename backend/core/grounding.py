@@ -128,19 +128,39 @@ def apply_critic_response(
     """Allow the critic only to retain existing claims; it cannot add or rewrite."""
     payload = _parse_json_object(content)
     raw_supported = payload.get("supported_claim_ids")
-    if not isinstance(raw_supported, list):
+    raw_relevant = payload.get("directly_relevant_claim_ids")
+    if not isinstance(raw_supported, list) or not isinstance(raw_relevant, list):
         return claims, {
             "completed": False,
             "reason": "invalid_critic_output",
             "removed_claim_ids": [],
+            "removed_irrelevant_claim_ids": [],
         }
     supported = {str(claim_id) for claim_id in raw_supported}
+    relevant = {str(claim_id) for claim_id in raw_relevant}
     known = {claim["claim_id"] for claim in claims}
-    retained = [claim for claim in claims if claim["claim_id"] in supported]
-    removed = sorted(known - supported)
+    retained_ids = known & supported & relevant
+    retained = [claim for claim in claims if claim["claim_id"] in retained_ids]
+    removed_unsupported = sorted(known - supported)
+    removed_irrelevant = sorted((known & supported) - relevant)
+    removed = sorted(known - retained_ids)
+    coverage = str(payload.get("question_coverage") or "unverified").lower()
+    if coverage not in {"complete", "partial", "none"}:
+        coverage = "unverified"
+    raw_missing_facets = payload.get("missing_question_facets")
+    missing_facets = (
+        [str(facet).strip() for facet in raw_missing_facets if str(facet).strip()]
+        if isinstance(raw_missing_facets, list)
+        else []
+    )
     return retained, {
         "completed": True,
         "retained_claim_ids": [claim["claim_id"] for claim in retained],
         "removed_claim_ids": removed,
-        "critic_notes": payload.get("unsupported_reasons") or {},
+        "removed_unsupported_claim_ids": removed_unsupported,
+        "removed_irrelevant_claim_ids": removed_irrelevant,
+        "unsupported_reasons": payload.get("unsupported_reasons") or {},
+        "irrelevant_reasons": payload.get("irrelevant_reasons") or {},
+        "question_coverage": coverage,
+        "missing_question_facets": missing_facets,
     }
