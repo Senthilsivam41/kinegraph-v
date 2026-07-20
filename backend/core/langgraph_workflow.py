@@ -87,6 +87,7 @@ class WorkflowState(TypedDict):
     suggested_mode: str
     mode: QueryMode
     max_results: int
+    candidate_pool_size: int
     max_hops: int
     traversal_strategy: TraversalStrategy
     community_id: Optional[str]
@@ -188,7 +189,8 @@ class HybridRAGWorkflow:
         )
         self.ranker = ContextRanker(
             use_cross_encoder=use_cross_encoder,
-            min_relevance_threshold=0.03,
+            model_name=settings.RERANKER_MODEL,
+            min_relevance_threshold=settings.RERANKER_MIN_RELEVANCE,
         )
 
         openai_key = settings.OPENAI_API_KEY
@@ -349,8 +351,8 @@ class HybridRAGWorkflow:
         """Run vector and graph retrieval in parallel using asyncio.gather."""
         t0 = time.perf_counter()
 
-        # Fetch 2× more chunks than needed — reranker will prune
-        fetch_n = min(state["max_results"] * 2, 20)
+        # Retrieve wide, then let the post-fusion reranker cut generator context.
+        fetch_n = max(state["max_results"], state["candidate_pool_size"])
         rq = state["rewritten_query"]
 
         vector_task = self.chroma.similarity_search(
@@ -387,7 +389,7 @@ class HybridRAGWorkflow:
     async def _vector_agent(self, state: WorkflowState) -> WorkflowState:
         """Vector-only retrieval with expanded fetch for better recall."""
         t0 = time.perf_counter()
-        fetch_n = min(state["max_results"] * 2, 20)
+        fetch_n = max(state["max_results"], state["candidate_pool_size"])
         results = await self.chroma.similarity_search(
             query=state["rewritten_query"],
             n_results=fetch_n,
@@ -405,7 +407,7 @@ class HybridRAGWorkflow:
     async def _graph_agent(self, state: WorkflowState) -> WorkflowState:
         """Graph-only retrieval with expanded fetch for better recall."""
         t0 = time.perf_counter()
-        fetch_n = min(state["max_results"] * 2, 20)
+        fetch_n = max(state["max_results"], state["candidate_pool_size"])
         results = await self.graph_retriever_node.retrieve_chunks(
             query=state["rewritten_query"],
             n_results=fetch_n,
@@ -505,7 +507,7 @@ class HybridRAGWorkflow:
         details["subqueries"] = plan.subqueries
         details["vocabulary"] = plan.vocabulary
         details["structured_recovery_used"] = bool(plan.subqueries or plan.vocabulary)
-        fetch_n = min(state["max_results"] * 2, 20)
+        fetch_n = max(state["max_results"], state["candidate_pool_size"])
         vector_lists = [state["vector_results"]] if state["vector_results"] else []
         graph_lists = [state["graph_results"]] if state["graph_results"] else []
 
@@ -624,7 +626,10 @@ class HybridRAGWorkflow:
             lists = [r for r in [state["vector_results"], state["graph_results"]] if r]
             fused = reciprocal_rank_fusion(lists) if lists else []
 
-        fused = deduplicate_results(fused)
+        fused = deduplicate_results(
+            fused,
+            similarity_threshold=settings.RETRIEVAL_DEDUP_THRESHOLD,
+        )
         state["fused_results"] = fused
         state["latency_breakdown"]["fusion_ms"] = round(
             (time.perf_counter() - t0) * 1000, 2
@@ -746,8 +751,9 @@ class HybridRAGWorkflow:
         self,
         query: str,
         mode: QueryMode = QueryMode.HYBRID,
-        max_results: int = 10,
-        max_hops: int = 3,
+        max_results: int = settings.CONTEXT_TOP_K,
+        candidate_pool_size: int = settings.RETRIEVAL_CANDIDATE_LIMIT,
+        max_hops: int = settings.GRAPH_MAX_HOPS,
         traversal_strategy: TraversalStrategy = TraversalStrategy.BFS,
         community_id: Optional[str] = None,
         enable_conditional_recovery: bool = True,
@@ -764,6 +770,7 @@ class HybridRAGWorkflow:
             suggested_mode="",
             mode=mode,
             max_results=max_results,
+            candidate_pool_size=min(max(max_results, candidate_pool_size), 100),
             max_hops=max_hops,
             traversal_strategy=traversal_strategy,
             community_id=community_id,
@@ -790,8 +797,9 @@ class HybridRAGWorkflow:
         self,
         query: str,
         mode: QueryMode = QueryMode.HYBRID,
-        max_results: int = 10,
-        max_hops: int = 3,
+        max_results: int = settings.CONTEXT_TOP_K,
+        candidate_pool_size: int = settings.RETRIEVAL_CANDIDATE_LIMIT,
+        max_hops: int = settings.GRAPH_MAX_HOPS,
         traversal_strategy: TraversalStrategy = TraversalStrategy.BFS,
         community_id: Optional[str] = None,
         enable_conditional_recovery: bool = True,
@@ -820,6 +828,7 @@ class HybridRAGWorkflow:
             suggested_mode="",
             mode=mode,
             max_results=max_results,
+            candidate_pool_size=min(max(max_results, candidate_pool_size), 100),
             max_hops=max_hops,
             traversal_strategy=traversal_strategy,
             community_id=community_id,

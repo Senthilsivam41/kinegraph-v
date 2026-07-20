@@ -108,7 +108,9 @@ Use `"dfs"` to prioritize deep paths or `"community"` to restrict expansion to t
 
 After RRF, candidates pass through a relevance gate based on the original user query. Surviving graph results receive bounded secondary signals from node centrality, community support, relationship weight, and traversal distance. Semantic relevance retains 70% of the configured weight, so a highly connected but irrelevant node cannot displace directly relevant evidence.
 
-The reranker preserves `score`, `rrf_score`, `original_score`, and source provenance. It adds `semantic_score`, `graph_signal_score`, `rerank_score`, `rerank_components`, and `rerank_mode` for observability. Cross-encoder scoring is enabled by default in the normal workflow; if its optional model is unavailable, Kinegraph logs the fallback and reports `graph_aware_keyword` mode.
+The precision path retrieves a wide per-channel candidate pool (25 by default), applies RRF, removes near-identical chunks at cosine similarity ≥ 0.95, reranks the survivors, and sends at most 6 contexts to generation. The graph traversal default is two hops, while one to five hops remain request-configurable for evaluation.
+
+The reranker preserves `score`, `rrf_score`, `original_score`, and source provenance. It adds `semantic_score`, `graph_signal_score`, `rerank_score`, `rerank_components`, and `rerank_mode` for observability. Cross-encoder scoring is enabled by default in the normal workflow; the model and relevance floor are configured through `RERANKER_MODEL` and `RERANKER_MIN_RELEVANCE`. `cross-encoder/ms-marco-MiniLM-L-6-v2` remains the lightweight default; `BAAI/bge-reranker-v2-m3` can be selected for a stronger multilingual reranker. If the optional model is unavailable, Kinegraph logs the fallback and reports `graph_aware_keyword` mode.
 
 ### 7. Conditional Query Recovery Before RRF
 
@@ -317,7 +319,12 @@ The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor s
   ```
 - **Live Pipeline Benchmarking**: Execute the live RAG pipeline on the checked-in benchmark questions and compute RAGAS metrics:
   ```bash
-  PYTHONPATH=. python eval/ragas_evaluator.py
+  PYTHONPATH=. python eval/ragas_evaluator.py --max-hops 2 --max-results 6 --candidate-pool-size 25
+  ```
+- **Hop-depth precision experiment**: Persist separate accepted runs for direct comparison:
+  ```bash
+  PYTHONPATH=. python eval/ragas_evaluator.py --max-hops 1 --max-results 6 --candidate-pool-size 25 --run-label hop1
+  PYTHONPATH=. python eval/ragas_evaluator.py --max-hops 2 --max-results 6 --candidate-pool-size 25 --run-label hop2
   ```
 - **Live Diagnostics**: Single-query and concurrent live execution are implemented by `evaluate_live_single` and `evaluate_live_workflow`. The CLI loads the real CSV and executes `HybridRAGWorkflow`; it does not depend on nonexistent `src/`, `benchmarks/`, or `scratch/run_evaluation.py` paths.
 - **Acceptance Gate**: Diagnostic keyword fallbacks remain available, but the CLI exits with status `2` and refuses to update the report or chart when any result has `ragas_failed=True`.

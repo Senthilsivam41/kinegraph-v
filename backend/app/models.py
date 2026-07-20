@@ -4,6 +4,7 @@ Pydantic Models for API Requests and Responses
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from enum import Enum
+from backend.core.config import settings
 from backend.graph_retrieval.multi_hop import TraversalStrategy
 
 
@@ -19,8 +20,24 @@ class QueryRequest(BaseModel):
     """Query request model"""
     query: str = Field(..., description="Natural language query")
     mode: QueryMode = Field(default=QueryMode.HYBRID, description="Query mode")
-    max_results: int = Field(default=10, ge=1, le=100, description="Maximum results")
-    max_hops: int = Field(default=3, ge=1, le=5, description="Maximum graph traversal depth")
+    max_results: int = Field(
+        default=settings.CONTEXT_TOP_K,
+        ge=1,
+        le=100,
+        description="Maximum reranked contexts sent to the generator",
+    )
+    candidate_pool_size: int = Field(
+        default=settings.RETRIEVAL_CANDIDATE_LIMIT,
+        ge=5,
+        le=100,
+        description="Per-channel retrieval candidates before fusion and reranking",
+    )
+    max_hops: int = Field(
+        default=settings.GRAPH_MAX_HOPS,
+        ge=1,
+        le=5,
+        description="Maximum graph traversal depth",
+    )
     traversal_strategy: TraversalStrategy = Field(default=TraversalStrategy.BFS, description="Graph traversal strategy")
     community_id: Optional[str] = Field(default=None, description="Optional graph community restriction")
     enable_conditional_recovery: bool = Field(default=True, description="Recover weak retrieval before RRF")

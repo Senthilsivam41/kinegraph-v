@@ -1,7 +1,7 @@
-"""
-Reciprocal Rank Fusion (RRF) Implementation
-Combines results from multiple retrieval systems
-"""
+"""RRF fusion and retrieval-time near-duplicate filtering."""
+import math
+import re
+from collections import Counter
 from typing import List, Dict, Any
 from backend.core.config import settings
 
@@ -67,32 +67,60 @@ def reciprocal_rank_fusion(
 
 def deduplicate_results(
     results: List[Dict[str, Any]],
-    similarity_threshold: float = 0.9
+    similarity_threshold: float = 0.95,
 ) -> List[Dict[str, Any]]:
+    """Keep the highest-ranked representative of near-identical chunk text.
+
+    Stored dense embeddings are used when both candidates provide them; graph-only
+    candidates fall back to normalized token-frequency cosine. This adds no
+    embedding API call and preserves the incoming (normally RRF) ordering.
     """
-    Remove duplicate results based on content similarity
-    
-    Args:
-        results: List of results to deduplicate
-        similarity_threshold: Threshold for considering documents as duplicates
-        
-    Returns:
-        Deduplicated results
-    """
-    # Simple deduplication based on exact content match
-    # For production, consider using fuzzy matching or embedding similarity
-    
-    seen_content = set()
-    deduplicated = []
-    
+    if not 0.0 <= similarity_threshold <= 1.0:
+        raise ValueError("similarity_threshold must be between 0 and 1")
+
+    deduplicated: List[Dict[str, Any]] = []
+    accepted_vectors: List[tuple[Counter[str], Any]] = []
     for result in results:
-        content = result.get('content', '')
-        
-        # Use first 200 characters for deduplication
-        content_signature = content[:200].strip().lower()
-        
-        if content_signature not in seen_content:
-            seen_content.add(content_signature)
-            deduplicated.append(result)
-    
+        vector = Counter(re.findall(r"[a-z0-9]+", result.get("content", "").lower()))
+        embedding = result.get("embedding")
+        if any(
+            _result_similarity(vector, embedding, existing_vector, existing_embedding)
+            >= similarity_threshold
+            for existing_vector, existing_embedding in accepted_vectors
+        ):
+            continue
+        deduplicated.append(result)
+        accepted_vectors.append((vector, embedding))
+
     return deduplicated
+
+
+def _cosine_similarity(left: Counter[str], right: Counter[str]) -> float:
+    """Cosine similarity for sparse token-frequency vectors."""
+    if not left or not right:
+        return 1.0 if left == right else 0.0
+    dot = sum(value * right.get(token, 0) for token, value in left.items())
+    left_norm = math.sqrt(sum(value * value for value in left.values()))
+    right_norm = math.sqrt(sum(value * value for value in right.values()))
+    return dot / (left_norm * right_norm) if left_norm and right_norm else 0.0
+
+
+def _result_similarity(
+    left_tokens: Counter[str],
+    left_embedding: Any,
+    right_tokens: Counter[str],
+    right_embedding: Any,
+) -> float:
+    """Prefer stored dense embeddings, falling back to lexical cosine."""
+    try:
+        left = [float(value) for value in left_embedding]
+        right = [float(value) for value in right_embedding]
+        if left and len(left) == len(right):
+            dot = sum(a * b for a, b in zip(left, right))
+            left_norm = math.sqrt(sum(value * value for value in left))
+            right_norm = math.sqrt(sum(value * value for value in right))
+            if left_norm and right_norm:
+                return dot / (left_norm * right_norm)
+    except (TypeError, ValueError):
+        pass
+    return _cosine_similarity(left_tokens, right_tokens)

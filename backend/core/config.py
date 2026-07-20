@@ -48,6 +48,14 @@ class Settings(BaseSettings):
     RRF_K: int = 60
     MAX_RESULTS: int = 10
 
+    # Context precision controls
+    CONTEXT_TOP_K: int = 6
+    RETRIEVAL_CANDIDATE_LIMIT: int = 25
+    RETRIEVAL_DEDUP_THRESHOLD: float = 0.95
+    GRAPH_MAX_HOPS: int = 2
+    RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    RERANKER_MIN_RELEVANCE: float = 0.20
+
     # LangSmith (optional — leave blank to disable remote tracing)
     LANGSMITH_API_KEY: Optional[str] = None
     LANGSMITH_PROJECT: str = "kinegraph-vectra"

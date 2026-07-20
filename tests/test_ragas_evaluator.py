@@ -1,3 +1,7 @@
+import asyncio
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
 import pandas as pd
 import pytest
 
@@ -57,3 +61,30 @@ def test_incomplete_or_failed_live_workflow_is_rejected():
         require_successful_ragas(results, expected_rows=1)
     report = RAGASEvaluator.__new__(RAGASEvaluator).generate_report(results)
     assert report["summary"]["accepted_as_ragas"] is False
+
+
+def test_live_evaluation_forwards_precision_controls_to_workflow():
+    workflow = AsyncMock()
+    workflow.execute_with_answer.return_value = {
+        "answer": "RRF combines ranked lists.",
+        "chunks": [SimpleNamespace(content="RRF combines ranked lists.")],
+    }
+    evaluator = RAGASEvaluator.__new__(RAGASEvaluator)
+    evaluator.evaluate_single = lambda **kwargs: {"faithfulness": 1.0, "ragas_failed": False}
+
+    result = asyncio.run(evaluator.evaluate_live_single(
+        workflow,
+        question="What is RRF?",
+        max_results=6,
+        max_hops=1,
+        candidate_pool_size=25,
+    ))
+
+    call = workflow.execute_with_answer.await_args.kwargs
+    assert call["query"] == "What is RRF?"
+    assert call["max_results"] == 6
+    assert call["max_hops"] == 1
+    assert call["candidate_pool_size"] == 25
+    assert result["max_hops"] == 1
+    assert result["max_results"] == 6
+    assert result["candidate_pool_size"] == 25
