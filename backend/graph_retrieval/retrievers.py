@@ -121,6 +121,7 @@ class ComposedGraphRetriever:
                     
                     # Convert LlamaIndex NodeWithScore to our project standard dictionary format
                     formatted_results.append({
+                        "id": r.node.node_id,
                         "content": content,
                         "metadata": metadata,
                         "score": r.score if r.score is not None else 1.0,

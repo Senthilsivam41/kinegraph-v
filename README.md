@@ -165,6 +165,22 @@ PYTHONPATH=. python scripts/audit_schema_coverage.py
 
 The audit is diagnostic rather than an automatic schema mutation. Entity-mention coverage is not a RAGAS score; repeated fallback types and uncovered golden questions must be reviewed before expanding `config/ontology_schema.yaml`.
 
+### 9. Citation-Constrained Generation and Grounding Critique
+
+The synthesis node now returns atomic claims as structured JSON, with every claim carrying one or more exact IDs from the reranked context. Chroma result IDs and graph node IDs are preserved through retrieval; a deterministic validator rejects claims with missing or unknown citations before any answer text is returned. Accepted claims are rendered with their verified IDs, such as `[vec_0452]`.
+
+A separate temperature-0 grounding critic then checks each accepted claim against only its cited chunk text. The critic may retain or remove existing claims, but cannot rewrite them, add facts, or introduce citations. If the critic is unavailable, Kinegraph visibly reports the failure and returns only the claims that passed deterministic citation validation. Set `enable_grounding_critique: false` only for controlled benchmark comparisons.
+
+Both synthesis and critique default to temperature `0.0`. Configure them with `GENERATION_TEMPERATURE`, `FAITHFULNESS_CRITIC_MODEL`, and `FAITHFULNESS_CRITIC_TEMPERATURE`. API responses expose `citation_validation`, `grounding_critique`, and per-stage critique latency so faithfulness behavior can be audited per query.
+
+```json
+{
+  "query": "How are Neo4j and ChromaDB connected?",
+  "mode": "hybrid",
+  "enable_grounding_critique": true
+}
+```
+
 ---
 
 ## 🏗️ Architecture
@@ -191,8 +207,10 @@ graph TD
     Lexical --> Fusion
     
     Fusion --> Rerank[Rerank Node - sentence-transformers]
-    Rerank --> Generate[Generate Node - LLM Answer]
-    Generate --> Output([Final Answer])
+    Rerank --> Generate[Structured Claims plus Exact Chunk IDs]
+    Generate --> Validate[Deterministic Citation Validation]
+    Validate --> Critic[Grounding Critic - Filter Only]
+    Critic --> Output([Verified Answer])
     
     style User fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff
     style Router fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff

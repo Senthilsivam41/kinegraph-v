@@ -1,6 +1,7 @@
 """
 Application Configuration
 """
+from pydantic import Field
 from pydantic_settings import BaseSettings
 from typing import Optional
 
@@ -58,6 +59,11 @@ class Settings(BaseSettings):
     FUSION_VECTOR_WEIGHT: float = 1.0
     FUSION_GRAPH_WEIGHT: float = 1.0
     FUSION_LEXICAL_WEIGHT: float = 0.7
+
+    # Faithfulness controls
+    GENERATION_TEMPERATURE: float = Field(default=0.0, ge=0.0, le=0.2)
+    FAITHFULNESS_CRITIC_MODEL: str = "gpt-4o-mini"
+    FAITHFULNESS_CRITIC_TEMPERATURE: float = Field(default=0.0, ge=0.0, le=0.2)
 
     # LangSmith (optional — leave blank to disable remote tracing)
     LANGSMITH_API_KEY: Optional[str] = None

@@ -12,6 +12,7 @@ Improvements over v1:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
 import time
@@ -25,6 +26,13 @@ from backend.app.models import DocumentChunk, QueryMode
 from backend.graph_retrieval.multi_hop import TraversalStrategy
 from backend.core.config import settings
 from backend.core.context_ranker import ContextRanker
+from backend.core.grounding import (
+    apply_critic_response,
+    assign_citation_ids,
+    build_citation_context,
+    format_grounded_claims,
+    validate_grounded_response,
+)
 from backend.core.intent_classifier import classify_intent, rewrite_query_for_retrieval
 from backend.core.rrf import deduplicate_results, reciprocal_rank_fusion
 from backend.core.query_recovery import QueryRecoveryEngine
@@ -38,29 +46,16 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Faithfulness-first generation prompt
 # ---------------------------------------------------------------------------
-_SYSTEM_PROMPT = """You are an AI research agent with the sole mandate to provide factually grounded, maximally relevant information. You must only use the provided context to answer the user's question; do not extrapolate, assume, or bring in outside knowledge. Your task is threefold: first, to extract all supporting evidence; second, to synthesize a coherent answer based strictly and solely on the provided context; and third, to critique your own synthesis against the provided context.
+_SYSTEM_PROMPT = """You are Kinegraph's grounded synthesis node. Use only the
+provided context. Write atomic claims that directly answer the question, and attach
+one or more exact context chunk IDs to every claim. Never invent, shorten, translate,
+or renumber a chunk ID. Omit claims that the context does not support.
 
----
-### 🎯 TASK 1: EVIDENCE EXTRACTION (CRITICAL STEP FOR FAITHFULNESS)
-Review the provided Contextual Data. Do not attempt to answer yet. Instead, identify and list every claim from the context that directly addresses or contributes information towards the User Question. You must only use the provided context; do not extrapolate or assume anything.
-*   Format each finding as a concise bullet point claim, followed immediately by the specific source chunk ID that supports it.
-*   If a relationship (Graph-derived) is critical, note the path/nodes involved.
-*   **Goal:** Prove existence and location of all answer components.
+Return JSON only, with exactly this shape:
+{{"claims":[{{"text":"one atomic supported claim","chunk_ids":["exact-chunk-id"]}}],"confidence":0.0}}
 
-### 🎯 TASK 2: SYNTHESIS AND ANSWER GENERATION (GOAL: RELEVANCY)
-Using *only* the claims identified in Task 1 (and thus solely supported by the provided context), synthesize a single, unified answer to the User Question. Do not bring in any outside or parametric knowledge, assumptions, or external facts.
-*   The tone must be precise and objective.
-*   Structure the answer logically (e.g., using headings or sequential steps) to match the complexity of the question.
-*   If there are conflicting claims across the sources (V vs G), you MUST flag them in your answer, stating the conflict found in the context.
-
-### 🎯 TASK 3: CRITICAL REVIEW (SELF-CORRECTION)
-Critique your synthesized answer against the original context and question. Answer the following:
-1.  **Faithfulness Check:** Are all claims in your answer directly supported by the extracted context? Only answer Yes if there is 100% direct context support without any extrapolation or outside knowledge.
-2.  **Completeness Check:** Does the answer fully address all components of the original question? (Yes/No, and identify any missing facets).
-
----
-### FINAL OUTPUT FORMAT
-Provide only the synthesized answer from Task 2, followed by a concise confidence score based on your assessment in Task 3.
+Confidence must be between 0 and 1 and reflect only support in the supplied context.
+If no claim is supported, return an empty claims array and confidence 0.
 """
 
 
@@ -74,6 +69,27 @@ _HUMAN_PROMPT = """## [INPUT CONTEXTUAL DATA]
 GENERATION_PROMPT = ChatPromptTemplate.from_messages([
     ("system", _SYSTEM_PROMPT),
     ("human",  _HUMAN_PROMPT),
+])
+
+_CRITIC_SYSTEM_PROMPT = """You are Kinegraph's grounding critic. Check each existing
+claim only against the text of its cited chunks. Retain a claim only when every
+material statement is directly supported. You may remove claims, but must never
+rewrite a claim, add a claim, or add a citation.
+
+Return JSON only:
+{{"supported_claim_ids":["claim-1"],"unsupported_reasons":{{"claim-2":"concise reason"}}}}
+"""
+
+_CRITIC_HUMAN_PROMPT = """Each claim below includes only the chunks it cited.
+Do not use one claim's evidence to support another claim.
+
+## CLAIMS WITH CITED CONTEXT
+{claims_json}
+"""
+
+CRITIC_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", _CRITIC_SYSTEM_PROMPT),
+    ("human", _CRITIC_HUMAN_PROMPT),
 ])
 
 # ---------------------------------------------------------------------------
@@ -106,6 +122,11 @@ class WorkflowState(TypedDict):
     recovery_details: Dict[str, Any]
     fused_results: List[Dict[str, Any]]
     reranked_results: List[Dict[str, Any]]
+    enable_grounding_critique: bool
+    grounded_claims: List[Dict[str, Any]]
+    citation_context: Dict[str, str]
+    citation_validation: Dict[str, Any]
+    grounding_critique: Dict[str, Any]
     generated_answer: str
     answer_confidence: float
     latency_breakdown: Dict[str, float]
@@ -187,6 +208,7 @@ class HybridRAGWorkflow:
         neo4j_service: Neo4jService,
         use_cross_encoder: bool = True,
         generation_model: str = "gpt-4o-mini",
+        critic_model: str = settings.FAITHFULNESS_CRITIC_MODEL,
     ) -> None:
         self.chroma = chroma_service
         self.neo4j = neo4j_service
@@ -203,11 +225,17 @@ class HybridRAGWorkflow:
         kw = {
             "model": generation_model,
             "openai_api_key": openai_key,
-            "temperature": 0,
+            "temperature": settings.GENERATION_TEMPERATURE,
         }
         if openai_key and (openai_key.startswith("sk-or-") or "openrouter" in openai_key):
             kw["base_url"] = "https://openrouter.ai/api/v1"
         self.llm = ChatOpenAI(**kw)
+        critic_kw = {
+            **kw,
+            "model": critic_model,
+            "temperature": settings.FAITHFULNESS_CRITIC_TEMPERATURE,
+        }
+        self.critic_llm = ChatOpenAI(**critic_kw)
         self.recovery = QueryRecoveryEngine(self.llm)
 
         self.graph = self._build_graph()
@@ -228,6 +256,7 @@ class HybridRAGWorkflow:
           → fusion_node            (RRF merge)
           → rerank_node            (cross-encoder / keyword reranker)
           → generate_node          (grounded LLM answer)
+          → grounding_critique     (remove unsupported claims; cannot rewrite)
           → format_results
         END
         """
@@ -242,6 +271,7 @@ class HybridRAGWorkflow:
         workflow.add_node("fusion_node",     self._fusion_node)
         workflow.add_node("rerank_node",     self._rerank_node)
         workflow.add_node("generate_node",   self._generate_node)
+        workflow.add_node("grounding_critique", self._grounding_critique)
         workflow.add_node("format_results",  self._format_results)
 
         workflow.set_entry_point("intent_router")
@@ -270,7 +300,8 @@ class HybridRAGWorkflow:
         # Common tail
         workflow.add_edge("fusion_node",    "rerank_node")
         workflow.add_edge("rerank_node",    "generate_node")
-        workflow.add_edge("generate_node",  "format_results")
+        workflow.add_edge("generate_node",  "grounding_critique")
+        workflow.add_edge("grounding_critique", "format_results")
         workflow.add_edge("format_results", END)
 
         return workflow.compile()
@@ -697,41 +728,55 @@ class HybridRAGWorkflow:
     # ------------------------------------------------------------------
 
     async def _generate_node(self, state: WorkflowState) -> WorkflowState:
-        """
-        Generate a grounded answer from the reranked context.
-        The faithfulness-first system prompt forces the LLM to stay in-context.
-        """
+        """Generate structured claims and reject unverifiable citations."""
         t0 = time.perf_counter()
         chunks = state["reranked_results"]
 
         if not chunks:
             state["generated_answer"] = "No relevant context was retrieved for this query."
             state["answer_confidence"] = 0.0
+            state["grounded_claims"] = []
+            state["citation_context"] = {}
+            state["citation_validation"] = {
+                "structured_output_valid": False,
+                "reason": "no_retrieved_context",
+                "valid_chunk_ids": [],
+            }
             return state
 
-        # Build context string — numbered for citation clarity
-        context_parts = [
-            f"[{i+1}] {c['content'].strip()}"
-            for i, c in enumerate(chunks)
-        ]
-        context_str = "\n\n".join(context_parts)
+        cited_chunks = assign_citation_ids(chunks)
+        state["reranked_results"] = cited_chunks
+        context_str, context_map = build_citation_context(cited_chunks)
+        state["citation_context"] = context_map
 
         try:
-            chain = GENERATION_PROMPT | self.llm
-            response = await chain.ainvoke({
+            response = await self._invoke_prompt(GENERATION_PROMPT, self.llm, {
                 "context":  context_str,
                 "question": state["query"],
             })
-            raw_answer = response.content.strip()
-            answer, confidence = parse_research_synthesis_output(raw_answer)
-
-            state["generated_answer"] = answer
+            claims, confidence, validation = validate_grounded_response(
+                str(response.content), set(context_map)
+            )
+            state["grounded_claims"] = claims
+            state["citation_validation"] = validation
+            state["generated_answer"] = (
+                format_grounded_claims(claims)
+                if claims
+                else "No fully supported claims could be generated from the retrieved context."
+            )
             state["answer_confidence"] = confidence
 
         except Exception as exc:
             logger.error("[GenerateNode] LLM call failed: %s", exc)
             state["generated_answer"] = "Generation failed. Please retry."
             state["answer_confidence"] = 0.0
+            state["grounded_claims"] = []
+            state["citation_validation"] = {
+                "structured_output_valid": False,
+                "reason": "generation_failed",
+                "error": str(exc),
+                "valid_chunk_ids": sorted(context_map),
+            }
 
         state["latency_breakdown"]["generation_ms"] = round(
             (time.perf_counter() - t0) * 1000, 2
@@ -741,6 +786,68 @@ class HybridRAGWorkflow:
             len(state["generated_answer"]),
             state["answer_confidence"],
             state["latency_breakdown"]["generation_ms"],
+        )
+        return state
+
+    async def _invoke_prompt(self, prompt, llm, payload: Dict[str, Any]):
+        """Small seam for testing structured generation and critique."""
+        return await (prompt | llm).ainvoke(payload)
+
+    async def _grounding_critique(self, state: WorkflowState) -> WorkflowState:
+        """Remove semantically unsupported claims after citation-ID validation."""
+        t0 = time.perf_counter()
+        claims = state.get("grounded_claims", [])
+        if not state.get("enable_grounding_critique", True) or not claims:
+            state["grounding_critique"] = {
+                "completed": False,
+                "reason": "disabled" if claims else "no_validated_claims",
+                "removed_claim_ids": [],
+            }
+            state["latency_breakdown"]["grounding_critique_ms"] = round(
+                (time.perf_counter() - t0) * 1000, 2
+            )
+            return state
+
+        original_count = len(claims)
+        try:
+            context_map = state.get("citation_context", {})
+            critic_claims = [
+                {
+                    **claim,
+                    "cited_context": {
+                        chunk_id: context_map[chunk_id]
+                        for chunk_id in claim["chunk_ids"]
+                        if chunk_id in context_map
+                    },
+                }
+                for claim in claims
+            ]
+            response = await self._invoke_prompt(CRITIC_PROMPT, self.critic_llm, {
+                "claims_json": json.dumps(critic_claims, ensure_ascii=False),
+            })
+            retained, critique = apply_critic_response(claims, str(response.content))
+            state["grounded_claims"] = retained
+            state["grounding_critique"] = critique
+            state["generated_answer"] = (
+                format_grounded_claims(retained)
+                if retained
+                else "No fully supported claims remained after grounding verification."
+            )
+            if critique.get("completed"):
+                state["answer_confidence"] = round(
+                    state["answer_confidence"] * (len(retained) / original_count), 4
+                )
+        except Exception as exc:
+            logger.error("[GroundingCritique] critic call failed: %s", exc)
+            state["grounding_critique"] = {
+                "completed": False,
+                "reason": "critic_failed",
+                "error": str(exc),
+                "removed_claim_ids": [],
+            }
+
+        state["latency_breakdown"]["grounding_critique_ms"] = round(
+            (time.perf_counter() - t0) * 1000, 2
         )
         return state
 
@@ -763,6 +870,7 @@ class HybridRAGWorkflow:
                     "rerank_mode": result.get("rerank_mode", "unknown"),
                     "rerank_components": result.get("rerank_components", {}),
                     "rrf_contributions": result.get("rrf_contributions", {}),
+                    "citation_id": result.get("citation_id"),
                     "intent": state.get("intent", ""),
                 },
                 score=result.get("score", 0.0),
@@ -791,6 +899,7 @@ class HybridRAGWorkflow:
         community_id: Optional[str] = None,
         enable_conditional_recovery: bool = True,
         enable_hyde_fallback: bool = False,
+        enable_grounding_critique: bool = True,
         filters: Optional[Dict[str, Any]] = None,
         attachment_content: Optional[str] = None,
         attachment_name: Optional[str] = None,
@@ -821,6 +930,11 @@ class HybridRAGWorkflow:
             recovery_details={},
             fused_results=[],
             reranked_results=[],
+            enable_grounding_critique=enable_grounding_critique,
+            grounded_claims=[],
+            citation_context={},
+            citation_validation={},
+            grounding_critique={},
             generated_answer="",
             answer_confidence=0.0,
             latency_breakdown={},
@@ -846,6 +960,7 @@ class HybridRAGWorkflow:
         community_id: Optional[str] = None,
         enable_conditional_recovery: bool = True,
         enable_hyde_fallback: bool = False,
+        enable_grounding_critique: bool = True,
         filters: Optional[Dict[str, Any]] = None,
         attachment_content: Optional[str] = None,
         attachment_name: Optional[str] = None,
@@ -888,6 +1003,11 @@ class HybridRAGWorkflow:
             recovery_details={},
             fused_results=[],
             reranked_results=[],
+            enable_grounding_critique=enable_grounding_critique,
+            grounded_claims=[],
+            citation_context={},
+            citation_validation={},
+            grounding_critique={},
             generated_answer="",
             answer_confidence=0.0,
             latency_breakdown={},
@@ -904,6 +1024,9 @@ class HybridRAGWorkflow:
             "latency":    final_state["latency_breakdown"],
             "recovery_triggered": final_state["recovery_triggered"],
             "recovery": final_state["recovery_details"],
+            "grounded_claims": final_state["grounded_claims"],
+            "citation_validation": final_state["citation_validation"],
+            "grounding_critique": final_state["grounding_critique"],
             "fusion": {
                 "lexical_enabled": final_state["enable_lexical_fusion"],
                 "vector_weight": final_state["vector_fusion_weight"],
