@@ -400,6 +400,7 @@ The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor s
   ```
 - **Live Diagnostics**: Single-query and concurrent live execution are implemented by `evaluate_live_single` and `evaluate_live_workflow`. The CLI loads the real CSV and executes `HybridRAGWorkflow`; it does not depend on nonexistent `src/`, `benchmarks/`, or `scratch/run_evaluation.py` paths.
 - **Acceptance Gate**: Diagnostic keyword fallbacks remain available, but the CLI exits with status `2` and refuses to update the report or chart when any result has `ragas_failed=True`.
+- **Controlled Experiment Gate**: Accepted runs record the dataset SHA-256, Git revision, complete retrieval configuration, generation and judge models, and a weighted composite with a deterministic 95% bootstrap interval. An optional baseline manifest enforces one changed lever, a ±0.01 tie tolerance, and a maximum 0.05 regression for any individual metric. See [Controlled Benchmark Experiments](docs/EXPERIMENT_VALIDATION.md).
 - **Result Contract**: Evaluation consumes the workflow's `answer` and retrieved `chunks`. Fields such as `max_hops_used`, `hyde_generated`, and `retrieved_nodes` are not top-level evaluator results. Traversal and recovery diagnostics live in chunk metadata or `recovery_details` and require a separate retrieval-path audit.
 
 ### Benchmark Status

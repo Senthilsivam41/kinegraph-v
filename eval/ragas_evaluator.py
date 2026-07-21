@@ -18,6 +18,18 @@ from typing import Any, Dict, List, Optional
 
 from backend.app.models import QueryMode
 from backend.core.config import settings
+from eval.experiment_validation import (
+    ValidationPolicy,
+    bootstrap_mean_interval,
+    build_manifest,
+    compare_manifests,
+    current_git_revision,
+    load_manifest,
+    validate_metric_values,
+    weighted_composite,
+    working_tree_is_clean,
+    write_manifest,
+)
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -62,6 +74,7 @@ class RAGASValidationError(RuntimeError):
 def require_successful_ragas(
     results: pd.DataFrame,
     expected_rows: Optional[int] = None,
+    required_metrics: Optional[List[str]] = None,
 ) -> None:
     """Fail closed unless every evaluated row is a successful RAGAS result."""
     if results.empty:
@@ -82,17 +95,27 @@ def require_successful_ragas(
         )
 
     failed = results[results["ragas_failed"].fillna(True).astype(bool)]
-    if failed.empty:
-        return
+    if not failed.empty:
+        errors = sorted({
+            str(error) for error in failed.get("ragas_error", pd.Series(dtype=str)).dropna()
+        })
+        detail = f" Errors: {'; '.join(errors)}" if errors else ""
+        raise RAGASValidationError(
+            f"Rejected {len(failed)}/{len(results)} rows because RAGAS failed and "
+            f"heuristic fallback scores are not benchmark evidence.{detail}"
+        )
 
-    errors = sorted({
-        str(error) for error in failed.get("ragas_error", pd.Series(dtype=str)).dropna()
-    })
-    detail = f" Errors: {'; '.join(errors)}" if errors else ""
-    raise RAGASValidationError(
-        f"Rejected {len(failed)}/{len(results)} rows because RAGAS failed and "
-        f"heuristic fallback scores are not benchmark evidence.{detail}"
-    )
+    metrics = required_metrics or DEFAULT_METRICS
+    invalid_rows = []
+    for index, row in results.iterrows():
+        try:
+            validate_metric_values(row.to_dict(), metrics)
+        except ValueError as exc:
+            invalid_rows.append(f"row {index}: {exc}")
+    if invalid_rows:
+        raise RAGASValidationError(
+            "Rejected invalid metric output. " + "; ".join(invalid_rows[:5])
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -541,8 +564,14 @@ class RAGASEvaluator:
             
         return pd.DataFrame(records)
 
-    def generate_report(self, results: pd.DataFrame) -> Dict[str, Any]:
+    def generate_report(
+        self,
+        results: pd.DataFrame,
+        validation_policy: Optional[ValidationPolicy] = None,
+    ) -> Dict[str, Any]:
         """Summarise batch results into a structured report dict."""
+        policy = validation_policy or ValidationPolicy()
+        policy.validate()
         metric_cols = [c for c in ALL_METRICS if c in results.columns]
         if not metric_cols:
             return {"error": "No metric columns found in results DataFrame."}
@@ -560,7 +589,12 @@ class RAGASEvaluator:
             }
 
         results = results.copy()
-        results["composite_score"] = results[metric_cols].mean(axis=1)
+        results["composite_score"] = results.apply(
+            lambda row: weighted_composite(row.to_dict(), policy), axis=1
+        )
+        ci_low, ci_high = bootstrap_mean_interval(
+            results["composite_score"].tolist(), policy
+        )
 
         def _tier(score: float) -> str:
             if score >= 0.8: return "excellent"
@@ -581,15 +615,25 @@ class RAGASEvaluator:
             and not results["ragas_failed"].fillna(True).astype(bool).any()
             and workflow_accepted
         )
+        try:
+            for _, row in results.iterrows():
+                validate_metric_values(row.to_dict(), tuple(policy.metric_weights))
+            metric_values_valid = True
+        except ValueError:
+            metric_values_valid = False
+            ragas_accepted = False
 
         return {
             "summary": {
                 "total_samples": len(results),
                 "overall_composite_score": round(float(results["composite_score"].mean()), 4),
+                "composite_confidence_interval_95": [round(ci_low, 4), round(ci_high, 4)],
+                "composite_metric_weights": dict(policy.metric_weights),
                 "metrics_evaluated": metric_cols,
                 "quality_distribution": results["quality_tier"].value_counts().to_dict(),
                 "eval_mode": "ragas" if ragas_accepted else "heuristic_or_mixed",
                 "accepted_as_ragas": ragas_accepted,
+                "metric_values_valid": metric_values_valid,
             },
             "per_metric": per_metric,
             "worst_samples": results.nsmallest(5, "composite_score")[
@@ -640,6 +684,13 @@ if __name__ == "__main__":
         default=settings.RETRIEVAL_CANDIDATE_LIMIT,
     )
     parser.add_argument("--run-label", default="latest", help="Safe label used for persisted result files")
+    parser.add_argument("--generation-model", default="gpt-4o-mini")
+    parser.add_argument("--judge-model", default="gpt-4o-mini")
+    parser.add_argument("--judge-embedding-model", default="text-embedding-3-small")
+    parser.add_argument(
+        "--baseline-manifest",
+        help="Optional accepted manifest to compare using the one-lever ratchet gate",
+    )
     parser.add_argument("--enable-lexical-fusion", action="store_true")
     parser.add_argument("--vector-weight", type=float, default=settings.FUSION_VECTOR_WEIGHT)
     parser.add_argument("--graph-weight", type=float, default=settings.FUSION_GRAPH_WEIGHT)
@@ -657,6 +708,9 @@ if __name__ == "__main__":
     if any(weight < 0 or weight > 5 for weight in weights) or not any(weights):
         parser.error("active fusion weights must be between 0 and 5 with at least one positive value")
     run_label = re.sub(r"[^a-zA-Z0-9_-]+", "-", args.run_label).strip("-") or "latest"
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    run_git_revision = current_git_revision(repo_root)
+    run_working_tree_clean = working_tree_is_clean(repo_root)
     
     print("Checking RAGAS Evaluator configuration...")
     print(f"RAGAS Available: {_RAGAS_AVAILABLE}")
@@ -697,10 +751,16 @@ if __name__ == "__main__":
 
     chroma = ChromaService()
     neo4j = Neo4jService()
-    workflow = HybridRAGWorkflow(chroma_service=chroma, neo4j_service=neo4j)
+    workflow = HybridRAGWorkflow(
+        chroma_service=chroma,
+        neo4j_service=neo4j,
+        generation_model=args.generation_model,
+    )
 
     evaluator = RAGASEvaluator(
         openai_api_key=os.getenv("OPENAI_API_KEY"),
+        model=args.judge_model,
+        embedding_model=args.judge_embedding_model,
         metrics=['faithfulness', 'answer_relevancy', 'context_precision', 'context_recall', 'answer_correctness']
     )
     print("\nRunning concurrent live workflow and RAGAS evaluation...")
@@ -724,7 +784,11 @@ if __name__ == "__main__":
         except Exception:
             pass
     try:
-        require_successful_ragas(results_df, expected_rows=len(raw_data))
+        require_successful_ragas(
+            results_df,
+            expected_rows=len(raw_data),
+            required_metrics=evaluator.metrics_names,
+        )
     except RAGASValidationError as exc:
         print(f"\nBENCHMARK REJECTED: {exc}", file=sys.stderr)
         print(
@@ -770,6 +834,74 @@ if __name__ == "__main__":
     
     graph_path = os.path.join(reports_dir, f"spider_graph_ragas_{run_label}.png")
     plt.savefig(graph_path, dpi=300)
+    policy = ValidationPolicy()
+    pipeline_config = {
+        "retrieval": {
+            "mode": QueryMode.HYBRID.value,
+            "max_results": args.max_results,
+            "max_hops": args.max_hops,
+            "candidate_pool_size": args.candidate_pool_size,
+            "enable_lexical_fusion": args.enable_lexical_fusion,
+            "vector_fusion_weight": args.vector_weight,
+            "graph_fusion_weight": args.graph_weight,
+            "lexical_fusion_weight": args.lexical_weight,
+            "rrf_k": settings.RRF_K,
+        },
+        "reranking": {
+            "enabled": True,
+            "model": settings.RERANKER_MODEL,
+            "minimum_relevance": settings.RERANKER_MIN_RELEVANCE,
+            "dedup_threshold": settings.RETRIEVAL_DEDUP_THRESHOLD,
+        },
+        "recovery": {
+            "conditional_recovery": True,
+            "hyde_fallback": False,
+        },
+        "generation": {
+            "temperature": settings.GENERATION_TEMPERATURE,
+            "grounding_critique": True,
+            "grounding_critic_temperature": settings.FAITHFULNESS_CRITIC_TEMPERATURE,
+        },
+    }
+    manifest = build_manifest(
+        run_label=run_label,
+        repo_root=repo_root,
+        dataset_path=csv_path,
+        pipeline_config=pipeline_config,
+        models={
+            "generation": args.generation_model,
+            "grounding_critic": settings.FAITHFULNESS_CRITIC_MODEL,
+            "judge": args.judge_model,
+            "embedding": args.judge_embedding_model,
+        },
+        report=report,
+        artifacts={
+            "results_csv": results_path,
+            "report_json": report_path,
+            "spider_graph": graph_path,
+        },
+        policy=policy,
+        git_revision=run_git_revision,
+        working_tree_clean=run_working_tree_clean,
+    )
+    comparison = None
+    if args.baseline_manifest:
+        comparison = compare_manifests(
+            load_manifest(args.baseline_manifest), manifest, policy
+        )
+        manifest["baseline_comparison"] = comparison
+    manifest_path = os.path.join(reports_dir, f"ragas_{run_label}_manifest.json")
+    write_manifest(manifest_path, manifest)
     print(f"\nResults saved to {results_path}")
     print(f"Report saved to {report_path}")
     print(f"Spider graph saved to {graph_path}")
+    print(f"Experiment manifest saved to {manifest_path}")
+    if comparison:
+        print(
+            "Baseline decision: "
+            f"{comparison['decision'].upper()} "
+            f"(delta={comparison['composite_delta']})"
+        )
+        if comparison["decision"] != "keep":
+            print("Candidate did not pass the experiment ratchet gate.", file=sys.stderr)
+            sys.exit(3)

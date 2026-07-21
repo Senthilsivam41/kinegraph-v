@@ -63,6 +63,30 @@ def test_incomplete_or_failed_live_workflow_is_rejected():
     assert report["summary"]["accepted_as_ragas"] is False
 
 
+def test_non_finite_or_missing_metrics_are_rejected_even_when_ragas_says_success():
+    non_finite = _results()
+    non_finite.loc[0, "faithfulness"] = float("nan")
+    with pytest.raises(RAGASValidationError, match="invalid metric output"):
+        require_successful_ragas(non_finite)
+
+    missing = _results().drop(columns=["context_recall"])
+    with pytest.raises(RAGASValidationError, match="missing required metric"):
+        require_successful_ragas(missing)
+
+
+def test_report_uses_weighted_composite_and_confidence_interval():
+    report = RAGASEvaluator.__new__(RAGASEvaluator).generate_report(_results())
+
+    assert report["summary"]["overall_composite_score"] == pytest.approx(0.795)
+    assert report["summary"]["composite_metric_weights"] == {
+        "faithfulness": 0.35,
+        "context_precision": 0.30,
+        "context_recall": 0.20,
+        "answer_relevancy": 0.15,
+    }
+    assert report["summary"]["composite_confidence_interval_95"] == [0.795, 0.795]
+
+
 def test_live_evaluation_forwards_precision_controls_to_workflow():
     workflow = AsyncMock()
     workflow.execute_with_answer.return_value = {
