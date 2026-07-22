@@ -9,7 +9,8 @@ within noise) without hiding a material single-metric regression.
 
 A run is valid only when:
 
-- All 20 benchmark rows complete through the live hybrid workflow.
+- All 20 benchmark rows complete through the selected explicit profile.
+- Every effective mode remains within the profile's declared modes.
 - Every row has `ragas_failed=False` and no workflow error.
 - Every required metric is present, numeric, finite, and between 0 and 1.
 - The working tree was clean when the run started.
@@ -55,6 +56,7 @@ Create the accepted baseline:
 
 ```bash
 PYTHONPATH=. venv/bin/python eval/ragas_evaluator.py \
+  --profile hybrid \
   --max-hops 2 \
   --max-results 6 \
   --candidate-pool-size 25 \
@@ -67,6 +69,7 @@ Change exactly one lever and compare it:
 
 ```bash
 PYTHONPATH=. venv/bin/python eval/ragas_evaluator.py \
+  --profile hybrid \
   --max-hops 3 \
   --max-results 6 \
   --candidate-pool-size 25 \
@@ -79,17 +82,55 @@ PYTHONPATH=. venv/bin/python eval/ragas_evaluator.py \
 Accepted candidates exit with code `0`. Invalid or regressed comparisons still
 write their evidence and manifest, then exit with code `3`.
 
+## Mode profiles
+
+Profiles are evaluation-only and never change production defaults:
+
+```bash
+PYTHONPATH=. venv/bin/python eval/ragas_evaluator.py --profile hybrid --run-label modes
+PYTHONPATH=. venv/bin/python eval/ragas_evaluator.py --profile hybrid_lexical --run-label modes
+PYTHONPATH=. venv/bin/python eval/ragas_evaluator.py --profile vectorless --run-label modes
+```
+
+`hybrid_lexical` is Hybrid with an opt-in BM25 fusion channel; it is not the
+dedicated Vectorless path. Vectorless uses one deterministic attachment corpus
+derived from all frozen reference contexts, rather than giving each query only
+its own reference passage. Each profile has a separate report and manifest, and
+no mode is preferred until accepted manifests establish the result.
+
+Routing-policy experiments use the separate adaptive profile so fixed Hybrid
+mode slices remain comparable. The conservative policy is disabled in
+production until its candidate manifest passes the gate:
+
+```bash
+PYTHONPATH=. venv/bin/python eval/ragas_evaluator.py \
+  --profile adaptive_hybrid --run-label routing-legacy
+PYTHONPATH=. venv/bin/python eval/ragas_evaluator.py \
+  --profile adaptive_hybrid --enable-conservative-routing \
+  --baseline-manifest reports/ragas_routing-legacy-adaptive_hybrid_manifest.json \
+  --run-label routing-conservative
+```
+
 ## Manifest artifacts
 
 Every accepted evaluation writes:
 
-- `reports/ragas_<label>_results.csv`
-- `reports/ragas_<label>_report.json`
-- `reports/spider_graph_ragas_<label>.png`
-- `reports/ragas_<label>_manifest.json`
+- `reports/ragas_<label>-<profile>_results.csv`
+- `reports/ragas_<label>-<profile>_report.json`
+- `reports/spider_graph_ragas_<label>-<profile>.png`
+- `reports/ragas_<label>-<profile>_manifest.json`
+- `reports/ragas_<label>-<profile>_provenance.jsonl`
+- `reports/ragas_<label>-<profile>_diagnostics.json`
 
 The manifest is the reproducible experiment record. Use it—not a README score
 projection—as the source for baseline/candidate decisions.
+
+The versioned JSONL contains redacted per-query evidence: requested/effective
+mode, deterministic route rationale, candidate ranks and scores, graph paths,
+recovery transformations, RRF/reranker decisions, final chunk IDs, citations,
+critic removals, RAGAS provenance, and stage latency. It is written before the
+acceptance gate so failed runs remain diagnosable without becoming benchmark
+evidence.
 
 ## Scope
 

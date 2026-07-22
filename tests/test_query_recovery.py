@@ -172,3 +172,32 @@ def test_strong_results_skip_all_recovery_generation():
 
     assert state["recovery_triggered"] is False
     workflow.recovery.create_plan.assert_not_awaited()
+
+
+def test_missing_compound_facet_triggers_recovery_even_when_counts_are_strong():
+    workflow = HybridRAGWorkflow.__new__(HybridRAGWorkflow)
+    workflow.chroma = MagicMock()
+    workflow.graph_retriever_node = MagicMock()
+    workflow.recovery = QueryRecoveryEngine(MagicMock(), min_results=2, min_top_score=0.35)
+    workflow.recovery.create_plan = AsyncMock(return_value=RecoveryPlan(subqueries=[], vocabulary=[]))
+    results = [
+        {"content": "API key formatting has no spaces", "score": 0.9, "source": "vector"},
+        {"content": "Correct environment variable formatting", "score": 0.8, "source": "graph"},
+    ]
+
+    state = asyncio.run(workflow._query_recovery(_state(
+        query="What is API key formatting and what security practices apply?",
+        vector_results=[results[0]],
+        graph_results=[results[1]],
+        lexical_results=[],
+        routing_details={
+            "coverage_sensitive": True,
+            "facets": ["What is API key formatting", "what security practices apply"],
+        },
+    )))
+
+    assert state["recovery_triggered"] is True
+    assert "incomplete_question_facet_coverage" in state["recovery_details"]["initial_assessment"]["reasons"]
+    assert state["recovery_details"]["initial_facet_coverage"]["missing_facets"] == [
+        "what security practices apply"
+    ]

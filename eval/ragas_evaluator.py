@@ -14,10 +14,11 @@ import logging
 import json
 import re
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 from backend.app.models import QueryMode
 from backend.core.config import settings
+from eval.benchmark_profiles import PROFILES, build_profile_dataset, get_profile
 from eval.experiment_validation import (
     ValidationPolicy,
     bootstrap_mean_interval,
@@ -29,6 +30,11 @@ from eval.experiment_validation import (
     weighted_composite,
     working_tree_is_clean,
     write_manifest,
+)
+from eval.provenance import (
+    build_provenance_record,
+    write_diagnostic_summary,
+    write_provenance_jsonl,
 )
 import pandas as pd
 
@@ -88,6 +94,15 @@ def require_successful_ragas(
         if not workflow_failures.empty:
             raise RAGASValidationError(
                 f"Rejected {len(workflow_failures)}/{len(results)} rows because the live workflow failed."
+            )
+    if "mode_profile_error" in results.columns:
+        profile_failures = results[
+            results["mode_profile_error"].fillna("").astype(str).str.strip() != ""
+        ]
+        if not profile_failures.empty:
+            raise RAGASValidationError(
+                f"Rejected {len(profile_failures)}/{len(results)} rows because the effective mode "
+                "left the declared benchmark profile."
             )
     if "ragas_failed" not in results.columns:
         raise RAGASValidationError(
@@ -396,11 +411,20 @@ class RAGASEvaluator:
         vector_fusion_weight: float = settings.FUSION_VECTOR_WEIGHT,
         graph_fusion_weight: float = settings.FUSION_GRAPH_WEIGHT,
         lexical_fusion_weight: float = settings.FUSION_LEXICAL_WEIGHT,
+        enable_conservative_routing: bool = settings.CONSERVATIVE_ROUTING_ENABLED,
+        allow_mode_downgrade: bool = True,
+        allow_vectorless_auto_route: bool = True,
+        attachment_content: Optional[str] = None,
+        attachment_name: Optional[str] = None,
+        sample_id: str = "single-001",
+        categories: Optional[List[str]] = None,
+        profile: Optional[Mapping[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Run the live workflow on a single query and evaluate the output with RAGAS.
         """
         t0 = time.perf_counter()
+        res: Dict[str, Any] = {}
         try:
             res = await workflow.execute_with_answer(
                 query=question,
@@ -412,6 +436,12 @@ class RAGASEvaluator:
                 vector_fusion_weight=vector_fusion_weight,
                 graph_fusion_weight=graph_fusion_weight,
                 lexical_fusion_weight=lexical_fusion_weight,
+                enable_conservative_routing=enable_conservative_routing,
+                allow_mode_downgrade=allow_mode_downgrade,
+                allow_vectorless_auto_route=allow_vectorless_auto_route,
+                attachment_content=attachment_content,
+                attachment_name=attachment_name,
+                include_trace=True,
             )
             answer = res.get("answer", "")
             chunks = res.get("chunks", [])
@@ -434,6 +464,28 @@ class RAGASEvaluator:
         )
         eval_latency_ms = round((time.perf_counter() - t_eval) * 1000, 1)
 
+        profile_payload = dict(profile or {
+            "name": "ad_hoc",
+            "requested_mode": mode.value,
+            "declared_effective_modes": [],
+        })
+        provenance = build_provenance_record(
+            sample={
+                "sample_id": sample_id,
+                "question": question,
+                "ground_truth": ground_truth,
+                "categories": categories or [],
+            },
+            result=res,
+            scores=scores,
+            profile=profile_payload,
+            workflow_error=workflow_error,
+            workflow_latency_ms=run_latency_ms,
+            eval_latency_ms=eval_latency_ms,
+            judge_model=getattr(self, "model", None),
+            embedding_model=getattr(self, "embedding_model", None),
+        )
+
         return {
             "question": question,
             "answer": answer,
@@ -444,6 +496,11 @@ class RAGASEvaluator:
             "workflow_latency_ms": run_latency_ms,
             "eval_latency_ms": eval_latency_ms,
             "workflow_error": workflow_error,
+            "requested_mode": provenance["profile"]["requested_mode"],
+            "effective_mode": provenance["profile"]["effective_mode"],
+            "mode_profile_error": provenance["profile"]["error"],
+            "profile_name": provenance["profile"]["name"],
+            "provenance": provenance,
             "max_results": max_results,
             "max_hops": max_hops,
             "candidate_pool_size": candidate_pool_size,
@@ -466,6 +523,10 @@ class RAGASEvaluator:
         vector_fusion_weight: float = settings.FUSION_VECTOR_WEIGHT,
         graph_fusion_weight: float = settings.FUSION_GRAPH_WEIGHT,
         lexical_fusion_weight: float = settings.FUSION_LEXICAL_WEIGHT,
+        enable_conservative_routing: bool = settings.CONSERVATIVE_ROUTING_ENABLED,
+        allow_mode_downgrade: bool = True,
+        allow_vectorless_auto_route: bool = True,
+        profile: Optional[Mapping[str, Any]] = None,
         concurrency_limit: int = 3,
         show_progress: bool = True,
     ) -> pd.DataFrame:
@@ -489,6 +550,7 @@ class RAGASEvaluator:
         async def evaluate_sample(idx: int, sample: Dict[str, Any]) -> Dict[str, Any]:
             question = sample["question"]
             ground_truth = sample.get("ground_truth")
+            res: Dict[str, Any] = {}
             
             async with semaphore:
                 if show_progress:
@@ -505,6 +567,12 @@ class RAGASEvaluator:
                         vector_fusion_weight=vector_fusion_weight,
                         graph_fusion_weight=graph_fusion_weight,
                         lexical_fusion_weight=lexical_fusion_weight,
+                        enable_conservative_routing=enable_conservative_routing,
+                        allow_mode_downgrade=allow_mode_downgrade,
+                        allow_vectorless_auto_route=allow_vectorless_auto_route,
+                        attachment_content=sample.get("attachment_content"),
+                        attachment_name=sample.get("attachment_name"),
+                        include_trace=True,
                     )
                     answer = res.get("answer", "")
                     chunks = res.get("chunks", [])
@@ -529,6 +597,22 @@ class RAGASEvaluator:
                 ground_truth=ground_truth,
             )
             eval_latency_ms = round((time.perf_counter() - t_eval) * 1000, 1)
+            profile_payload = dict(profile or {
+                "name": "ad_hoc",
+                "requested_mode": mode.value,
+                "declared_effective_modes": [],
+            })
+            provenance = build_provenance_record(
+                sample=sample,
+                result=res,
+                scores=scores,
+                profile=profile_payload,
+                workflow_error=workflow_error,
+                workflow_latency_ms=run_latency_ms,
+                eval_latency_ms=eval_latency_ms,
+                judge_model=getattr(self, "model", None),
+                embedding_model=getattr(self, "embedding_model", None),
+            )
             
             return {
                 "question": question,
@@ -539,6 +623,13 @@ class RAGASEvaluator:
                 "workflow_latency_ms": run_latency_ms,
                 "eval_latency_ms": eval_latency_ms,
                 "workflow_error": workflow_error,
+                "sample_id": provenance["sample_id"],
+                "categories": provenance["categories"],
+                "requested_mode": provenance["profile"]["requested_mode"],
+                "effective_mode": provenance["profile"]["effective_mode"],
+                "mode_profile_error": provenance["profile"]["error"],
+                "profile_name": provenance["profile"]["name"],
+                "provenance": provenance,
                 "max_results": max_results,
                 "max_hops": max_hops,
                 "candidate_pool_size": candidate_pool_size,
@@ -588,6 +679,29 @@ class RAGASEvaluator:
                 "description": METRIC_DESCRIPTIONS.get(col, ""),
             }
 
+        per_category: Dict[str, Any] = {}
+        if "categories" in results.columns:
+            category_names = sorted({
+                str(category)
+                for categories in results["categories"]
+                for category in (categories if isinstance(categories, list) else [])
+            })
+            for category in category_names:
+                subset = results[results["categories"].apply(
+                    lambda categories: category in categories if isinstance(categories, list) else False
+                )]
+                per_category[category] = {
+                    "samples": len(subset),
+                    "metrics": {
+                        metric: round(float(subset[metric].mean()), 4)
+                        for metric in metric_cols
+                    },
+                    "mean_workflow_latency_ms": (
+                        round(float(subset["workflow_latency_ms"].mean()), 2)
+                        if "workflow_latency_ms" in subset.columns else None
+                    ),
+                }
+
         results = results.copy()
         results["composite_score"] = results.apply(
             lambda row: weighted_composite(row.to_dict(), policy), axis=1
@@ -634,8 +748,15 @@ class RAGASEvaluator:
                 "eval_mode": "ragas" if ragas_accepted else "heuristic_or_mixed",
                 "accepted_as_ragas": ragas_accepted,
                 "metric_values_valid": metric_values_valid,
+                "profile": (
+                    str(results["profile_name"].iloc[0])
+                    if "profile_name" in results.columns and not results.empty
+                    else "unspecified"
+                ),
+                "profile_preference": "not established; compare separate accepted manifests",
             },
             "per_metric": per_metric,
+            "per_category": per_category,
             "worst_samples": results.nsmallest(5, "composite_score")[
                 ["question", "composite_score"] + metric_cols
             ].reset_index(drop=True).to_dict(orient="records"),
@@ -684,6 +805,12 @@ if __name__ == "__main__":
         default=settings.RETRIEVAL_CANDIDATE_LIMIT,
     )
     parser.add_argument("--run-label", default="latest", help="Safe label used for persisted result files")
+    parser.add_argument(
+        "--profile",
+        choices=sorted(PROFILES),
+        default="hybrid",
+        help="Explicit benchmark execution profile; profiles never change production defaults",
+    )
     parser.add_argument("--generation-model", default="gpt-4o-mini")
     parser.add_argument("--judge-model", default="gpt-4o-mini")
     parser.add_argument("--judge-embedding-model", default="text-embedding-3-small")
@@ -691,11 +818,27 @@ if __name__ == "__main__":
         "--baseline-manifest",
         help="Optional accepted manifest to compare using the one-lever ratchet gate",
     )
-    parser.add_argument("--enable-lexical-fusion", action="store_true")
+    parser.add_argument(
+        "--enable-conservative-routing",
+        action="store_true",
+        help="Experimental routing policy; use with --profile adaptive_hybrid",
+    )
+    parser.add_argument(
+        "--enable-lexical-fusion",
+        action="store_true",
+        help="Deprecated compatibility alias for --profile hybrid_lexical",
+    )
     parser.add_argument("--vector-weight", type=float, default=settings.FUSION_VECTOR_WEIGHT)
     parser.add_argument("--graph-weight", type=float, default=settings.FUSION_GRAPH_WEIGHT)
     parser.add_argument("--lexical-weight", type=float, default=settings.FUSION_LEXICAL_WEIGHT)
     args = parser.parse_args()
+    if args.enable_lexical_fusion:
+        if args.profile == "vectorless":
+            parser.error("dedicated vectorless cannot enable Hybrid lexical fusion")
+        args.profile = "hybrid_lexical"
+    profile = get_profile(args.profile)
+    if args.enable_conservative_routing and profile.name != "adaptive_hybrid":
+        parser.error("--enable-conservative-routing requires --profile adaptive_hybrid")
     if not 1 <= args.max_hops <= 5:
         parser.error("--max-hops must be between 1 and 5")
     if not 1 <= args.max_results <= 100:
@@ -708,6 +851,7 @@ if __name__ == "__main__":
     if any(weight < 0 or weight > 5 for weight in weights) or not any(weights):
         parser.error("active fusion weights must be between 0 and 5 with at least one positive value")
     run_label = re.sub(r"[^a-zA-Z0-9_-]+", "-", args.run_label).strip("-") or "latest"
+    artifact_label = f"{run_label}-{profile.name}"
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     run_git_revision = current_git_revision(repo_root)
     run_working_tree_clean = working_tree_is_clean(repo_root)
@@ -744,10 +888,7 @@ if __name__ == "__main__":
             file=sys.stderr,
         )
         sys.exit(2)
-    raw_data = [
-        {"question": row["user_input"], "ground_truth": row["reference"]}
-        for _, row in df.iterrows()
-    ]
+    raw_data = build_profile_dataset(df.to_dict(orient="records"), profile)
 
     chroma = ChromaService()
     neo4j = Neo4jService()
@@ -768,14 +909,18 @@ if __name__ == "__main__":
         results_df = asyncio.run(evaluator.evaluate_live_workflow(
             workflow=workflow,
             dataset=raw_data,
-            mode=QueryMode.HYBRID,
+            mode=profile.requested_mode,
             max_results=args.max_results,
             max_hops=args.max_hops,
             candidate_pool_size=args.candidate_pool_size,
-            enable_lexical_fusion=args.enable_lexical_fusion,
+            enable_lexical_fusion=profile.enable_lexical_fusion,
             vector_fusion_weight=args.vector_weight,
             graph_fusion_weight=args.graph_weight,
             lexical_fusion_weight=args.lexical_weight,
+            enable_conservative_routing=args.enable_conservative_routing,
+            allow_mode_downgrade=profile.allow_mode_downgrade,
+            allow_vectorless_auto_route=profile.allow_vectorless_auto_route,
+            profile=profile.to_dict(),
             concurrency_limit=3,
         ))
     finally:
@@ -783,6 +928,14 @@ if __name__ == "__main__":
             neo4j.close()
         except Exception:
             pass
+    reports_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "reports"))
+    os.makedirs(reports_dir, exist_ok=True)
+    provenance_records = results_df["provenance"].tolist()
+    provenance_path = os.path.join(reports_dir, f"ragas_{artifact_label}_provenance.jsonl")
+    diagnostics_path = os.path.join(reports_dir, f"ragas_{artifact_label}_diagnostics.json")
+    write_provenance_jsonl(provenance_path, provenance_records)
+    write_diagnostic_summary(diagnostics_path, provenance_records)
+
     try:
         require_successful_ragas(
             results_df,
@@ -792,17 +945,21 @@ if __name__ == "__main__":
     except RAGASValidationError as exc:
         print(f"\nBENCHMARK REJECTED: {exc}", file=sys.stderr)
         print(
-            "No report or spider graph was updated. Resolve the judge failure and rerun.",
+            f"Diagnostic provenance was saved to {provenance_path}; no accepted report or spider graph was updated.",
             file=sys.stderr,
         )
         sys.exit(2)
     report = evaluator.generate_report(results_df)
 
-    reports_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "reports"))
-    os.makedirs(reports_dir, exist_ok=True)
-    results_path = os.path.join(reports_dir, f"ragas_{run_label}_results.csv")
-    report_path = os.path.join(reports_dir, f"ragas_{run_label}_report.json")
-    results_df.to_csv(results_path, index=False)
+    results_path = os.path.join(reports_dir, f"ragas_{artifact_label}_results.csv")
+    report_path = os.path.join(reports_dir, f"ragas_{artifact_label}_report.json")
+    serializable_results = results_df.copy()
+    for column in ("categories", "provenance"):
+        if column in serializable_results.columns:
+            serializable_results[column] = serializable_results[column].apply(
+                lambda value: json.dumps(value, sort_keys=True)
+            )
+    serializable_results.to_csv(results_path, index=False)
     with open(report_path, "w", encoding="utf-8") as report_file:
         json.dump(report, report_file, indent=2)
     
@@ -832,16 +989,18 @@ if __name__ == "__main__":
     ax.set_title('PropertyGraphIndex Hybrid RAG Scores', size=13, pad=20)
     plt.tight_layout()
     
-    graph_path = os.path.join(reports_dir, f"spider_graph_ragas_{run_label}.png")
+    graph_path = os.path.join(reports_dir, f"spider_graph_ragas_{artifact_label}.png")
     plt.savefig(graph_path, dpi=300)
     policy = ValidationPolicy()
     pipeline_config = {
         "retrieval": {
-            "mode": QueryMode.HYBRID.value,
+            "profile": profile.to_dict(),
+            "mode": profile.requested_mode.value,
+            "enable_conservative_routing": args.enable_conservative_routing,
             "max_results": args.max_results,
             "max_hops": args.max_hops,
             "candidate_pool_size": args.candidate_pool_size,
-            "enable_lexical_fusion": args.enable_lexical_fusion,
+            "enable_lexical_fusion": profile.enable_lexical_fusion,
             "vector_fusion_weight": args.vector_weight,
             "graph_fusion_weight": args.graph_weight,
             "lexical_fusion_weight": args.lexical_weight,
@@ -864,7 +1023,7 @@ if __name__ == "__main__":
         },
     }
     manifest = build_manifest(
-        run_label=run_label,
+        run_label=artifact_label,
         repo_root=repo_root,
         dataset_path=csv_path,
         pipeline_config=pipeline_config,
@@ -879,6 +1038,8 @@ if __name__ == "__main__":
             "results_csv": results_path,
             "report_json": report_path,
             "spider_graph": graph_path,
+            "provenance_jsonl": provenance_path,
+            "diagnostics_json": diagnostics_path,
         },
         policy=policy,
         git_revision=run_git_revision,
@@ -890,7 +1051,7 @@ if __name__ == "__main__":
             load_manifest(args.baseline_manifest), manifest, policy
         )
         manifest["baseline_comparison"] = comparison
-    manifest_path = os.path.join(reports_dir, f"ragas_{run_label}_manifest.json")
+    manifest_path = os.path.join(reports_dir, f"ragas_{artifact_label}_manifest.json")
     write_manifest(manifest_path, manifest)
     print(f"\nResults saved to {results_path}")
     print(f"Report saved to {report_path}")

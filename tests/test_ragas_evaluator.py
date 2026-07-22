@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 import pandas as pd
 import pytest
 
+from backend.app.models import QueryMode
 from eval.ragas_evaluator import (
     RAGASEvaluator,
     RAGASValidationError,
@@ -87,6 +88,20 @@ def test_report_uses_weighted_composite_and_confidence_interval():
     assert report["summary"]["composite_confidence_interval_95"] == [0.795, 0.795]
 
 
+def test_report_keeps_profile_and_category_metrics_separate():
+    results = pd.concat([_results(), _results()], ignore_index=True)
+    results["categories"] = [["single_hop"], ["multi_hop", "exact_token"]]
+    results["profile_name"] = "hybrid_lexical"
+    results["workflow_latency_ms"] = [10.0, 20.0]
+
+    report = RAGASEvaluator.__new__(RAGASEvaluator).generate_report(results)
+
+    assert report["summary"]["profile"] == "hybrid_lexical"
+    assert report["summary"]["profile_preference"].startswith("not established")
+    assert report["per_category"]["exact_token"]["samples"] == 1
+    assert report["per_category"]["multi_hop"]["mean_workflow_latency_ms"] == 20.0
+
+
 def test_live_evaluation_forwards_precision_controls_to_workflow():
     workflow = AsyncMock()
     workflow.execute_with_answer.return_value = {
@@ -109,6 +124,62 @@ def test_live_evaluation_forwards_precision_controls_to_workflow():
     assert call["max_results"] == 6
     assert call["max_hops"] == 1
     assert call["candidate_pool_size"] == 25
+    assert call["include_trace"] is True
     assert result["max_hops"] == 1
     assert result["max_results"] == 6
     assert result["candidate_pool_size"] == 25
+
+
+def test_mode_profile_escape_is_rejected():
+    results = _results()
+    results["mode_profile_error"] = "effective mode 'vector' is not declared"
+
+    with pytest.raises(RAGASValidationError, match="declared benchmark profile"):
+        require_successful_ragas(results)
+
+
+def test_vectorless_profile_forwards_attachment_and_persists_effective_mode():
+    workflow = AsyncMock()
+    workflow.execute_with_answer.return_value = {
+        "answer": "Use the query endpoint.",
+        "chunks": [SimpleNamespace(content="Use the query endpoint.")],
+        "effective_mode": "vectorless",
+        "trace": {
+            "requested_mode": "vectorless",
+            "effective_mode": "vectorless",
+            "routing": {"facets": ["How do I query the document?"]},
+            "initial_candidates": {"vector": [], "graph": [], "lexical": []},
+            "channel_candidates": {"vector": [], "graph": [], "lexical": [], "vectorless": []},
+            "retrieval_failures": {},
+            "fusion": {"candidates": []},
+            "reranking": {"candidates": []},
+            "final_contexts": [],
+        },
+    }
+    evaluator = RAGASEvaluator.__new__(RAGASEvaluator)
+    evaluator.model = "judge"
+    evaluator.embedding_model = "embedding"
+    evaluator.evaluate_single = lambda **kwargs: {"faithfulness": 1.0, "ragas_failed": False}
+    profile = {
+        "name": "vectorless",
+        "requested_mode": "vectorless",
+        "declared_effective_modes": ["vectorless"],
+    }
+
+    result = asyncio.run(evaluator.evaluate_live_single(
+        workflow,
+        question="How do I query the document?",
+        mode=QueryMode.VECTORLESS,
+        attachment_content="source document",
+        attachment_name="source.txt",
+        allow_mode_downgrade=False,
+        allow_vectorless_auto_route=False,
+        profile=profile,
+    ))
+
+    call = workflow.execute_with_answer.await_args.kwargs
+    assert call["attachment_content"] == "source document"
+    assert call["allow_mode_downgrade"] is False
+    assert result["effective_mode"] == "vectorless"
+    assert result["mode_profile_error"] is None
+    assert result["provenance"]["profile"]["name"] == "vectorless"

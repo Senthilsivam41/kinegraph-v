@@ -374,7 +374,7 @@ curl -X POST "http://localhost:8000/api/v1/query" \
 
 ## 🔬 Evaluation & Diagnostics
 
-The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor system performance offline and live. The checked-in benchmark is [`eval/kinegraph_benchmark_v1.csv`](eval/kinegraph_benchmark_v1.csv); it currently has **5 queries** with the generated schema `user_input`, `reference_contexts`, `reference`, `persona_name`, `query_style`, `query_length`, and `synthesizer_name`.
+The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor system performance offline and live. The checked-in benchmark is [`eval/kinegraph_benchmark_v1.csv`](eval/kinegraph_benchmark_v1.csv); it has **20 queries** with the generated schema `user_input`, `reference_contexts`, `reference`, `persona_name`, `query_style`, `query_length`, and `synthesizer_name`.
 
 - **Synthetic Testset Generation**: Create rich multi-hop and specific factual benchmark questions directly from the project's documentation using:
   ```bash
@@ -386,7 +386,7 @@ The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor s
   ```
 - **Live Pipeline Benchmarking**: Execute the live RAG pipeline on the checked-in benchmark questions and compute RAGAS metrics:
   ```bash
-  PYTHONPATH=. python eval/ragas_evaluator.py --max-hops 2 --max-results 6 --candidate-pool-size 25
+  PYTHONPATH=. python eval/ragas_evaluator.py --profile hybrid --max-hops 2 --max-results 6 --candidate-pool-size 25
   ```
 - **Hop-depth precision experiment**: Persist separate accepted runs for direct comparison:
   ```bash
@@ -396,12 +396,14 @@ The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor s
 - **Fusion recall experiment**: Sweep weights while preserving separate accepted outputs:
   ```bash
   PYTHONPATH=. python eval/ragas_evaluator.py --vector-weight 1.0 --graph-weight 1.2 --run-label graph12
-  PYTHONPATH=. python eval/ragas_evaluator.py --enable-lexical-fusion --vector-weight 1.0 --graph-weight 1.0 --lexical-weight 0.6 --run-label lexical06
+  PYTHONPATH=. python eval/ragas_evaluator.py --profile hybrid_lexical --vector-weight 1.0 --graph-weight 1.0 --lexical-weight 0.6 --run-label lexical06
   ```
-- **Live Diagnostics**: Single-query and concurrent live execution are implemented by `evaluate_live_single` and `evaluate_live_workflow`. The CLI loads the real CSV and executes `HybridRAGWorkflow`; it does not depend on nonexistent `src/`, `benchmarks/`, or `scratch/run_evaluation.py` paths.
+- **Explicit Mode Slices**: `--profile hybrid`, `hybrid_lexical`, and `vectorless` produce separate artifacts. Hybrid profiles pin Hybrid execution; the Vectorless profile uses one deterministic corpus assembled from the frozen reference contexts and never calls Chroma or Neo4j. No profile changes the production default.
+- **Routing Experiment**: `--profile adaptive_hybrid --enable-conservative-routing` evaluates the high-confidence, single-facet downgrade policy as one reversible lever. The legacy router remains the production default until an accepted manifest passes the architecture gate.
+- **Live Diagnostics**: Single-query and concurrent live execution are implemented by `evaluate_live_single` and `evaluate_live_workflow`. Every row persists a redacted `kinegraph.eval.provenance.v1` trace with routing rationale, channel candidates, recovery, fusion/reranking drops, citations, critic output, failures, and stage latency.
 - **Acceptance Gate**: Diagnostic keyword fallbacks remain available, but the CLI exits with status `2` and refuses to update the report or chart when any result has `ragas_failed=True`.
 - **Controlled Experiment Gate**: Accepted runs record the dataset SHA-256, Git revision, complete retrieval configuration, generation and judge models, and a weighted composite with a deterministic 95% bootstrap interval. An optional baseline manifest enforces one changed lever, a ±0.01 tie tolerance, and a maximum 0.05 regression for any individual metric. See [Controlled Benchmark Experiments](docs/EXPERIMENT_VALIDATION.md).
-- **Result Contract**: Evaluation consumes the workflow's `answer` and retrieved `chunks`. Fields such as `max_hops_used`, `hyde_generated`, and `retrieved_nodes` are not top-level evaluator results. Traversal and recovery diagnostics live in chunk metadata or `recovery_details` and require a separate retrieval-path audit.
+- **Result Contract**: Evaluation consumes the workflow's `answer` and retrieved `chunks`; requested/effective mode and full retrieval diagnostics are stored in the per-query provenance JSONL. Diagnostic provenance is written even when the RAGAS acceptance gate rejects a run.
 
 ### Benchmark Status
 

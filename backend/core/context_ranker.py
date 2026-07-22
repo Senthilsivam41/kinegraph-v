@@ -88,7 +88,11 @@ class ContextRanker:
             raise ValueError("reranker weights must be non-negative and sum to 1.0")
         if semantic_weight < 0.5:
             raise ValueError("semantic_weight must remain at least 0.5")
+        self.requested_cross_encoder = use_cross_encoder
+        self.fallback_reason = None
         self.use_cross_encoder = use_cross_encoder and _CE_AVAILABLE
+        if use_cross_encoder and not _CE_AVAILABLE:
+            self.fallback_reason = "sentence-transformers unavailable"
         if not 0.0 <= min_relevance_threshold <= 1.0:
             raise ValueError("min_relevance_threshold must be between 0 and 1")
         self.min_relevance_threshold = min_relevance_threshold
@@ -102,6 +106,7 @@ class ContextRanker:
                 logger.info("ContextRanker: cross-encoder loaded (%s)", model_name)
             except Exception as exc:
                 logger.warning("CrossEncoder load failed (%s) — falling back to keyword.", exc)
+                self.fallback_reason = f"cross-encoder load failed: {type(exc).__name__}"
                 self._encoder = None
                 self.use_cross_encoder = False
 
