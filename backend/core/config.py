@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     FUSION_VECTOR_WEIGHT: float = 1.0
     FUSION_GRAPH_WEIGHT: float = 1.0
     FUSION_LEXICAL_WEIGHT: float = 0.7
+    CONSERVATIVE_ROUTING_ENABLED: bool = False
 
     # Faithfulness controls
     GENERATION_TEMPERATURE: float = Field(default=0.0, ge=0.0, le=0.2)

@@ -45,6 +45,7 @@ async def query_system(query_request: QueryRequest, request: Request):
             enable_hyde_fallback=query_request.enable_hyde_fallback,
             enable_grounding_critique=query_request.enable_grounding_critique,
             enable_lexical_fusion=query_request.enable_lexical_fusion,
+            enable_conservative_routing=query_request.enable_conservative_routing,
             vector_fusion_weight=query_request.vector_fusion_weight,
             graph_fusion_weight=query_request.graph_fusion_weight,
             lexical_fusion_weight=query_request.lexical_fusion_weight,

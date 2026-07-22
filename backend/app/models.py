@@ -47,6 +47,10 @@ class QueryRequest(BaseModel):
         description="Verify structured citations and filter unsupported claims before returning the answer",
     )
     enable_lexical_fusion: bool = Field(default=False, description="Opt-in BM25 channel for hybrid fusion")
+    enable_conservative_routing: bool = Field(
+        default=settings.CONSERVATIVE_ROUTING_ENABLED,
+        description="Experimental: downgrade Hybrid only for high-confidence single-facet queries",
+    )
     vector_fusion_weight: float = Field(default=settings.FUSION_VECTOR_WEIGHT, ge=0, le=5)
     graph_fusion_weight: float = Field(default=settings.FUSION_GRAPH_WEIGHT, ge=0, le=5)
     lexical_fusion_weight: float = Field(default=settings.FUSION_LEXICAL_WEIGHT, ge=0, le=5)

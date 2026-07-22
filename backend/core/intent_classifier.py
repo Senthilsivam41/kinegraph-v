@@ -6,7 +6,7 @@ Runs fast via keyword heuristics first; falls back to LLM only when ambiguous.
 from __future__ import annotations
 
 import re
-from typing import Dict, Tuple
+from typing import Any, Dict, Tuple
 
 # ---------------------------------------------------------------------------
 # Intent taxonomy
@@ -26,7 +26,7 @@ INTENT_CATALOG: Dict[str, Tuple[str, str]] = {
 # Keyword triggers per intent (lower-cased)
 _TRIGGERS: Dict[str, list] = {
     "definition":     ["what is", "define", "definition of", "meaning of", "what are"],
-    "comparison":     ["differ", "difference", "compare", "vs ", "versus", "unlike", "over", "better than"],
+    "comparison":     ["differ", "difference", "compare", "compared to", "vs ", "versus", "unlike", "over", "better than"],
     "how_to":         ["how does", "how do", "how can", "how to", "how is", "how are"],
     "relationship":   ["relate", "relationship", "connect", "link", "depend", "interact", "between"],
     "debugging":      ["why", "debug", "root cause", "fix", "error", "fail", "issue", "problem"],
@@ -36,7 +36,27 @@ _TRIGGERS: Dict[str, list] = {
 }
 
 
-def classify_intent(query: str) -> Dict[str, str]:
+def _trigger_matches(query: str, trigger: str) -> bool:
+    """Match whole trigger phrases instead of arbitrary substrings."""
+    phrase = trigger.strip()
+    if not phrase:
+        return False
+    return bool(re.search(rf"(?<!\w){re.escape(phrase)}(?!\w)", query))
+
+
+def extract_query_facets(query: str) -> list[str]:
+    """Return explicit question/request facets without generating new intent."""
+    parts = re.split(
+        r"[;]|\s+and\s+(?=(?:what|how|why|which|where|when|who|"
+        r"query|compare|report|identify|list|describe|explain|show|provide)\b)",
+        query,
+        flags=re.IGNORECASE,
+    )
+    facets = [part.strip(" ,?.") for part in parts if len(part.strip(" ,?.").split()) >= 2]
+    return facets if facets else [query.strip()]
+
+
+def classify_intent(query: str) -> Dict[str, Any]:
     """
     Classify the query intent using keyword heuristics.
 
@@ -52,13 +72,18 @@ def classify_intent(query: str) -> Dict[str, str]:
     q = query.lower().strip()
 
     scores: Dict[str, int] = {intent: 0 for intent in INTENT_CATALOG}
+    matched_triggers: Dict[str, list[str]] = {intent: [] for intent in INTENT_CATALOG}
     for intent, keywords in _TRIGGERS.items():
         for kw in keywords:
-            if kw in q:
+            if _trigger_matches(q, kw):
                 scores[intent] += 1
+                matched_triggers[intent].append(kw.strip())
 
     best_intent = max(scores, key=lambda k: scores[k])
     best_score = scores[best_intent]
+    if best_score > 0 and scores["comparison"] == best_score:
+        best_intent = "comparison"
+    facets = extract_query_facets(query)
 
     if best_score == 0:
         # No clear signal — default to hybrid
@@ -67,14 +92,34 @@ def classify_intent(query: str) -> Dict[str, str]:
             "description": INTENT_CATALOG["conceptual"][0],
             "suggested_mode": "hybrid",
             "confidence": "low",
+            "scores": scores,
+            "matched_triggers": {},
+            "tied_intents": [],
+            "facets": facets,
+            "coverage_sensitive": len(facets) > 1,
+            "route_rationale": "no trigger matched; retain broad hybrid coverage",
         }
 
     desc, mode = INTENT_CATALOG[best_intent]
+    tied_intents = [intent for intent, score in scores.items() if score == best_score]
+    coverage_sensitive = scores["comparison"] > 0 or len(facets) > 1
+    confidence = "high" if best_score >= 2 else "medium"
     return {
         "intent": best_intent,
         "description": desc,
         "suggested_mode": mode,
-        "confidence": "high" if best_score >= 2 else "medium",
+        "confidence": confidence,
+        "scores": scores,
+        "matched_triggers": {
+            intent: triggers for intent, triggers in matched_triggers.items() if triggers
+        },
+        "tied_intents": tied_intents if len(tied_intents) > 1 else [],
+        "facets": facets,
+        "coverage_sensitive": coverage_sensitive,
+        "route_rationale": (
+            f"selected {best_intent} from deterministic trigger scores; "
+            f"confidence={confidence}; coverage_sensitive={coverage_sensitive}"
+        ),
     }
 
 
@@ -122,4 +167,3 @@ def rewrite_query_for_retrieval(query: str, intent: str) -> str:
         "conceptual":     f"concept overview purpose: {cleaned_query}",
     }
     return expansions.get(intent, cleaned_query)
-

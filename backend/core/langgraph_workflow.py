@@ -12,6 +12,7 @@ Improvements over v1:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import re
@@ -115,7 +116,12 @@ class WorkflowState(TypedDict):
     rewritten_query: str
     intent: str
     suggested_mode: str
+    requested_mode: QueryMode
     mode: QueryMode
+    allow_mode_downgrade: bool
+    enable_conservative_routing: bool
+    allow_vectorless_auto_route: bool
+    routing_details: Dict[str, Any]
     max_results: int
     candidate_pool_size: int
     max_hops: int
@@ -127,6 +133,8 @@ class WorkflowState(TypedDict):
     vector_results: List[Dict[str, Any]]
     graph_results: List[Dict[str, Any]]
     lexical_results: List[Dict[str, Any]]
+    initial_candidates: Dict[str, List[Dict[str, Any]]]
+    retrieval_failures: Dict[str, str]
     enable_lexical_fusion: bool
     vector_fusion_weight: float
     graph_fusion_weight: float
@@ -134,7 +142,9 @@ class WorkflowState(TypedDict):
     recovery_triggered: bool
     recovery_details: Dict[str, Any]
     fused_results: List[Dict[str, Any]]
+    deduplication_details: Dict[str, Any]
     reranked_results: List[Dict[str, Any]]
+    reranker_details: Dict[str, Any]
     enable_grounding_critique: bool
     grounded_claims: List[Dict[str, Any]]
     citation_context: Dict[str, str]
@@ -204,6 +214,17 @@ def parse_research_synthesis_output(text: str) -> tuple[str, float]:
     clean_answer = re.sub(r"^(?:Provide only the synthesized answer from Task 2, followed by a concise confidence score based on your assessment in Task 3\.?|Synthesized Answer:)\s*", "", clean_answer, flags=re.IGNORECASE).strip()
     
     return clean_answer, confidence
+
+
+def _candidate_identity(result: Dict[str, Any]) -> str:
+    """Return a stable candidate identifier for trace comparisons."""
+    metadata = result.get("metadata") or {}
+    for key in ("chunk_id", "vector_record_id", "node_id", "id", "citation_id"):
+        value = result.get(key, metadata.get(key))
+        if value not in (None, ""):
+            return str(value)
+    digest = hashlib.sha256(result.get("content", "").encode("utf-8")).hexdigest()
+    return f"content-sha256:{digest}"
 
 
 # ---------------------------------------------------------------------------
@@ -335,14 +356,29 @@ class HybridRAGWorkflow:
         # Rewrite the query to expand recall
         rewritten = rewrite_query_for_retrieval(state["query"], intent)
 
-        # Override mode only if caller chose HYBRID (let explicit vector/graph override stand)
-        effective_mode = state["mode"]
-        if effective_mode == QueryMode.HYBRID:
-            if suggested_mode == "vector":
-                effective_mode = QueryMode.VECTOR
-            elif suggested_mode == "graph":
-                effective_mode = QueryMode.GRAPH
-            # else: stays hybrid
+        requested_mode = state.get("requested_mode", state["mode"])
+        effective_mode = requested_mode
+        downgrade_reason = "explicit caller mode preserved"
+        if requested_mode == QueryMode.HYBRID:
+            conservative = state.get("enable_conservative_routing", False)
+            can_downgrade = state.get("allow_mode_downgrade", True) and (
+                not conservative
+                or (
+                    intent_result.get("confidence") == "high"
+                    and not intent_result.get("coverage_sensitive", False)
+                )
+            )
+            if can_downgrade and suggested_mode in {"vector", "graph"}:
+                effective_mode = QueryMode(suggested_mode)
+                downgrade_reason = (
+                    "high-confidence single-facet classifier downgrade"
+                    if conservative
+                    else "legacy classifier downgrade"
+                )
+            elif not state.get("allow_mode_downgrade", True):
+                downgrade_reason = "benchmark profile requires requested mode"
+            else:
+                downgrade_reason = "conservative routing retained hybrid for uncertain or coverage-sensitive query"
 
         # Check for auto-routing to Vectorless RAG
         attachment_content = state.get("attachment_content")
@@ -358,13 +394,22 @@ class HybridRAGWorkflow:
 
         should_use_vectorless = False
 
-        if effective_mode == QueryMode.VECTORLESS:
+        if requested_mode == QueryMode.VECTORLESS:
             should_use_vectorless = True
-        elif attachment_content:
+        elif (
+            requested_mode == QueryMode.HYBRID
+            and state.get("allow_vectorless_auto_route", True)
+            and attachment_content
+        ):
             if len(attachment_content) < 40000 or is_summary_query:
                 should_use_vectorless = True
                 logger.info("[IntentRouter] Auto-routing to VECTORLESS: Attachment content detected (len=%d, is_summary=%s)", len(attachment_content), is_summary_query)
-        elif filters and "file_name" in filters:
+        elif (
+            requested_mode == QueryMode.HYBRID
+            and state.get("allow_vectorless_auto_route", True)
+            and filters
+            and "file_name" in filters
+        ):
             file_name = filters["file_name"]
             from backend.services.vectorless_service import VectorlessService
             vectorless = VectorlessService()
@@ -375,6 +420,11 @@ class HybridRAGWorkflow:
 
         if should_use_vectorless:
             effective_mode = QueryMode.VECTORLESS
+            downgrade_reason = (
+                "explicit vectorless mode"
+                if requested_mode == QueryMode.VECTORLESS
+                else "eligible attachment or local-file vectorless route"
+            )
 
         logger.info(
             "[IntentRouter] query=%r intent=%s mode=%s→%s rewritten=%r",
@@ -386,6 +436,15 @@ class HybridRAGWorkflow:
         state["suggested_mode"] = suggested_mode
         state["rewritten_query"] = rewritten
         state["mode"] = effective_mode
+        state["routing_details"] = {
+            **intent_result,
+            "requested_mode": requested_mode.value,
+            "effective_mode": effective_mode.value,
+            "allow_mode_downgrade": state.get("allow_mode_downgrade", True),
+            "enable_conservative_routing": state.get("enable_conservative_routing", False),
+            "allow_vectorless_auto_route": state.get("allow_vectorless_auto_route", True),
+            "decision": downgrade_reason,
+        }
         state["latency_breakdown"] = {
             "intent_router_ms": round((time.perf_counter() - t0) * 1000, 2)
         }
@@ -430,9 +489,19 @@ class HybridRAGWorkflow:
         vector_results, graph_results = retrieved[:2]
         lexical_results = retrieved[2] if len(retrieved) > 2 else []
 
+        failures = state.setdefault("retrieval_failures", {})
+        for channel, value in zip(("vector", "graph", "lexical"), retrieved):
+            if isinstance(value, Exception):
+                failures[channel] = f"{type(value).__name__}: {value}"[:500]
+
         state["vector_results"] = vector_results if isinstance(vector_results, list) else []
         state["graph_results"]  = graph_results  if isinstance(graph_results,  list) else []
         state["lexical_results"] = lexical_results if isinstance(lexical_results, list) else []
+        state["initial_candidates"] = {
+            "vector": list(state["vector_results"]),
+            "graph": list(state["graph_results"]),
+            "lexical": list(state["lexical_results"]),
+        }
         state["latency_breakdown"]["parallel_fetch_ms"] = round(
             (time.perf_counter() - t0) * 1000, 2
         )
@@ -451,14 +520,19 @@ class HybridRAGWorkflow:
         """Vector-only retrieval with expanded fetch for better recall."""
         t0 = time.perf_counter()
         fetch_n = max(state["max_results"], state["candidate_pool_size"])
-        results = await self.chroma.similarity_search(
-            query=state["rewritten_query"],
-            n_results=fetch_n,
-            filters=state.get("filters"),
-        )
+        try:
+            results = await self.chroma.similarity_search(
+                query=state["rewritten_query"],
+                n_results=fetch_n,
+                filters=state.get("filters"),
+            )
+        except Exception as exc:
+            state.setdefault("retrieval_failures", {})["vector"] = f"{type(exc).__name__}: {exc}"[:500]
+            results = []
         state["vector_results"] = results
         state["graph_results"] = []
         state["lexical_results"] = []
+        state["initial_candidates"] = {"vector": list(results), "graph": [], "lexical": []}
         state["latency_breakdown"]["vector_agent_ms"] = round(
             (time.perf_counter() - t0) * 1000, 2
         )
@@ -470,16 +544,21 @@ class HybridRAGWorkflow:
         """Graph-only retrieval with expanded fetch for better recall."""
         t0 = time.perf_counter()
         fetch_n = max(state["max_results"], state["candidate_pool_size"])
-        results = await self.graph_retriever_node.retrieve_chunks(
-            query=state["rewritten_query"],
-            n_results=fetch_n,
-            max_hops=state["max_hops"],
-            traversal_strategy=state["traversal_strategy"],
-            community_id=state.get("community_id"),
-        )
+        try:
+            results = await self.graph_retriever_node.retrieve_chunks(
+                query=state["rewritten_query"],
+                n_results=fetch_n,
+                max_hops=state["max_hops"],
+                traversal_strategy=state["traversal_strategy"],
+                community_id=state.get("community_id"),
+            )
+        except Exception as exc:
+            state.setdefault("retrieval_failures", {})["graph"] = f"{type(exc).__name__}: {exc}"[:500]
+            results = []
         state["graph_results"] = results
         state["vector_results"] = []
         state["lexical_results"] = []
+        state["initial_candidates"] = {"vector": [], "graph": list(results), "lexical": []}
         state["latency_breakdown"]["graph_agent_ms"] = round(
             (time.perf_counter() - t0) * 1000, 2
         )
@@ -522,10 +601,12 @@ class HybridRAGWorkflow:
                 logger.info("[VectorlessAgent] Retrieved %d chunks from local chunks", len(results))
         except Exception as e:
             logger.error("[VectorlessAgent] Failed vectorless retrieval: %s", e)
+            state.setdefault("retrieval_failures", {})["vectorless"] = f"{type(e).__name__}: {e}"[:500]
 
         state["vector_results"] = results
         state["graph_results"] = []
         state["lexical_results"] = []
+        state["initial_candidates"] = {"vector": [], "graph": [], "lexical": list(results)}
         state["latency_breakdown"]["vectorless_agent_ms"] = round(
             (time.perf_counter() - t0) * 1000, 2
         )
@@ -546,8 +627,18 @@ class HybridRAGWorkflow:
             require_graph=require_graph,
             require_source_diversity=mode == QueryMode.HYBRID,
         )
+        routing = state.get("routing_details", {})
+        facet_coverage = self.recovery.assess_facet_coverage(
+            routing.get("facets", [state["query"]]),
+            [*state["vector_results"], *state["graph_results"], *state.get("lexical_results", [])],
+        )
+        if routing.get("coverage_sensitive") and not facet_coverage.complete:
+            initial.weak = True
+            if "incomplete_question_facet_coverage" not in initial.reasons:
+                initial.reasons.append("incomplete_question_facet_coverage")
         details: Dict[str, Any] = {
             "initial_assessment": initial.to_dict(),
+            "initial_facet_coverage": facet_coverage.to_dict(),
             "structured_recovery_used": False,
             "hyde_used": False,
             "subqueries": [],
@@ -562,6 +653,7 @@ class HybridRAGWorkflow:
             or not initial.weak
         ):
             details["final_assessment"] = initial.to_dict()
+            details["final_facet_coverage"] = facet_coverage.to_dict()
             state["recovery_details"] = details
             state["latency_breakdown"]["query_recovery_ms"] = round((time.perf_counter() - t0) * 1000, 2)
             return state
@@ -596,10 +688,18 @@ class HybridRAGWorkflow:
             index = 0
             if vector_task is not None:
                 value = values[index]
+                if isinstance(value, Exception):
+                    state.setdefault("retrieval_failures", {})["recovery_vector"] = (
+                        f"{type(value).__name__}: {value}"[:500]
+                    )
                 vector_value = value if isinstance(value, list) else []
                 index += 1
             if graph_task is not None:
                 value = values[index]
+                if isinstance(value, Exception):
+                    state.setdefault("retrieval_failures", {})["recovery_graph"] = (
+                        f"{type(value).__name__}: {value}"[:500]
+                    )
                 graph_value = value if isinstance(value, list) else []
             return vector_value, graph_value
 
@@ -640,7 +740,16 @@ class HybridRAGWorkflow:
             require_graph=require_graph,
             require_source_diversity=mode == QueryMode.HYBRID,
         )
+        structured_facet_coverage = self.recovery.assess_facet_coverage(
+            routing.get("facets", [state["query"]]),
+            [*state["vector_results"], *state["graph_results"], *state.get("lexical_results", [])],
+        )
+        if routing.get("coverage_sensitive") and not structured_facet_coverage.complete:
+            after_structured.weak = True
+            if "incomplete_question_facet_coverage" not in after_structured.reasons:
+                after_structured.reasons.append("incomplete_question_facet_coverage")
         details["structured_assessment"] = after_structured.to_dict()
+        details["structured_facet_coverage"] = structured_facet_coverage.to_dict()
 
         if (
             after_structured.weak
@@ -668,7 +777,16 @@ class HybridRAGWorkflow:
             require_graph=require_graph,
             require_source_diversity=mode == QueryMode.HYBRID,
         )
+        final_facet_coverage = self.recovery.assess_facet_coverage(
+            routing.get("facets", [state["query"]]),
+            [*state["vector_results"], *state["graph_results"], *state.get("lexical_results", [])],
+        )
+        if routing.get("coverage_sensitive") and not final_facet_coverage.complete:
+            final_assessment.weak = True
+            if "incomplete_question_facet_coverage" not in final_assessment.reasons:
+                final_assessment.reasons.append("incomplete_question_facet_coverage")
         details["final_assessment"] = final_assessment.to_dict()
+        details["final_facet_coverage"] = final_facet_coverage.to_dict()
         state["recovery_details"] = details
         state["latency_breakdown"]["query_recovery_ms"] = round((time.perf_counter() - t0) * 1000, 2)
         return state
@@ -699,11 +817,22 @@ class HybridRAGWorkflow:
                 source_names=[name for name, _, _ in active],
             ) if active else []
 
+        before_deduplication = list(fused)
         fused = deduplicate_results(
-            fused,
+            before_deduplication,
             similarity_threshold=settings.RETRIEVAL_DEDUP_THRESHOLD,
         )
         state["fused_results"] = fused
+        retained_ids = {_candidate_identity(result) for result in fused}
+        state["deduplication_details"] = {
+            "input_count": len(before_deduplication),
+            "output_count": len(fused),
+            "removed_candidate_ids": [
+                _candidate_identity(result)
+                for result in before_deduplication
+                if _candidate_identity(result) not in retained_ids
+            ],
+        }
         state["latency_breakdown"]["fusion_ms"] = round(
             (time.perf_counter() - t0) * 1000, 2
         )
@@ -728,6 +857,22 @@ class HybridRAGWorkflow:
             preferred_community_id=state.get("community_id"),
         )
         state["reranked_results"] = reranked
+        retained_ids = {_candidate_identity(result) for result in reranked}
+        state["reranker_details"] = {
+            "requested_mode": "cross_encoder" if self.ranker.requested_cross_encoder else "keyword",
+            "mode": "cross_encoder" if self.ranker.use_cross_encoder else "keyword",
+            "model": self.ranker.model_name,
+            "fallback": bool(self.ranker.fallback_reason),
+            "fallback_reason": self.ranker.fallback_reason,
+            "minimum_relevance": self.ranker.min_relevance_threshold,
+            "input_count": len(state["fused_results"]),
+            "output_count": len(reranked),
+            "removed_candidate_ids": [
+                _candidate_identity(result)
+                for result in state["fused_results"]
+                if _candidate_identity(result) not in retained_ids
+            ],
+        }
         state["latency_breakdown"]["rerank_ms"] = round(
             (time.perf_counter() - t0) * 1000, 2
         )
@@ -917,6 +1062,44 @@ class HybridRAGWorkflow:
         state["final_results"] = formatted
         return state
 
+    @staticmethod
+    def _build_trace(state: WorkflowState) -> Dict[str, Any]:
+        """Expose raw internal evidence for evaluator-side redaction/persistence."""
+        effective_mode = state["mode"]
+        channel_candidates = {
+            "vector": [] if effective_mode == QueryMode.VECTORLESS else list(state["vector_results"]),
+            "graph": list(state["graph_results"]),
+            "lexical": list(state.get("lexical_results", [])),
+            "vectorless": list(state["vector_results"]) if effective_mode == QueryMode.VECTORLESS else [],
+        }
+        return {
+            "requested_mode": state["requested_mode"].value,
+            "effective_mode": effective_mode.value,
+            "original_query": state["query"],
+            "rewritten_query": state["rewritten_query"],
+            "routing": state.get("routing_details", {}),
+            "initial_candidates": state.get("initial_candidates", {}),
+            "channel_candidates": channel_candidates,
+            "retrieval_failures": state.get("retrieval_failures", {}),
+            "recovery": state.get("recovery_details", {}),
+            "fusion": {
+                "weights": {
+                    "vector": state["vector_fusion_weight"],
+                    "graph": state["graph_fusion_weight"],
+                    "lexical": state["lexical_fusion_weight"],
+                },
+                "lexical_enabled": state["enable_lexical_fusion"],
+                "candidates": list(state["fused_results"]),
+                "deduplication": state.get("deduplication_details", {}),
+            },
+            "reranking": {
+                **state.get("reranker_details", {}),
+                "candidates": list(state["reranked_results"]),
+            },
+            "final_contexts": list(state["reranked_results"]),
+            "latency_ms": state["latency_breakdown"],
+        }
+
     # ------------------------------------------------------------------
     # Public execute()
     # ------------------------------------------------------------------
@@ -937,6 +1120,9 @@ class HybridRAGWorkflow:
         enable_conditional_recovery: bool = True,
         enable_hyde_fallback: bool = False,
         enable_grounding_critique: bool = True,
+        enable_conservative_routing: bool = settings.CONSERVATIVE_ROUTING_ENABLED,
+        allow_mode_downgrade: bool = True,
+        allow_vectorless_auto_route: bool = True,
         filters: Optional[Dict[str, Any]] = None,
         attachment_content: Optional[str] = None,
         attachment_name: Optional[str] = None,
@@ -947,7 +1133,12 @@ class HybridRAGWorkflow:
             rewritten_query=query,
             intent="",
             suggested_mode="",
+            requested_mode=mode,
             mode=mode,
+            allow_mode_downgrade=allow_mode_downgrade,
+            enable_conservative_routing=enable_conservative_routing,
+            allow_vectorless_auto_route=allow_vectorless_auto_route,
+            routing_details={},
             max_results=max_results,
             candidate_pool_size=min(max(max_results, candidate_pool_size), 100),
             max_hops=max_hops,
@@ -959,6 +1150,8 @@ class HybridRAGWorkflow:
             vector_results=[],
             graph_results=[],
             lexical_results=[],
+            initial_candidates={},
+            retrieval_failures={},
             enable_lexical_fusion=enable_lexical_fusion,
             vector_fusion_weight=vector_fusion_weight,
             graph_fusion_weight=graph_fusion_weight,
@@ -966,7 +1159,9 @@ class HybridRAGWorkflow:
             recovery_triggered=False,
             recovery_details={},
             fused_results=[],
+            deduplication_details={},
             reranked_results=[],
+            reranker_details={},
             enable_grounding_critique=enable_grounding_critique,
             grounded_claims=[],
             citation_context={},
@@ -999,9 +1194,13 @@ class HybridRAGWorkflow:
         enable_conditional_recovery: bool = True,
         enable_hyde_fallback: bool = False,
         enable_grounding_critique: bool = True,
+        enable_conservative_routing: bool = settings.CONSERVATIVE_ROUTING_ENABLED,
+        allow_mode_downgrade: bool = True,
+        allow_vectorless_auto_route: bool = True,
         filters: Optional[Dict[str, Any]] = None,
         attachment_content: Optional[str] = None,
         attachment_name: Optional[str] = None,
+        include_trace: bool = False,
     ) -> Dict[str, Any]:
         """
         Execute and return both retrieved chunks AND the generated answer.
@@ -1021,7 +1220,12 @@ class HybridRAGWorkflow:
             rewritten_query=query,
             intent="",
             suggested_mode="",
+            requested_mode=mode,
             mode=mode,
+            allow_mode_downgrade=allow_mode_downgrade,
+            enable_conservative_routing=enable_conservative_routing,
+            allow_vectorless_auto_route=allow_vectorless_auto_route,
+            routing_details={},
             max_results=max_results,
             candidate_pool_size=min(max(max_results, candidate_pool_size), 100),
             max_hops=max_hops,
@@ -1033,6 +1237,8 @@ class HybridRAGWorkflow:
             vector_results=[],
             graph_results=[],
             lexical_results=[],
+            initial_candidates={},
+            retrieval_failures={},
             enable_lexical_fusion=enable_lexical_fusion,
             vector_fusion_weight=vector_fusion_weight,
             graph_fusion_weight=graph_fusion_weight,
@@ -1040,7 +1246,9 @@ class HybridRAGWorkflow:
             recovery_triggered=False,
             recovery_details={},
             fused_results=[],
+            deduplication_details={},
             reranked_results=[],
+            reranker_details={},
             enable_grounding_critique=enable_grounding_critique,
             grounded_claims=[],
             citation_context={},
@@ -1060,6 +1268,9 @@ class HybridRAGWorkflow:
             "confidence": final_state["answer_confidence"],
             "chunks":     final_state["final_results"],
             "intent":     final_state["intent"],
+            "requested_mode": final_state["requested_mode"].value,
+            "effective_mode": final_state["mode"].value,
+            "routing": final_state["routing_details"],
             "latency":    final_state["latency_breakdown"],
             "recovery_triggered": final_state["recovery_triggered"],
             "recovery": final_state["recovery_details"],
@@ -1073,4 +1284,5 @@ class HybridRAGWorkflow:
                 "graph_weight": final_state["graph_fusion_weight"],
                 "lexical_weight": final_state["lexical_fusion_weight"],
             },
+            "trace": self._build_trace(final_state) if include_trace else {},
         }

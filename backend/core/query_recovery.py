@@ -26,6 +26,16 @@ class RecoveryPlan:
     vocabulary: list[str]
 
 
+@dataclass
+class FacetCoverage:
+    complete: bool
+    facets: list[dict[str, Any]]
+    missing_facets: list[str]
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
 class QueryRecoveryEngine:
     """Plan recovery only after ordinary retrieval produces weak candidates."""
 
@@ -68,6 +78,37 @@ class QueryRecoveryEngine:
             top_score=max(scores, default=0.0),
             graph_result_count=len(graph_results),
             source_count=len(sources),
+        )
+
+    @classmethod
+    def assess_facet_coverage(
+        cls,
+        facets: list[str],
+        results: list[dict[str, Any]],
+        minimum_token_coverage: float = 0.3,
+    ) -> FacetCoverage:
+        """Measure whether each literal question facet appears in any candidate."""
+        result_tokens = [cls._tokens(result.get("content", "")) for result in results]
+        details = []
+        missing = []
+        for facet in facets:
+            tokens = cls._tokens(facet)
+            best = max(
+                (len(tokens & candidate) / len(tokens) for candidate in result_tokens),
+                default=0.0,
+            ) if tokens else 0.0
+            covered = best >= minimum_token_coverage
+            details.append({
+                "facet": facet,
+                "covered": covered,
+                "best_token_coverage": round(best, 4),
+            })
+            if not covered:
+                missing.append(facet)
+        return FacetCoverage(
+            complete=not missing,
+            facets=details,
+            missing_facets=missing,
         )
 
     @staticmethod
