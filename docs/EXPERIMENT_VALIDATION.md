@@ -1,0 +1,101 @@
+# Controlled Benchmark Experiments
+
+Kinegraph's benchmark runner applies an OpenResearch-inspired ratchet policy:
+each candidate changes one attributable lever, runs against the same frozen
+dataset and judge, and is kept only when its weighted score improves (or ties
+within noise) without hiding a material single-metric regression.
+
+## Acceptance contract
+
+A run is valid only when:
+
+- All 20 benchmark rows complete through the live hybrid workflow.
+- Every row has `ragas_failed=False` and no workflow error.
+- Every required metric is present, numeric, finite, and between 0 and 1.
+- The working tree was clean when the run started.
+- Its manifest records the Git revision, dataset SHA-256, complete retrieval
+  configuration, generation model, grounding critic, judge, and judge embedding.
+
+Heuristic fallback values remain diagnostic only and never enter an accepted
+manifest.
+
+## Weighted objective and guardrails
+
+The experiment score is:
+
+```text
+0.35 × faithfulness
++ 0.30 × context precision
++ 0.20 × context recall
++ 0.15 × answer relevancy
+```
+
+Answer correctness remains visible in the report but is not part of this
+ratchet objective. Each report includes a deterministic 95% bootstrap interval
+for the weighted per-query score.
+
+A candidate is:
+
+- `keep` when its weighted score improves or is within `0.01` of the baseline,
+  and no metric falls by more than `0.05`.
+- `revert` when the composite regresses beyond `0.01`, or any individual metric
+  falls by more than `0.05`.
+- `invalid` when the dataset or judge changed, either run is not accepted RAGAS,
+  the working tree was dirty, or the candidate changed anything other than one
+  pipeline/model/code lever.
+
+The runner reports the decision but never modifies Git automatically.
+Using the same model for generation and judging is recorded as
+`judge_model_matches_generation_model`; prefer a stable, separate judge to reduce
+self-enhancement bias.
+
+## Running a controlled cycle
+
+Create the accepted baseline:
+
+```bash
+PYTHONPATH=. venv/bin/python eval/ragas_evaluator.py \
+  --max-hops 2 \
+  --max-results 6 \
+  --candidate-pool-size 25 \
+  --generation-model gpt-4o-mini \
+  --judge-model gpt-4o-mini \
+  --run-label baseline
+```
+
+Change exactly one lever and compare it:
+
+```bash
+PYTHONPATH=. venv/bin/python eval/ragas_evaluator.py \
+  --max-hops 3 \
+  --max-results 6 \
+  --candidate-pool-size 25 \
+  --generation-model gpt-4o-mini \
+  --judge-model gpt-4o-mini \
+  --baseline-manifest reports/ragas_baseline_manifest.json \
+  --run-label hop3
+```
+
+Accepted candidates exit with code `0`. Invalid or regressed comparisons still
+write their evidence and manifest, then exit with code `3`.
+
+## Manifest artifacts
+
+Every accepted evaluation writes:
+
+- `reports/ragas_<label>_results.csv`
+- `reports/ragas_<label>_report.json`
+- `reports/spider_graph_ragas_<label>.png`
+- `reports/ragas_<label>_manifest.json`
+
+The manifest is the reproducible experiment record. Use it—not a README score
+projection—as the source for baseline/candidate decisions.
+
+## Scope
+
+Only levers already connected to Kinegraph are recorded and compared. The
+OpenResearch sample also proposes chunk strategies, embedding providers,
+community resolution, and extraction limits; those are intentionally excluded
+until Kinegraph exposes and tests them through stable runtime interfaces.
+The current workflow does not expose reliable per-request token cost, so the
+OpenResearch `$2` cycle budget is not enforced or claimed by this implementation.
