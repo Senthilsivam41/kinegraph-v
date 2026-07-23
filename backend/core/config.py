@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     
     # OpenAI
     OPENAI_API_KEY: str
+    # OpenAI-compatible model routing. The default is served through OpenRouter
+    # when OPENAI_API_KEY is an OpenRouter key (sk-or-...).
+    LLM_MODEL: str = "qwen/qwen3.6-27b"
     
     # ChromaDB
     CHROMA_HOST: str = "localhost"
@@ -65,7 +68,7 @@ class Settings(BaseSettings):
 
     # Faithfulness controls
     GENERATION_TEMPERATURE: float = Field(default=0.0, ge=0.0, le=0.2)
-    FAITHFULNESS_CRITIC_MODEL: str = "gpt-4o-mini"
+    FAITHFULNESS_CRITIC_MODEL: str = "qwen/qwen3.6-27b"
     FAITHFULNESS_CRITIC_TEMPERATURE: float = Field(default=0.0, ge=0.0, le=0.2)
 
     # LangSmith (optional — leave blank to disable remote tracing)
