@@ -408,7 +408,15 @@ The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor s
 
 ### Benchmark Status
 
-The latest persisted RAGAS report predates the v3 implementation. There is currently **no accepted post-v3 result proving improvement**. The table therefore compares the two recorded pre-v3 series with the complete v3 target set; it must not be read as a v3 evaluation.
+There is currently **no accepted post-v3 result proving improvement**. The
+accepted-comparison gap remains even though a 20-query Qwen 3.6 diagnostic run
+is now persisted under [`reports/1.0`](reports/1.0/README.md): all 20 rows have
+`ragas_failed=True`, the fixed-Hybrid profile was violated by 6 rows, and the
+reference audit remains unaccepted. Its fallback scores are useful for
+diagnostics but are not a RAGAS baseline.
+
+The table below therefore retains the two historical pre-v3 series and the
+complete v3 target set; it must not be read as a current v3 evaluation.
 
 | Metric | Recorded baseline | Recorded composed | v3 target | Composed vs target |
 | :--- | :---: | :---: | :---: | :---: |
@@ -419,6 +427,12 @@ The latest persisted RAGAS report predates the v3 implementation. There is curre
 | **Answer Correctness** | 0.3745 | 0.4082 | ≥ 0.60 | **Fail** |
 
 Recorded overall composites are **0.4306 baseline** and **0.5248 composed**. A post-v3 run is accepted only when all 20 intended benchmark rows execute against the live hybrid workflow, every required metric is finite, no workflow error occurs, and every row explicitly reports `ragas_failed=False`.
+
+The Qwen 3.6 diagnostic run recorded fallback means of faithfulness `0.2035`,
+answer relevancy `0.0294`, context precision `0.7500`, context recall `0.3454`,
+and answer correctness `0.0292`. See the
+[`v1.0 baseline status`](reports/1.0/README.md) for provenance, failure reasons,
+and the gate required before creating the architecture implementation branch.
 
 #### Benchmark Spider Graph
 

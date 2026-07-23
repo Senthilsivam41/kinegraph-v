@@ -1,0 +1,49 @@
+{
+  "schema_version": "kinegraph.benchmark.baseline-status.v1",
+  "run_label": "kinegraph-1.0-qwen36-diagnostic",
+  "status": "diagnostic_only",
+  "usable_as_architecture_comparison_baseline": false,
+  "reason": [
+    "all 20 rows have ragas_failed=true",
+    "reference audit has accepted_for_evaluation=false",
+    "fixed hybrid profile was violated by 6 rows",
+    "clean working-tree state was not persisted"
+  ],
+  "declared_code_revision": "d86ab43991f683c8b2a95fd8f33fe90ab5faaea6",
+  "artifact_commit": "ffdaf7af342589367f2988e326f78a46a58a50eb",
+  "dataset": {
+    "path": "eval/kinegraph_benchmark_v1.csv",
+    "version": "1.1.0-draft",
+    "sha256": "d874acd6beb529ba8e9114b094f2102962bf79b8ba30b22632c9624fc5ad6ab4",
+    "rows": 20,
+    "reference_audit_accepted": false
+  },
+  "models": {
+    "generation_model_declared": "qwen/qwen3.6-27b",
+    "judge_model_declared": "qwen/qwen3.6-27b",
+    "accepted_ragas_judge_execution": false,
+    "embedding_strategy": "local HuggingFace embeddings for OpenRouter compatibility"
+  },
+  "execution": {
+    "workflow_error_count": 0,
+    "ragas_failed_count": 20,
+    "profile_valid": false,
+    "effective_mode_counts": {
+      "hybrid": 14,
+      "vector": 5,
+      "graph": 1
+    },
+    "zero_context_query_count": 5,
+    "mean_workflow_latency_ms": 42839.055
+  },
+  "diagnostic_metrics": {
+    "evaluation_mode": "heuristic_or_mixed",
+    "faithfulness": 0.2035,
+    "answer_relevancy": 0.0294,
+    "context_precision": 0.75,
+    "context_recall": 0.3454,
+    "answer_correctness": 0.0292,
+    "weighted_composite": 0.3697
+  },
+  "next_gate": "From the current hardened main, produce a clean-revision, reference-audited, profile-valid run with zero RAGAS failures before creating the architecture implementation branch."
+}
