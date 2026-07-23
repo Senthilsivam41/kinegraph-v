@@ -185,7 +185,7 @@ class RAGASEvaluator:
     def __init__(
         self,
         openai_api_key: Optional[str] = None,
-        model: str = "gpt-4o-mini",
+        model: str = settings.LLM_MODEL,
         embedding_model: str = "text-embedding-3-small",
         metrics: Optional[List[str]] = None,
         critic_model: Optional[str] = None,
@@ -877,8 +877,8 @@ if __name__ == "__main__":
         default="hybrid",
         help="Explicit benchmark execution profile; profiles never change production defaults",
     )
-    parser.add_argument("--generation-model", default="gpt-4o-mini")
-    parser.add_argument("--judge-model", default="gpt-4o-mini")
+    parser.add_argument("--generation-model", default=settings.LLM_MODEL)
+    parser.add_argument("--judge-model", default=settings.LLM_MODEL)
     parser.add_argument("--judge-embedding-model", default="text-embedding-3-small")
     parser.add_argument(
         "--baseline-manifest",

@@ -93,7 +93,7 @@ class Neo4jService:
         )
         openai_key = settings.OPENAI_API_KEY
         kw = {
-            "model": "gpt-4",
+            "model": settings.LLM_MODEL,
             "openai_api_key": openai_key,
             "temperature": 0
         }

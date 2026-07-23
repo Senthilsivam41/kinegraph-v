@@ -243,8 +243,8 @@ class HybridRAGWorkflow:
         chroma_service: ChromaService,
         neo4j_service: Neo4jService,
         use_cross_encoder: bool = True,
-        generation_model: str = "gpt-4o-mini",
-        critic_model: str = settings.FAITHFULNESS_CRITIC_MODEL,
+        generation_model: Optional[str] = None,
+        critic_model: Optional[str] = None,
     ) -> None:
         self.chroma = chroma_service
         self.neo4j = neo4j_service
@@ -257,6 +257,8 @@ class HybridRAGWorkflow:
             min_relevance_threshold=settings.RERANKER_MIN_RELEVANCE,
         )
 
+        generation_model = generation_model or settings.LLM_MODEL
+        critic_model = critic_model or settings.FAITHFULNESS_CRITIC_MODEL
         openai_key = settings.OPENAI_API_KEY
         kw = {
             "model": generation_model,
