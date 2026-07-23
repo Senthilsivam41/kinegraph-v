@@ -22,7 +22,10 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    app.state.neo4j.close()
+    try:
+        app.state.neo4j.close()
+    finally:
+        app.state.chroma.close()
 
 
 app = FastAPI(
@@ -34,10 +37,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.cors_allowed_origins,
+    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Routers

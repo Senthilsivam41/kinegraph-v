@@ -66,7 +66,7 @@ services:
       - neo4j_import:/var/lib/neo4j/import
       - neo4j_plugins:/plugins
     environment:
-      - NEO4J_AUTH=neo4j/kinetic_password_change_in_production
+      - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?Set NEO4J_PASSWORD via --env-file ../.env}
       - NEO4J_server_memory_pagecache_size=512M
       - NEO4J_server_memory_heap_initial__size=512M
       - NEO4J_server_memory_heap_max__size=2G

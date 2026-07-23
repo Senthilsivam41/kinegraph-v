@@ -1,11 +1,85 @@
 """
 Neo4j Service for Graph Storage
 """
-from neo4j import GraphDatabase, Session
+import re
+
+from neo4j import GraphDatabase, READ_ACCESS, Session
 from typing import List, Dict, Any, Optional
 from backend.core.config import settings
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
+
+
+class UnsafeCypherError(ValueError):
+    """Raised when generated Cypher exceeds the read-only query contract."""
+
+
+_FORBIDDEN_CYPHER = re.compile(
+    r"\b(?:CALL|CREATE|DELETE|DETACH|DROP|FOREACH|GRANT|LOAD|MERGE|REMOVE|RENAME|"
+    r"REVOKE|SET|SHOW|START|STOP|TERMINATE|USE|ALTER|DENY|SKIP|LIMIT)\b",
+    re.IGNORECASE,
+)
+
+
+def _mask_cypher_literals(query: str) -> str:
+    """Replace Cypher literals with spaces without regex backtracking.
+
+    Generated Cypher is untrusted input. A small linear scanner prevents clause
+    validation from treating keywords inside literals as executable syntax,
+    without exposing the validator to regex denial-of-service.
+    """
+    masked = list(query)
+    index = 0
+    while index < len(query):
+        delimiter = query[index]
+        if delimiter not in {"'", '"', "`"}:
+            index += 1
+            continue
+
+        masked[index] = " "
+        index += 1
+        while index < len(query):
+            char = query[index]
+            masked[index] = " "
+            if char == delimiter:
+                if index + 1 < len(query) and query[index + 1] == delimiter:
+                    masked[index + 1] = " "
+                    index += 2
+                    continue
+                index += 1
+                break
+            if char == "\\" and delimiter != "`" and index + 1 < len(query):
+                masked[index + 1] = " "
+                index += 2
+                continue
+            index += 1
+
+    return "".join(masked)
+
+
+def validate_read_only_cypher(query: str, result_limit: int) -> str:
+    """Validate an LLM query and add the only permitted result bound."""
+    if not isinstance(query, str) or not query.strip():
+        raise UnsafeCypherError("Generated Cypher is empty")
+    if len(query) > 10_000:
+        raise UnsafeCypherError("Generated Cypher exceeds the maximum length")
+    if not 1 <= result_limit <= 100:
+        raise ValueError("result_limit must be between 1 and 100")
+
+    stripped = query.strip()
+    masked = _mask_cypher_literals(stripped)
+    if ";" in masked:
+        raise UnsafeCypherError("Multiple Cypher statements are not allowed")
+    if "//" in masked or "/*" in masked or "*/" in masked:
+        raise UnsafeCypherError("Cypher comments are not allowed")
+    if not re.match(r"^(?:OPTIONAL\s+)?MATCH\b", masked, re.IGNORECASE):
+        raise UnsafeCypherError("Generated Cypher must start with MATCH or OPTIONAL MATCH")
+    if not re.search(r"\bRETURN\b", masked, re.IGNORECASE):
+        raise UnsafeCypherError("Generated Cypher must contain RETURN")
+    forbidden = _FORBIDDEN_CYPHER.search(masked)
+    if forbidden:
+        raise UnsafeCypherError(f"Forbidden Cypher clause: {forbidden.group(0).upper()}")
+    return f"{stripped}\nLIMIT $result_limit"
 
 
 class Neo4jService:
@@ -179,6 +253,8 @@ Schema:
 Natural Language Query: {query}
 
 Generate ONLY the Cypher query without any explanation. The query should return relevant information.
+Use a read-only MATCH/OPTIONAL MATCH query with RETURN. Do not use CALL, write clauses,
+comments, semicolons, parameters, SKIP, or LIMIT; the application applies its own result limit.
 
 Cypher Query:
 """
@@ -213,10 +289,11 @@ Cypher Query:
         try:
             # Convert to Cypher
             cypher_query = await self.query_to_cypher(query)
+            safe_query = validate_read_only_cypher(cypher_query, n_results)
             
-            # Execute query
-            with self.driver.session() as session:
-                result = session.run(cypher_query)
+            # Execute in read access mode after deterministic clause validation.
+            with self.driver.session(default_access_mode=READ_ACCESS) as session:
+                result = session.run(safe_query, result_limit=n_results)
                 
                 formatted_results = []
                 for record in result:
@@ -243,6 +320,9 @@ Cypher Query:
                 
                 return formatted_results
                 
+        except UnsafeCypherError as exc:
+            print(f"Rejected unsafe generated Cypher: {exc}")
+            raise
         except Exception as e:
             print(f"Error performing graph search: {e}")
             return []

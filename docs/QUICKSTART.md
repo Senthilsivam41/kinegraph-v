@@ -32,16 +32,17 @@ nano .env
 **Required Change in .env:**
 ```bash
 OPENAI_API_KEY=sk-your-actual-key-here
+NEO4J_PASSWORD=<unique-secret-from-openssl-rand-base64-32>
 ```
 
 ### Step 3: Start Services
 
 ```bash
 # Build and start all containers (this may take 5-10 minutes the first time)
-docker-compose up --build -d
+docker compose --env-file .env -f infra/docker-compose.yml up --build -d
 
 # Watch the startup process
-docker-compose logs -f
+docker compose --env-file .env -f infra/docker-compose.yml logs -f
 ```
 
 Wait until you see:
