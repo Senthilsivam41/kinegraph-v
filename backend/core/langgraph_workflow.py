@@ -135,6 +135,7 @@ class WorkflowState(TypedDict):
     lexical_results: List[Dict[str, Any]]
     initial_candidates: Dict[str, List[Dict[str, Any]]]
     retrieval_failures: Dict[str, str]
+    graph_retrieval_diagnostics: Dict[str, Any]
     enable_lexical_fusion: bool
     vector_fusion_weight: float
     graph_fusion_weight: float
@@ -453,6 +454,36 @@ class HybridRAGWorkflow:
     def _route_decision(self, state: WorkflowState) -> str:
         return state["mode"].value
 
+    async def _retrieve_graph(
+        self,
+        *,
+        query: str,
+        n_results: int,
+        max_hops: int,
+        traversal_strategy: TraversalStrategy,
+        community_id: Optional[str],
+    ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+        """Use the diagnostic graph contract when supported, preserving test adapters."""
+        diagnostic_method = getattr(
+            type(self.graph_retriever_node), "retrieve_chunks_with_diagnostics", None
+        )
+        if diagnostic_method is not None:
+            return await self.graph_retriever_node.retrieve_chunks_with_diagnostics(
+                query=query,
+                n_results=n_results,
+                max_hops=max_hops,
+                traversal_strategy=traversal_strategy,
+                community_id=community_id,
+            )
+        results = await self.graph_retriever_node.retrieve_chunks(
+            query=query,
+            n_results=n_results,
+            max_hops=max_hops,
+            traversal_strategy=traversal_strategy,
+            community_id=community_id,
+        )
+        return results, {}
+
     # ------------------------------------------------------------------
     # Node: parallel_fetch (hybrid mode — runs both agents concurrently)
     # ------------------------------------------------------------------
@@ -465,29 +496,44 @@ class HybridRAGWorkflow:
         fetch_n = max(state["max_results"], state["candidate_pool_size"])
         rq = state["rewritten_query"]
 
-        vector_task = self.chroma.similarity_search(
+        async def timed(awaitable):
+            started = time.perf_counter()
+            try:
+                value = await awaitable
+            except Exception as exc:  # surfaced below with channel attribution
+                value = exc
+            return value, round((time.perf_counter() - started) * 1000, 2)
+
+        vector_task = timed(self.chroma.similarity_search(
             query=rq, n_results=fetch_n, filters=state.get("filters")
-        )
-        graph_task = self.graph_retriever_node.retrieve_chunks(
+        ))
+        graph_task = timed(self._retrieve_graph(
             query=rq,
             n_results=fetch_n,
             max_hops=state["max_hops"],
             traversal_strategy=state["traversal_strategy"],
             community_id=state.get("community_id"),
-        )
+        ))
 
         tasks = [vector_task, graph_task]
         if state.get("enable_lexical_fusion", False):
-            tasks.append(asyncio.to_thread(
+            tasks.append(timed(asyncio.to_thread(
                 VectorlessService().search_chunks,
                 query=rq,
                 top_k=fetch_n,
                 filters=state.get("filters"),
-            ))
+            )))
 
-        retrieved = await asyncio.gather(*tasks, return_exceptions=True)
-        vector_results, graph_results = retrieved[:2]
+        timed_results = await asyncio.gather(*tasks)
+        retrieved = [value for value, _ in timed_results]
+        vector_results = retrieved[0]
+        graph_payload = retrieved[1]
         lexical_results = retrieved[2] if len(retrieved) > 2 else []
+        graph_results, graph_diagnostics = (
+            graph_payload if isinstance(graph_payload, tuple) else (graph_payload, {})
+        )
+        for channel, (_, latency_ms) in zip(("vector", "graph", "lexical"), timed_results):
+            state["latency_breakdown"][f"{channel}_retrieval_ms"] = latency_ms
 
         failures = state.setdefault("retrieval_failures", {})
         for channel, value in zip(("vector", "graph", "lexical"), retrieved):
@@ -497,6 +543,7 @@ class HybridRAGWorkflow:
         state["vector_results"] = vector_results if isinstance(vector_results, list) else []
         state["graph_results"]  = graph_results  if isinstance(graph_results,  list) else []
         state["lexical_results"] = lexical_results if isinstance(lexical_results, list) else []
+        state["graph_retrieval_diagnostics"] = graph_diagnostics
         state["initial_candidates"] = {
             "vector": list(state["vector_results"]),
             "graph": list(state["graph_results"]),
@@ -545,7 +592,7 @@ class HybridRAGWorkflow:
         t0 = time.perf_counter()
         fetch_n = max(state["max_results"], state["candidate_pool_size"])
         try:
-            results = await self.graph_retriever_node.retrieve_chunks(
+            results, diagnostics = await self._retrieve_graph(
                 query=state["rewritten_query"],
                 n_results=fetch_n,
                 max_hops=state["max_hops"],
@@ -555,10 +602,12 @@ class HybridRAGWorkflow:
         except Exception as exc:
             state.setdefault("retrieval_failures", {})["graph"] = f"{type(exc).__name__}: {exc}"[:500]
             results = []
+            diagnostics = {"retrieval_failure": f"{type(exc).__name__}: {exc}"[:500]}
         state["graph_results"] = results
         state["vector_results"] = []
         state["lexical_results"] = []
         state["initial_candidates"] = {"vector": [], "graph": list(results), "lexical": []}
+        state["graph_retrieval_diagnostics"] = diagnostics
         state["latency_breakdown"]["graph_agent_ms"] = round(
             (time.perf_counter() - t0) * 1000, 2
         )
@@ -1081,6 +1130,7 @@ class HybridRAGWorkflow:
             "initial_candidates": state.get("initial_candidates", {}),
             "channel_candidates": channel_candidates,
             "retrieval_failures": state.get("retrieval_failures", {}),
+            "graph_retrieval_diagnostics": state.get("graph_retrieval_diagnostics", {}),
             "recovery": state.get("recovery_details", {}),
             "fusion": {
                 "weights": {
@@ -1152,6 +1202,7 @@ class HybridRAGWorkflow:
             lexical_results=[],
             initial_candidates={},
             retrieval_failures={},
+            graph_retrieval_diagnostics={},
             enable_lexical_fusion=enable_lexical_fusion,
             vector_fusion_weight=vector_fusion_weight,
             graph_fusion_weight=graph_fusion_weight,
@@ -1239,6 +1290,7 @@ class HybridRAGWorkflow:
             lexical_results=[],
             initial_candidates={},
             retrieval_failures={},
+            graph_retrieval_diagnostics={},
             enable_lexical_fusion=enable_lexical_fusion,
             vector_fusion_weight=vector_fusion_weight,
             graph_fusion_weight=graph_fusion_weight,

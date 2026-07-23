@@ -1,7 +1,7 @@
 from backend.graph_retrieval.retrievers import ComposedGraphRetriever
 from backend.graph_retrieval.multi_hop import TraversalStrategy
 from llama_index.core.schema import TextNode, NodeWithScore
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 import pytest
 
 @patch("backend.graph_retrieval.retrievers.PropertyGraphIndex")
@@ -73,4 +73,8 @@ def test_composed_retriever(
         strategy=TraversalStrategy.BFS,
         seed_node_ids=[],
         community_id=None,
+        diagnostics=ANY,
     )
+    diagnostics = retriever.multi_hop_retriever.retrieve.call_args.kwargs["diagnostics"]
+    assert diagnostics["base_candidate_count"] == 2
+    assert diagnostics["traversal_candidate_count"] == 1

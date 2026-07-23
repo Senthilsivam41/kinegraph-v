@@ -97,14 +97,14 @@ flowchart LR
 
 ### 5. Configurable Multi-Hop Graph Traversal
 
-Graph and hybrid queries can expand from matched entities across one to five relationship hops. The default is a bounded three-hop breadth-first traversal; depth-first and community-restricted traversal are also available. Every traversal result includes `relationship_path`, `traversal_depth`, `traversal_strategy`, `max_hops`, `seed_node_id`, and `community_id` metadata, together with directional relationship evidence.
+Graph and hybrid queries can expand from matched entities across one to five relationship hops. The rollback/default setting remains a bounded two-hop breadth-first traversal; depth-first and community-restricted traversal are also available. Every traversal result includes `relationship_path`, `traversal_depth`, `traversal_strategy`, `max_hops`, `seed_node_id`, and `community_id` metadata, together with directional relationship evidence.
 
 ```json
 {
   "query": "How are LangGraph, Neo4j, and RRF connected?",
   "mode": "graph",
   "max_results": 10,
-  "max_hops": 3,
+  "max_hops": 2,
   "traversal_strategy": "bfs",
   "community_id": null
 }
@@ -388,11 +388,11 @@ The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor s
   ```bash
   PYTHONPATH=. python eval/ragas_evaluator.py --profile hybrid --max-hops 2 --max-results 6 --candidate-pool-size 25
   ```
-- **Hop-depth precision experiment**: Persist separate accepted runs for direct comparison:
+- **Bounded hop-depth sweep**: After the reference audit is accepted, run hops 1, 2, and 3 sequentially with every other lever frozen:
   ```bash
-  PYTHONPATH=. python eval/ragas_evaluator.py --max-hops 1 --max-results 6 --candidate-pool-size 25 --run-label hop1
-  PYTHONPATH=. python eval/ragas_evaluator.py --max-hops 2 --max-results 6 --candidate-pool-size 25 --run-label hop2
+  PYTHONPATH=. venv/bin/python scripts/run_traversal_sweep.py --baseline-hop 2 --run-label bounded-hops
   ```
+- **Reference audit gate**: [`eval/kinegraph_benchmark_v1.audit.json`](eval/kinegraph_benchmark_v1.audit.json) assigns all 20 rows stable IDs, categories, source hashes, technical-review tags, reviewer state, and change rationale. The initial `1.1.0-draft` audit deliberately fails closed: 13 references need correction, 5 remain pending, and 2 are ambiguous. Run `PYTHONPATH=. venv/bin/python scripts/audit_benchmark_references.py` to validate it. See [Benchmark Reference Audit](docs/BENCHMARK_REFERENCE_AUDIT.md).
 - **Fusion recall experiment**: Sweep weights while preserving separate accepted outputs:
   ```bash
   PYTHONPATH=. python eval/ragas_evaluator.py --vector-weight 1.0 --graph-weight 1.2 --run-label graph12
@@ -400,7 +400,7 @@ The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor s
   ```
 - **Explicit Mode Slices**: `--profile hybrid`, `hybrid_lexical`, and `vectorless` produce separate artifacts. Hybrid profiles pin Hybrid execution; the Vectorless profile uses one deterministic corpus assembled from the frozen reference contexts and never calls Chroma or Neo4j. No profile changes the production default.
 - **Routing Experiment**: `--profile adaptive_hybrid --enable-conservative-routing` evaluates the high-confidence, single-facet downgrade policy as one reversible lever. The legacy router remains the production default until an accepted manifest passes the architecture gate.
-- **Live Diagnostics**: Single-query and concurrent live execution are implemented by `evaluate_live_single` and `evaluate_live_workflow`. Every row persists a redacted `kinegraph.eval.provenance.v1` trace with routing rationale, channel candidates, recovery, fusion/reranking drops, citations, critic output, failures, and stage latency.
+- **Live Diagnostics**: Single-query and concurrent live execution are implemented by `evaluate_live_single` and `evaluate_live_workflow`. Every row persists a redacted `kinegraph.eval.provenance.v1` trace with routing rationale, channel candidates, recovery, fusion/reranking drops, candidate survival, complete graph-path audits, traversal failure behavior, citations, critic output, and channel/stage latency.
 - **Acceptance Gate**: Diagnostic keyword fallbacks remain available, but the CLI exits with status `2` and refuses to update the report or chart when any result has `ragas_failed=True`.
 - **Controlled Experiment Gate**: Accepted runs record the dataset SHA-256, Git revision, complete retrieval configuration, generation and judge models, and a weighted composite with a deterministic 95% bootstrap interval. An optional baseline manifest enforces one changed lever, a ±0.01 tie tolerance, and a maximum 0.05 regression for any individual metric. See [Controlled Benchmark Experiments](docs/EXPERIMENT_VALIDATION.md).
 - **Result Contract**: Evaluation consumes the workflow's `answer` and retrieved `chunks`; requested/effective mode and full retrieval diagnostics are stored in the per-query provenance JSONL. Diagnostic provenance is written even when the RAGAS acceptance gate rejects a run.

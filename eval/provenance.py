@@ -33,6 +33,8 @@ _METADATA_KEYS = {
     "centrality_score",
     "traversal_depth",
     "traversal_strategy",
+    "max_hops",
+    "seed_node_id",
     "relationship_path",
     "relationships_json",
     "recovery_stage",
@@ -41,6 +43,87 @@ _METADATA_KEYS = {
     "hypothesis_is_evidence",
     "citation_id",
 }
+
+
+def _candidate_lifecycle(trace: Mapping[str, Any]) -> list[dict[str, Any]]:
+    initial = trace.get("initial_candidates") or {}
+    initial_ids = {
+        candidate_id(candidate)
+        for candidates in initial.values()
+        for candidate in (candidates or [])
+    }
+    fusion_ids = {
+        candidate_id(candidate)
+        for candidate in ((trace.get("fusion") or {}).get("candidates") or [])
+    }
+    reranked_ids = {
+        candidate_id(candidate)
+        for candidate in ((trace.get("reranking") or {}).get("candidates") or [])
+    }
+    final_ids = {candidate_id(candidate) for candidate in (trace.get("final_contexts") or [])}
+    all_ids = sorted(initial_ids | fusion_ids | reranked_ids | final_ids)
+    lifecycle = []
+    for item_id in all_ids:
+        if item_id not in fusion_ids:
+            dropped_at = "pre_fusion"
+        elif item_id not in reranked_ids:
+            dropped_at = "reranking"
+        elif item_id not in final_ids:
+            dropped_at = "final_truncation"
+        else:
+            dropped_at = None
+        lifecycle.append({
+            "candidate_id": item_id,
+            "initial": item_id in initial_ids,
+            "fused": item_id in fusion_ids,
+            "reranked": item_id in reranked_ids,
+            "sent_to_generation": item_id in final_ids,
+            "dropped_at": dropped_at,
+        })
+    return lifecycle
+
+
+def _graph_path_audit(trace: Mapping[str, Any]) -> dict[str, Any]:
+    candidates = (trace.get("channel_candidates") or {}).get("graph") or []
+    traversal_candidates = [
+        candidate for candidate in candidates if candidate.get("source") == "graph_traversal"
+    ]
+    paths = []
+    for candidate in traversal_candidates:
+        metadata = candidate.get("metadata") or {}
+        relationship_path = metadata.get("relationship_path") or []
+        depth = int(metadata.get("traversal_depth") or 0)
+        node_sequence = []
+        missing_edge_fields = []
+        for edge_index, edge in enumerate(relationship_path):
+            if edge_index == 0:
+                node_sequence.append(edge.get("from_node_id"))
+            node_sequence.append(edge.get("to_node_id"))
+            missing = [
+                key for key in (
+                    "from_node_id", "to_node_id", "relationship_type",
+                    "direction", "weight", "evidence_text",
+                )
+                if edge.get(key) in (None, "")
+            ]
+            if missing:
+                missing_edge_fields.append({"edge_index": edge_index, "fields": missing})
+        paths.append({
+            "candidate_id": candidate_id(candidate),
+            "seed_node_id": metadata.get("seed_node_id"),
+            "traversal_depth": depth,
+            "path_length": len(relationship_path),
+            "path_complete": depth > 0 and len(relationship_path) == depth and not missing_edge_fields,
+            "cycle_detected": len([node for node in node_sequence if node is not None]) != len(set(node for node in node_sequence if node is not None)),
+            "missing_edge_fields": missing_edge_fields,
+        })
+    return {
+        "traversal_candidate_count": len(traversal_candidates),
+        "complete_path_count": sum(path["path_complete"] for path in paths),
+        "all_paths_complete": bool(paths) and all(path["path_complete"] for path in paths),
+        "paths": paths,
+        "retriever_diagnostics": _sanitize(trace.get("graph_retrieval_diagnostics") or {}),
+    }
 
 
 def redact_text(value: Any, limit: int = 500) -> str:
@@ -204,6 +287,8 @@ def build_provenance_record(
             "channel_candidates": _candidate_channels(trace.get("channel_candidates") or {}),
             "failures": _sanitize(trace.get("retrieval_failures") or {}),
             "recovery": _sanitize(trace.get("recovery") or result.get("recovery") or {}),
+            "candidate_lifecycle": _candidate_lifecycle(trace),
+            "graph_path_audit": _graph_path_audit(trace),
             "fusion": {
                 **_sanitize({
                     key: value for key, value in (trace.get("fusion") or {}).items()

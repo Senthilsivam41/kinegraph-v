@@ -83,6 +83,9 @@ def _reference_contexts(value: Any) -> list[str]:
 
 
 def _query_categories(row: Any) -> list[str]:
+    existing = row.get("categories")
+    if isinstance(existing, list) and existing:
+        return sorted(str(category) for category in existing)
     query = str(row.get("user_input", ""))
     synthesizer = str(row.get("synthesizer_name", ""))
     categories = ["multi_hop" if synthesizer.startswith("multi_hop") else "single_hop"]
@@ -110,12 +113,14 @@ def build_profile_dataset(rows: Iterable[Any], profile: BenchmarkProfile) -> lis
     dataset = []
     for index, row in enumerate(rows, 1):
         sample = {
-            "sample_id": f"benchmark-{index:03d}",
+            "sample_id": str(row.get("benchmark_id") or f"benchmark-{index:03d}"),
             "question": str(row["user_input"]),
             "ground_truth": str(row["reference"]),
             "categories": _query_categories(row),
             "query_style": str(row.get("query_style", "") or "unknown"),
             "synthesizer_name": str(row.get("synthesizer_name", "") or "unknown"),
+            "dataset_version": str(row.get("dataset_version", "unversioned")),
+            "reference_status": str(row.get("reference_status", "legacy")),
         }
         if profile.use_reference_context_as_attachment:
             sample["attachment_content"] = vectorless_corpus

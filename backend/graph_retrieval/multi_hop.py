@@ -193,15 +193,29 @@ class MultiHopGraphRetriever:
         strategy: TraversalStrategy | str | None = None,
         seed_node_ids: Optional[Sequence[str]] = None,
         community_id: Optional[str] = None,
+        diagnostics: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         hops = self._validate_max_hops(max_hops or self.max_hops)
         selected_strategy = TraversalStrategy(strategy or self.strategy)
-        
+        trace = diagnostics if diagnostics is not None else {}
+        trace.update({
+            "max_hops": hops,
+            "traversal_strategy": selected_strategy.value,
+            "seed_count": 0,
+            "seed_node_ids": [],
+            "empty_seed": False,
+            "cycle_prevention_count": 0,
+            "missing_evidence_edge_count": 0,
+            "returned_path_count": 0,
+            "max_depth_reached": 0,
+        })
         with self.driver.session() as session:
             seeds = self._find_seeds(
                 session, query, seed_node_ids or (), max(1, min(n_results, 5)), community_id
             )
-            
+            trace["seed_count"] = len(seeds)
+            trace["seed_node_ids"] = [str(seed.get("node_id", "")) for seed in seeds]
+            trace["empty_seed"] = not seeds
             results: list[dict[str, Any]] = []
             discovered: set[str] = {seed["element_id"] for seed in seeds}
             work = deque()
@@ -258,6 +272,8 @@ class MultiHopGraphRetriever:
                         "score": round(score, 6),
                         "source": "graph_traversal",
                     })
+                    trace["returned_path_count"] += 1
+                    trace["max_depth_reached"] = max(trace["max_depth_reached"], depth)
                     if len(results) >= n_results:
                         break
                 
@@ -271,6 +287,7 @@ class MultiHopGraphRetriever:
                 relevant_neighbors = []
                 for neighbor in neighbors:
                     if neighbor["element_id"] in discovered:
+                        trace["cycle_prevention_count"] += 1
                         continue
                     
                     node_name = str(neighbor.get("node_id", "")) or neighbor["properties"].get("name", "")
@@ -296,6 +313,8 @@ class MultiHopGraphRetriever:
                         "weight": round(float(neighbor["weight"]), 4),
                         "evidence_text": neighbor["evidence_text"],
                     }
+                    if not str(neighbor.get("evidence_text", "")).strip():
+                        trace["missing_evidence_edge_count"] += 1
                     next_path = [*path, step]
                     traversal_depth = depth + 1
                     
