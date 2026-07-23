@@ -88,6 +88,45 @@ def test_provenance_is_versioned_reconstructable_and_redacts_secrets():
     assert record["retrieval"]["initial_candidates"]["vector"][0]["embedding_present"] is True
     assert "sk-secretvalue" not in json.dumps(record)
     assert record["failure"]["first_stage"] is None
+    assert record["retrieval"]["candidate_lifecycle"][0]["sent_to_generation"] is True
+
+
+def test_graph_paths_and_retriever_behavior_are_audited():
+    result = _result()
+    graph_candidate = {
+        "content": "A uses B",
+        "source": "graph_traversal",
+        "score": 0.8,
+        "metadata": {
+            "chunk_id": "graph-1",
+            "seed_node_id": "A",
+            "traversal_depth": 1,
+            "max_hops": 2,
+            "traversal_strategy": "bfs",
+            "relationship_path": [{
+                "from_node_id": "A",
+                "to_node_id": "B",
+                "relationship_type": "USES",
+                "direction": "OUTGOING",
+                "weight": 0.9,
+                "evidence_text": "A uses B",
+            }],
+        },
+    }
+    result["trace"]["channel_candidates"]["graph"] = [graph_candidate]
+    result["trace"]["graph_retrieval_diagnostics"] = {
+        "seed_count": 1,
+        "cycle_prevention_count": 2,
+        "missing_evidence_edge_count": 0,
+    }
+
+    record = _record(result=result)
+    audit = record["retrieval"]["graph_path_audit"]
+
+    assert audit["all_paths_complete"] is True
+    assert audit["paths"][0]["seed_node_id"] == "A"
+    assert audit["paths"][0]["cycle_detected"] is False
+    assert audit["retriever_diagnostics"]["cycle_prevention_count"] == 2
 
 
 @pytest.mark.parametrize(
@@ -139,4 +178,3 @@ def test_jsonl_is_deterministic_and_diagnostics_group_failures(tmp_path):
     assert summary["total_records"] == 2
     assert summary["ragas_failed_count"] == 1
     assert summary["first_failure_stage_counts"] == {"ragas_judge": 1}
-

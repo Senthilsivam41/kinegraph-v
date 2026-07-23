@@ -66,9 +66,30 @@ class ComposedGraphRetriever:
         traversal_strategy: TraversalStrategy | str = TraversalStrategy.BFS,
         community_id: str | None = None,
     ) -> List[Dict[str, Any]]:
+        results, _ = self.retrieve_with_diagnostics(
+            query=query,
+            n_results=n_results,
+            max_hops=max_hops,
+            traversal_strategy=traversal_strategy,
+            community_id=community_id,
+        )
+        return results
+
+    def retrieve_with_diagnostics(
+        self,
+        query: str,
+        n_results: int = 10,
+        max_hops: int = 3,
+        traversal_strategy: TraversalStrategy | str = TraversalStrategy.BFS,
+        community_id: str | None = None,
+    ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """
-        Retrieves relevant document chunks and context using composed retrievers.
+        Retrieve graph context together with bounded traversal diagnostics.
         """
+        diagnostics: Dict[str, Any] = {
+            "traversal_failure": None,
+            "base_candidate_count": 0,
+        }
         try:
             # Initialize index from existing store configuration
             index = PropertyGraphIndex.from_existing(
@@ -127,6 +148,7 @@ class ComposedGraphRetriever:
                         "score": r.score if r.score is not None else 1.0,
                         "source": "graph"
                     })
+            diagnostics["base_candidate_count"] = len(formatted_results)
                     
             seed_ids = []
             for result in formatted_results:
@@ -142,17 +164,23 @@ class ComposedGraphRetriever:
                     strategy=traversal_strategy,
                     seed_node_ids=seed_ids,
                     community_id=community_id,
+                    diagnostics=diagnostics,
                 )
             except Exception as exc:
                 logger.warning("Multi-hop traversal failed; returning composed base results: %s", exc)
+                diagnostics["traversal_failure"] = f"{type(exc).__name__}: {exc}"[:500]
                 traversal_results = []
+            diagnostics["traversal_candidate_count"] = len(traversal_results)
             traversal_limit = min(len(traversal_results), max(1, n_results // 2))
             base_limit = max(0, n_results - traversal_limit)
-            return [*formatted_results[:base_limit], *traversal_results[:traversal_limit]]
+            results = [*formatted_results[:base_limit], *traversal_results[:traversal_limit]]
+            diagnostics["returned_candidate_count"] = len(results)
+            return results, diagnostics
             
         except Exception as e:
             logger.error("Error during composed graph retrieval: %s", e)
-            return []
+            diagnostics["retrieval_failure"] = f"{type(e).__name__}: {e}"[:500]
+            return [], diagnostics
 
     def close(self) -> None:
         if self._owns_driver:

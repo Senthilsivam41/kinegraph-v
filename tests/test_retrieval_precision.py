@@ -86,6 +86,7 @@ def test_parallel_fetch_uses_candidate_pool_independent_of_generator_top_k():
     assert workflow.chroma.similarity_search.await_args.kwargs["n_results"] == 25
     assert workflow.graph_retriever_node.retrieve_chunks.await_args.kwargs["n_results"] == 25
     assert workflow.graph_retriever_node.retrieve_chunks.await_args.kwargs["max_hops"] == 2
+    assert state["latency_breakdown"]["graph_retrieval_ms"] >= 0
 
 
 def test_opt_in_lexical_channel_enters_weighted_fusion():

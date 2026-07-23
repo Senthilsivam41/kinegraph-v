@@ -14,6 +14,7 @@ A run is valid only when:
 - Every row has `ragas_failed=False` and no workflow error.
 - Every required metric is present, numeric, finite, and between 0 and 1.
 - The working tree was clean when the run started.
+- The versioned reference audit is accepted, hash-matched, and human-reviewed.
 - Its manifest records the Git revision, dataset SHA-256, complete retrieval
   configuration, generation model, grounding critic, judge, and judge embedding.
 
@@ -97,6 +98,41 @@ dedicated Vectorless path. Vectorless uses one deterministic attachment corpus
 derived from all frozen reference contexts, rather than giving each query only
 its own reference passage. Each profile has a separate report and manifest, and
 no mode is preferred until accepted manifests establish the result.
+
+## Bounded traversal-depth sweep
+
+Issue #44 is implemented as an ablation, not a default change. After the
+reference audit is accepted, execute:
+
+```bash
+PYTHONPATH=. venv/bin/python scripts/run_traversal_sweep.py \
+  --baseline-hop 2 \
+  --profile hybrid \
+  --run-label bounded-hops
+```
+
+The runner executes `max_hops=1`, `2`, and `3` sequentially. Its summary keeps
+hop 2 as the rollback setting and requires, for promotion: at least +0.05
+context recall on `KGV1-009`, `KGV1-014`, `KGV1-017`, `KGV1-018`, `KGV1-019`,
+and `KGV1-020`; overall context precision at least 0.90; no required metric
+regression beyond 0.05; a passing weighted ratchet; graph-retrieval p95 within
+25% of baseline; and complete evidence-bearing graph paths. Even an eligible
+candidate requires human review and does not alter the runtime default.
+
+Per-query provenance records seed IDs, traversal strategy/depth, full directed
+relationship paths, weights and evidence, cycle-prevention counts, empty seeds,
+failures, missing evidence, candidate survival, and graph-channel latency.
+
+## Versioned reference audit
+
+The evaluator loads `eval/kinegraph_benchmark_v1.audit.json` before creating
+database clients. A missing, stale, draft, or unreviewed audit exits with code 2.
+The effective dataset hash combines the source CSV, audit content, and dataset
+version, so reference-only changes invalidate baseline comparisons.
+
+Reference corrections are benchmark changes—not retrieval improvements. Review
+and approval instructions and the current row-level findings are documented in
+[Benchmark Reference Audit](BENCHMARK_REFERENCE_AUDIT.md).
 
 Routing-policy experiments use the separate adaptive profile so fixed Hybrid
 mode slices remain comparable. The conservative policy is disabled in

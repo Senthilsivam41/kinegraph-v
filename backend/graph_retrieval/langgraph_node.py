@@ -32,3 +32,22 @@ class LangGraphGraphRetrieverNode:
             community_id=community_id,
         )
         return results
+
+    async def retrieve_chunks_with_diagnostics(
+        self,
+        query: str,
+        n_results: int = 10,
+        max_hops: int = 3,
+        traversal_strategy: TraversalStrategy | str = TraversalStrategy.BFS,
+        community_id: str | None = None,
+    ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+        """Return graph candidates and traversal diagnostics without shared mutable state."""
+        import asyncio
+        return await asyncio.to_thread(
+            self.retriever.retrieve_with_diagnostics,
+            query=query,
+            n_results=n_results,
+            max_hops=max_hops,
+            traversal_strategy=traversal_strategy,
+            community_id=community_id,
+        )

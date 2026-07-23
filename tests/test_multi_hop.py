@@ -56,13 +56,30 @@ def test_three_hop_bfs_returns_relationship_paths_and_depth():
         "C": [_edge("D")],
     }, max_hops=3)
 
-    results = retriever.retrieve("A relationships", n_results=10, strategy="bfs")
+    diagnostics = {}
+    results = retriever.retrieve("A relationships", n_results=10, strategy="bfs", diagnostics=diagnostics)
 
     assert [r["metadata"]["traversal_depth"] for r in results] == [1, 2, 3]
     assert results[-1]["metadata"]["max_hops"] == 3
     assert len(results[-1]["metadata"]["relationship_path"]) == 3
     assert "A -[RELATES_TO]-> B" in results[-1]["content"]
     assert results[-1]["source"] == "graph_traversal"
+    assert diagnostics["seed_node_ids"] == ["A"]
+    assert diagnostics["returned_path_count"] == 3
+    assert diagnostics["max_depth_reached"] == 3
+
+
+def test_traversal_diagnostics_record_cycles_and_missing_evidence():
+    missing_evidence = _edge("B")
+    missing_evidence["evidence_text"] = ""
+    retriever = FakeTraversal({"A": [missing_evidence], "B": [_edge("A")]})
+    diagnostics = {}
+
+    retriever.retrieve("A", n_results=5, diagnostics=diagnostics)
+
+    assert diagnostics["empty_seed"] is False
+    assert diagnostics["cycle_prevention_count"] == 1
+    assert diagnostics["missing_evidence_edge_count"] == 1
 
 
 def test_bfs_and_dfs_have_distinct_ordering():

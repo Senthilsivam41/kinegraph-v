@@ -93,6 +93,31 @@ def test_report_keeps_profile_and_category_metrics_separate():
     results["categories"] = [["single_hop"], ["multi_hop", "exact_token"]]
     results["profile_name"] = "hybrid_lexical"
     results["workflow_latency_ms"] = [10.0, 20.0]
+    results["sample_id"] = ["KGV1-001", "KGV1-009"]
+    results["provenance"] = [
+        {
+            "latency_ms": {"stages": {"graph_retrieval_ms": 10.0}},
+            "retrieval": {
+                "candidate_lifecycle": [{"sent_to_generation": True, "dropped_at": None}],
+                "graph_path_audit": {
+                    "traversal_candidate_count": 1,
+                    "complete_path_count": 1,
+                    "retriever_diagnostics": {"cycle_prevention_count": 1},
+                },
+            },
+        },
+        {
+            "latency_ms": {"stages": {"graph_retrieval_ms": 20.0}},
+            "retrieval": {
+                "candidate_lifecycle": [{"sent_to_generation": False, "dropped_at": "reranking"}],
+                "graph_path_audit": {
+                    "traversal_candidate_count": 1,
+                    "complete_path_count": 1,
+                    "retriever_diagnostics": {"missing_evidence_edge_count": 0},
+                },
+            },
+        },
+    ]
 
     report = RAGASEvaluator.__new__(RAGASEvaluator).generate_report(results)
 
@@ -100,6 +125,10 @@ def test_report_keeps_profile_and_category_metrics_separate():
     assert report["summary"]["profile_preference"].startswith("not established")
     assert report["per_category"]["exact_token"]["samples"] == 1
     assert report["per_category"]["multi_hop"]["mean_workflow_latency_ms"] == 20.0
+    assert report["per_category"]["multi_hop"]["sample_ids"] == ["KGV1-009"]
+    assert report["retrieval_diagnostics"]["graph_stage_latency_ms"]["p95"] == 19.5
+    assert report["retrieval_diagnostics"]["graph_paths"]["all_complete"] is True
+    assert report["retrieval_diagnostics"]["candidate_survival"]["dropped_reranking"] == 1
 
 
 def test_live_evaluation_forwards_precision_controls_to_workflow():

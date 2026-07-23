@@ -140,3 +140,28 @@ def test_manifest_records_dataset_hash_revision_config_and_models(tmp_path):
     assert manifest["models"]["judge"] == "judge"
     assert manifest["evaluation_risk_flags"] == []
     assert manifest["validation_policy"] == ValidationPolicy().__dict__
+
+
+def test_manifest_uses_effective_reference_audit_identity(tmp_path):
+    dataset = tmp_path / "golden.csv"
+    dataset.write_text("question,reference\nq,a\n", encoding="utf-8")
+
+    manifest = build_manifest(
+        run_label="reviewed",
+        repo_root=Path(__file__).parents[1],
+        dataset_path=dataset,
+        pipeline_config={"max_hops": 2},
+        models={"generation": "gen", "judge": "judge", "embedding": "embed"},
+        report=_report(),
+        artifacts={},
+        dataset_identity={
+            "effective_dataset_sha256": "effective-hash",
+            "dataset_version": "1.1.0",
+            "audit_sha256": "audit-hash",
+            "audit_path": "eval/audit.json",
+        },
+    )
+
+    assert manifest["provenance"]["dataset_sha256"] == "effective-hash"
+    assert manifest["provenance"]["source_dataset_sha256"] == sha256_file(dataset)
+    assert manifest["provenance"]["reference_audit_sha256"] == "audit-hash"

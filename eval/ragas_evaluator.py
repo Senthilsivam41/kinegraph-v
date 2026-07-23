@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Mapping, Optional
 
 from backend.app.models import QueryMode
 from backend.core.config import settings
+from eval.benchmark_reference_audit import load_reference_audit, validate_reference_audit
 from eval.benchmark_profiles import PROFILES, build_profile_dataset, get_profile
 from eval.experiment_validation import (
     ValidationPolicy,
@@ -36,6 +37,7 @@ from eval.provenance import (
     write_diagnostic_summary,
     write_provenance_jsonl,
 )
+import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -692,6 +694,10 @@ class RAGASEvaluator:
                 )]
                 per_category[category] = {
                     "samples": len(subset),
+                    "sample_ids": (
+                        sorted(str(value) for value in subset["sample_id"])
+                        if "sample_id" in subset.columns else []
+                    ),
                     "metrics": {
                         metric: round(float(subset[metric].mean()), 4)
                         for metric in metric_cols
@@ -701,6 +707,60 @@ class RAGASEvaluator:
                         if "workflow_latency_ms" in subset.columns else None
                     ),
                 }
+
+        provenance_records = [
+            record for record in results.get("provenance", [])
+            if isinstance(record, Mapping)
+        ]
+        graph_latencies = []
+        path_audits = []
+        graph_diagnostics = []
+        lifecycle = []
+        for record in provenance_records:
+            latency = record.get("latency_ms", {}).get("stages", {})
+            graph_latency = latency.get("graph_retrieval_ms", latency.get("graph_agent_ms"))
+            if isinstance(graph_latency, (int, float)):
+                graph_latencies.append(float(graph_latency))
+            retrieval = record.get("retrieval", {})
+            path_audit = retrieval.get("graph_path_audit") or {}
+            path_audits.append(path_audit)
+            graph_diagnostics.append(path_audit.get("retriever_diagnostics") or {})
+            lifecycle.extend(retrieval.get("candidate_lifecycle") or [])
+
+        def _percentile(values: List[float], quantile: float) -> Optional[float]:
+            if not values:
+                return None
+            return round(float(np.percentile(values, quantile)), 2)
+
+        traversal_path_count = sum(
+            int(audit.get("traversal_candidate_count", 0)) for audit in path_audits
+        )
+        complete_path_count = sum(
+            int(audit.get("complete_path_count", 0)) for audit in path_audits
+        )
+        retrieval_diagnostics = {
+            "graph_stage_latency_ms": {
+                "samples": len(graph_latencies),
+                "p50": _percentile(graph_latencies, 50),
+                "p95": _percentile(graph_latencies, 95),
+            },
+            "graph_paths": {
+                "traversal_candidate_count": traversal_path_count,
+                "complete_path_count": complete_path_count,
+                "all_complete": traversal_path_count > 0 and complete_path_count == traversal_path_count,
+                "empty_seed_count": sum(bool(item.get("empty_seed")) for item in graph_diagnostics),
+                "traversal_failure_count": sum(bool(item.get("traversal_failure")) for item in graph_diagnostics),
+                "cycle_prevention_count": sum(int(item.get("cycle_prevention_count", 0)) for item in graph_diagnostics),
+                "missing_evidence_edge_count": sum(int(item.get("missing_evidence_edge_count", 0)) for item in graph_diagnostics),
+            },
+            "candidate_survival": {
+                "observed_candidates": len(lifecycle),
+                "sent_to_generation": sum(bool(item.get("sent_to_generation")) for item in lifecycle),
+                "dropped_pre_fusion": sum(item.get("dropped_at") == "pre_fusion" for item in lifecycle),
+                "dropped_reranking": sum(item.get("dropped_at") == "reranking" for item in lifecycle),
+                "dropped_final_truncation": sum(item.get("dropped_at") == "final_truncation" for item in lifecycle),
+            },
+        }
 
         results = results.copy()
         results["composite_score"] = results.apply(
@@ -757,6 +817,7 @@ class RAGASEvaluator:
             },
             "per_metric": per_metric,
             "per_category": per_category,
+            "retrieval_diagnostics": retrieval_diagnostics,
             "worst_samples": results.nsmallest(5, "composite_score")[
                 ["question", "composite_score"] + metric_cols
             ].reset_index(drop=True).to_dict(orient="records"),
@@ -805,6 +866,11 @@ if __name__ == "__main__":
         default=settings.RETRIEVAL_CANDIDATE_LIMIT,
     )
     parser.add_argument("--run-label", default="latest", help="Safe label used for persisted result files")
+    parser.add_argument(
+        "--benchmark-audit",
+        default="eval/kinegraph_benchmark_v1.audit.json",
+        help="Versioned reference audit; unaccepted or stale audits fail closed",
+    )
     parser.add_argument(
         "--profile",
         choices=sorted(PROFILES),
@@ -888,7 +954,24 @@ if __name__ == "__main__":
             file=sys.stderr,
         )
         sys.exit(2)
-    raw_data = build_profile_dataset(df.to_dict(orient="records"), profile)
+    audit_path = os.path.abspath(os.path.join(repo_root, args.benchmark_audit))
+    try:
+        audit_validation = validate_reference_audit(
+            df.to_dict(orient="records"),
+            load_reference_audit(audit_path),
+            repo_root,
+            csv_path,
+        )
+        audit_validation.require_accepted()
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"BENCHMARK REJECTED: {exc}", file=sys.stderr)
+        print(
+            "Review eval/kinegraph_benchmark_v1.audit.json with a named human reviewer; "
+            "reference corrections are benchmark changes, not retrieval gains.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    raw_data = build_profile_dataset(audit_validation.rows, profile)
 
     chroma = ChromaService()
     neo4j = Neo4jService()
@@ -1006,6 +1089,10 @@ if __name__ == "__main__":
             "lexical_fusion_weight": args.lexical_weight,
             "rrf_k": settings.RRF_K,
         },
+        "benchmark": {
+            "dataset_version": audit_validation.dataset_version,
+            "reference_audit_sha256": audit_validation.audit_sha256,
+        },
         "reranking": {
             "enabled": True,
             "model": settings.RERANKER_MODEL,
@@ -1040,10 +1127,17 @@ if __name__ == "__main__":
             "spider_graph": graph_path,
             "provenance_jsonl": provenance_path,
             "diagnostics_json": diagnostics_path,
+            "reference_audit": audit_path,
         },
         policy=policy,
         git_revision=run_git_revision,
         working_tree_clean=run_working_tree_clean,
+        dataset_identity={
+            "effective_dataset_sha256": audit_validation.effective_dataset_sha256,
+            "dataset_version": audit_validation.dataset_version,
+            "audit_sha256": audit_validation.audit_sha256,
+            "audit_path": audit_path,
+        },
     )
     comparison = None
     if args.baseline_manifest:

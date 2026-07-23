@@ -176,6 +176,7 @@ def build_manifest(
     policy: ValidationPolicy | None = None,
     git_revision: str | None = None,
     working_tree_clean: bool | None = None,
+    dataset_identity: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     policy = policy or ValidationPolicy()
     policy.validate()
@@ -184,6 +185,18 @@ def build_manifest(
     risk_flags = []
     if model_values.get("generation") == model_values.get("judge"):
         risk_flags.append("judge_model_matches_generation_model")
+    dataset_provenance = {
+        "dataset_path": str(dataset),
+        "dataset_sha256": sha256_file(dataset),
+    }
+    if dataset_identity:
+        dataset_provenance.update({
+            "dataset_sha256": str(dataset_identity["effective_dataset_sha256"]),
+            "source_dataset_sha256": sha256_file(dataset),
+            "dataset_version": str(dataset_identity["dataset_version"]),
+            "reference_audit_sha256": str(dataset_identity["audit_sha256"]),
+            "reference_audit_path": str(dataset_identity["audit_path"]),
+        })
     return {
         "schema_version": 1,
         "run_label": run_label,
@@ -195,8 +208,7 @@ def build_manifest(
                 if working_tree_clean is None
                 else working_tree_clean
             ),
-            "dataset_path": str(dataset),
-            "dataset_sha256": sha256_file(dataset),
+            **dataset_provenance,
         },
         "pipeline_config": dict(pipeline_config),
         "models": model_values,
