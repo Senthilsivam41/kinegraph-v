@@ -43,7 +43,7 @@ def test_async_ingestion_closes_chroma_and_neo4j_clients():
         patch("backend.workers.tasks.ChromaService", return_value=chroma),
         patch("backend.workers.tasks.Neo4jService", return_value=neo4j),
         patch("backend.workers.tasks.extract_entities_and_relationships", extractor),
-        patch("backend.services.vectorless_service.VectorlessService"),
+        patch("backend.workers.tasks.VectorlessService"),
     ):
         entities, relationships = asyncio.run(_persist_document(
             _task(),
@@ -75,7 +75,7 @@ def test_async_ingestion_closes_clients_on_graph_failure():
             "backend.workers.tasks.extract_entities_and_relationships",
             AsyncMock(return_value=([], [])),
         ),
-        patch("backend.services.vectorless_service.VectorlessService"),
+        patch("backend.workers.tasks.VectorlessService"),
         pytest.raises(RuntimeError, match="Neo4j"),
     ):
         asyncio.run(_persist_document(

@@ -1,11 +1,15 @@
 """
 ChromaDB Service for Vector Storage
 """
+import logging
+
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from typing import List, Dict, Any, Optional
 from langchain_openai import OpenAIEmbeddings
 from backend.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class ChromaService:
@@ -71,7 +75,7 @@ class ChromaService:
             
             return True
         except Exception as e:
-            print(f"Error adding documents to ChromaDB: {e}")
+            logger.exception("Failed to add documents to ChromaDB")
             return False
     
     async def similarity_search(
@@ -131,7 +135,7 @@ class ChromaService:
             return formatted_results
             
         except Exception as e:
-            print(f"Error performing similarity search: {e}")
+            logger.exception("ChromaDB similarity search failed")
             return []
     
     def delete_collection(self):
