@@ -3,7 +3,8 @@ services:
   # Actual listening port is 5707 (image logs: "App listening on port 5707")
   # curl/wget are absent in the image — health check uses python3 instead
   liteparse:
-    image: ghcr.io/run-llama/liteparse-server:main
+    # Immutable multi-architecture manifest captured from the signed upstream image.
+    image: ghcr.io/run-llama/liteparse-server@sha256:fdc2a40d68a0e38c0bc9c304e8ef534ad03cd62abf83a18f454b0fa4ba217ac4
     container_name: kinegraph_liteparse_engine
     ports:
       - "5707:5707"   # host 5707 → container 5707 (port 5000 occupied by macOS AirPlay)
@@ -88,6 +89,7 @@ services:
       context: ..
       dockerfile: infra/Dockerfile
     container_name: kinetic-api
+    restart: unless-stopped
     ports:
       - "8000:8000"
     volumes:
@@ -123,6 +125,7 @@ services:
       context: ..
       dockerfile: infra/Dockerfile
     container_name: kinetic-worker
+    restart: unless-stopped
     volumes:
       - ../backend:/app/backend
       - ../data/uploads:/app/data/uploads

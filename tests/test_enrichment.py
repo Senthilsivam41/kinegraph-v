@@ -176,11 +176,12 @@ def test_legacy_document_ingestion_creates_chunks_and_runs_enrichment():
             chunk_ids=["chunk-1"],
         ))
 
-    assert result is True
-    assert service.last_enrichment_result == enrichment
+    assert result.success is True
+    assert result.enrichment == enrichment
     assert any("MERGE (c:__Node__:Chunk" in call.args[0] for call in session.run.call_args_list)
     enricher_cls.return_value.enrich.assert_called_once_with(chunk_ids=["chunk-1"])
     assert chroma_cls.called
+    chroma_cls.return_value.close.assert_called_once_with()
 
 
 def test_legacy_relationship_upsert_uses_valid_merge_clause_order():
@@ -206,7 +207,7 @@ def test_legacy_relationship_upsert_uses_valid_merge_clause_order():
         }],
     ))
 
-    assert result is True
+    assert result.success is True
     relationship_query = next(
         call.args[0] for call in session.run.call_args_list
         if "MERGE (e1)-[r:RELATES_TO" in call.args[0]

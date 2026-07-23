@@ -1,9 +1,12 @@
 """
 Application Configuration
 """
+from functools import lru_cache
+from pathlib import Path
+from typing import Any, Optional
+
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
-from typing import Optional
 
 
 class Settings(BaseSettings):
@@ -20,6 +23,7 @@ class Settings(BaseSettings):
     API_PORT: int = 8000
     CORS_ALLOWED_ORIGINS: str = "http://localhost:8080,http://127.0.0.1:8080"
     CORS_ALLOW_CREDENTIALS: bool = False
+    UPLOAD_DIR: Path = Path("data/uploads")
     
     # OpenAI
     OPENAI_API_KEY: str
@@ -97,4 +101,20 @@ class Settings(BaseSettings):
         extra = "ignore"
 
 
-settings = Settings()
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """Build settings on first use so imports remain side-effect free."""
+    return Settings()
+
+
+class _LazySettings:
+    """Backward-compatible lazy proxy for modules that import ``settings``."""
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(get_settings(), name)
+
+    def __repr__(self) -> str:
+        return repr(get_settings())
+
+
+settings = _LazySettings()

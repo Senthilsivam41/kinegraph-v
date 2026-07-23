@@ -2,6 +2,7 @@
 Celery Tasks for Document Processing
 """
 from celery import Task
+from celery.utils.log import get_task_logger
 from backend.workers.celery_app import celery_app
 from backend.workers.document_processor import (
     extract_text_from_pdf,
@@ -12,9 +13,17 @@ from backend.workers.document_processor import (
 )
 from backend.services.chroma_service import ChromaService
 from backend.services.neo4j_service import Neo4jService
+from backend.services.vectorless_service import VectorlessService
 from typing import Dict, Any
 from pathlib import Path
 import asyncio
+
+logger = get_task_logger(__name__)
+
+
+def _save_vectorless_document(**kwargs) -> bool:
+    """Persist the vectorless cache outside the ingestion event loop."""
+    return VectorlessService().save_document_chunks(**kwargs)
 
 
 class CallbackTask(Task):
@@ -22,12 +31,12 @@ class CallbackTask(Task):
     
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         """Handle task failure"""
-        print(f"Task {task_id} failed: {exc}")
+        logger.error("Task %s failed: %s", task_id, exc)
         super().on_failure(exc, task_id, args, kwargs, einfo)
     
     def on_success(self, retval, task_id, args, kwargs):
         """Handle task success"""
-        print(f"Task {task_id} succeeded")
+        logger.info("Task %s succeeded", task_id)
         super().on_success(retval, task_id, args, kwargs)
 
 
@@ -54,31 +63,45 @@ async def _persist_document(
         )
         if not success:
             raise RuntimeError("Failed to store documents in ChromaDB")
-        print(f"[Task {task.request.id}] Stored in ChromaDB")
+        logger.info("[Task %s] Stored in ChromaDB", task.request.id)
 
         try:
-            from backend.services.vectorless_service import VectorlessService
-            VectorlessService().save_document_chunks(
+            vectorless_saved = await asyncio.to_thread(
+                _save_vectorless_document,
                 doc_id=doc_id,
                 file_name=file_name,
                 chunks=chunks,
                 metadatas=chunk_metadata,
                 ids=chunk_ids,
             )
-            print(f"[Task {task.request.id}] Stored chunks and raw text for Vectorless RAG")
+            if vectorless_saved:
+                logger.info(
+                    "[Task %s] Stored chunks and raw text for Vectorless RAG",
+                    task.request.id,
+                )
+            else:
+                logger.warning(
+                    "[Task %s] Vectorless persistence returned failure",
+                    task.request.id,
+                )
         except Exception as exc:
-            print(f"[Task {task.request.id}] Error saving chunks for Vectorless RAG: {exc}")
+            logger.exception(
+                "[Task %s] Failed to save chunks for Vectorless RAG",
+                task.request.id,
+            )
 
         task.update_state(state='PROGRESS', meta={'status': 'Extracting entities...'})
         entities, relationships = await extract_entities_and_relationships(text[:10000])
-        print(
-            f"[Task {task.request.id}] Extracted {len(entities)} entities "
-            f"and {len(relationships)} relationships"
+        logger.info(
+            "[Task %s] Extracted %d entities and %d relationships",
+            task.request.id,
+            len(entities),
+            len(relationships),
         )
 
         task.update_state(state='PROGRESS', meta={'status': 'Storing in Neo4j...'})
         neo4j = Neo4jService()
-        success = await neo4j.add_document_graph(
+        graph_write = await neo4j.add_document_graph(
             doc_id=doc_id,
             content=text[:5000],
             metadata={
@@ -91,9 +114,9 @@ async def _persist_document(
             chunks=chunks,
             chunk_ids=chunk_ids,
         )
-        if not success:
+        if not graph_write:
             raise RuntimeError("Failed to store document in Neo4j")
-        print(f"[Task {task.request.id}] Stored in Neo4j")
+        logger.info("[Task %s] Stored in Neo4j", task.request.id)
         return entities, relationships
     finally:
         if neo4j is not None:
@@ -120,7 +143,7 @@ def process_document(self, file_path: str, metadata: Dict[str, Any]) -> Dict[str
         Processing results
     """
     try:
-        print(f"[Task {self.request.id}] Processing document: {file_path}")
+        logger.info("[Task %s] Processing document: %s", self.request.id, file_path)
         
         # Update task state
         self.update_state(state='PROGRESS', meta={'status': 'Extracting text...'})
@@ -137,13 +160,13 @@ def process_document(self, file_path: str, metadata: Dict[str, Any]) -> Dict[str
         # Chunk the text
         chunks = chunk_text(text)
         
-        print(f"[Task {self.request.id}] Created {len(chunks)} chunks")
+        logger.info("[Task %s] Created %d chunks", self.request.id, len(chunks))
         
         # Generate document ID
         doc_id = generate_document_id(file_path)
         
         # Prepare metadata for chunks
-        file_name = Path(file_path).name
+        file_name = str(metadata.get("original_file_name") or Path(file_path).name)
         chunk_metadata = []
         chunk_ids = []
         
@@ -174,9 +197,14 @@ def process_document(self, file_path: str, metadata: Dict[str, Any]) -> Dict[str
         # Clean up uploaded file
         try:
             Path(file_path).unlink()
-            print(f"[Task {self.request.id}] Cleaned up file: {file_path}")
+            logger.info("[Task %s] Cleaned up file: %s", self.request.id, file_path)
         except Exception as e:
-            print(f"[Task {self.request.id}] Could not delete file: {e}")
+            logger.warning(
+                "[Task %s] Could not delete file %s: %s",
+                self.request.id,
+                file_path,
+                e,
+            )
         
         # Return results
         return {
@@ -189,7 +217,7 @@ def process_document(self, file_path: str, metadata: Dict[str, Any]) -> Dict[str
         }
         
     except Exception as e:
-        print(f"[Task {self.request.id}] Error: {e}")
+        logger.exception("[Task %s] Document processing failed", self.request.id)
         # Retry the task
         raise self.retry(exc=e)
 

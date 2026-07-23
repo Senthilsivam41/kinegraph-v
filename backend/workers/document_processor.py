@@ -133,7 +133,7 @@ JSON:
         
         return entities, relationships
     except Exception as e:
-        print(f"Error extracting entities: {e}")
+        logger.exception("Entity and relationship extraction failed")
         return [], []
 
 
@@ -148,8 +148,8 @@ def generate_chunk_id(content: str, index: int) -> str:
     Returns:
         Unique ID
     """
-    content_hash = hashlib.md5(content.encode()).hexdigest()
-    return f"chunk_{index}_{content_hash[:8]}"
+    content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    return f"chunk_{index}_{content_hash}"
 
 
 def generate_document_id(file_path: str) -> str:
@@ -162,5 +162,5 @@ def generate_document_id(file_path: str) -> str:
     Returns:
         Unique ID
     """
-    path_hash = hashlib.md5(file_path.encode()).hexdigest()
+    path_hash = hashlib.sha256(file_path.encode("utf-8")).hexdigest()
     return f"doc_{path_hash}"

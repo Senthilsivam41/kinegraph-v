@@ -1,6 +1,8 @@
 """
 Neo4j Service for Graph Storage
 """
+from dataclasses import dataclass
+import logging
 import re
 
 from neo4j import GraphDatabase, READ_ACCESS, Session
@@ -8,6 +10,20 @@ from typing import List, Dict, Any, Optional
 from backend.core.config import settings
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class GraphWriteResult:
+    """Request-scoped graph write outcome, including optional enrichment details."""
+
+    success: bool
+    enrichment: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+    def __bool__(self) -> bool:
+        return self.success
 
 
 class UnsafeCypherError(ValueError):
@@ -113,7 +129,7 @@ class Neo4jService:
                 result = session.run("RETURN 1")
                 return result.single()[0] == 1
         except Exception as e:
-            print(f"Neo4j connectivity error: {e}")
+            logger.warning("Neo4j connectivity check failed: %s", e)
             return False
     
     def create_indexes(self):
@@ -140,7 +156,7 @@ class Neo4jService:
         relationships: List[Dict[str, Any]],
         chunks: Optional[List[str]] = None,
         chunk_ids: Optional[List[str]] = None,
-    ) -> bool:
+    ) -> GraphWriteResult:
         """
         Add a document and its entities/relationships to the graph
         
@@ -217,19 +233,22 @@ class Neo4jService:
                     """, source=rel['source'], target=rel['target'], rel_type=rel['type'],
                          evidence_text=evidence, weight=float(rel.get("weight", 0.75)))
 
-            self.last_enrichment_result = None
+            enrichment_result = None
             if chunk_ids:
                 from backend.graph_ingestion.enrichment import NodeEnricher
                 from backend.services.chroma_service import ChromaService
 
                 chroma = ChromaService()
-                self.last_enrichment_result = NodeEnricher(
-                    self.driver, chroma.client
-                ).enrich(chunk_ids=chunk_ids)
-            return True
+                try:
+                    enrichment_result = NodeEnricher(
+                        self.driver, chroma.client
+                    ).enrich(chunk_ids=chunk_ids)
+                finally:
+                    chroma.close()
+            return GraphWriteResult(success=True, enrichment=enrichment_result)
         except Exception as e:
-            print(f"Error adding document to Neo4j: {e}")
-            return False
+            logger.exception("Failed to add document to Neo4j")
+            return GraphWriteResult(success=False, error=str(e))
     
     async def query_to_cypher(self, natural_language_query: str) -> str:
         """
@@ -294,37 +313,41 @@ Cypher Query:
             # Execute in read access mode after deterministic clause validation.
             with self.driver.session(default_access_mode=READ_ACCESS) as session:
                 result = session.run(safe_query, result_limit=n_results)
-                
-                formatted_results = []
-                for record in result:
-                    # Extract document or entity information
-                    result_dict = {}
-                    for key in record.keys():
-                        value = record[key]
-                        if hasattr(value, '__dict__'):
-                            result_dict[key] = dict(value)
-                        else:
-                            result_dict[key] = value
-                    
-                    # Format for consistency with vector results
-                    if 'd' in result_dict and 'content' in result_dict['d']:
-                        formatted_results.append({
-                            'content': result_dict['d']['content'],
-                            'metadata': {k: v for k, v in result_dict['d'].items() if k != 'content'},
-                            'score': 1.0,  # Graph results don't have distance scores
-                            'source': 'graph'
-                        })
-                    
-                    if len(formatted_results) >= n_results:
-                        break
-                
-                return formatted_results
+
+                try:
+                    formatted_results = []
+                    for record in result:
+                        # Extract document or entity information
+                        result_dict = {}
+                        for key in record.keys():
+                            value = record[key]
+                            if hasattr(value, '__dict__'):
+                                result_dict[key] = dict(value)
+                            else:
+                                result_dict[key] = value
+
+                        # Format for consistency with vector results
+                        if 'd' in result_dict and 'content' in result_dict['d']:
+                            formatted_results.append({
+                                'content': result_dict['d']['content'],
+                                'metadata': {k: v for k, v in result_dict['d'].items() if k != 'content'},
+                                'score': 1.0,  # Graph results don't have distance scores
+                                'source': 'graph'
+                            })
+
+                        if len(formatted_results) >= n_results:
+                            break
+                    return formatted_results
+                finally:
+                    consume = getattr(result, "consume", None)
+                    if callable(consume):
+                        consume()
                 
         except UnsafeCypherError as exc:
-            print(f"Rejected unsafe generated Cypher: {exc}")
+            logger.warning("Rejected unsafe generated Cypher: %s", exc)
             raise
         except Exception as e:
-            print(f"Error performing graph search: {e}")
+            logger.exception("Graph search failed")
             return []
     
     def get_document_count(self) -> int:

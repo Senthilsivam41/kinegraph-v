@@ -44,6 +44,40 @@ from backend.graph_retrieval.langgraph_node import LangGraphGraphRetrieverNode
 
 logger = logging.getLogger(__name__)
 
+
+def _load_vectorless_document(file_name: str) -> Optional[str]:
+    """Run local document lookup without blocking the async workflow."""
+    return VectorlessService().get_local_document_text(file_name)
+
+
+def _search_vectorless_chunks(
+    query: str,
+    top_k: int,
+    filters: Optional[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Run disk-backed BM25 lookup outside the event loop."""
+    return VectorlessService().search_chunks(
+        query=query,
+        top_k=top_k,
+        filters=filters,
+    )
+
+
+def _search_vectorless_attachment(
+    query: str,
+    attachment_content: str,
+    attachment_name: Optional[str],
+    max_results: int,
+) -> List[Dict[str, Any]]:
+    """Run attachment chunking and lookup outside the event loop."""
+    return VectorlessService().search_attachment(
+        query=query,
+        attachment_content=attachment_content,
+        attachment_name=attachment_name,
+        max_results=max_results,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Faithfulness-first generation prompt
 # ---------------------------------------------------------------------------
@@ -416,9 +450,7 @@ class HybridRAGWorkflow:
             and "file_name" in filters
         ):
             file_name = filters["file_name"]
-            from backend.services.vectorless_service import VectorlessService
-            vectorless = VectorlessService()
-            doc_text = vectorless.get_local_document_text(file_name)
+            doc_text = await asyncio.to_thread(_load_vectorless_document, file_name)
             if doc_text and (len(doc_text) < 40000 or is_summary_query):
                 should_use_vectorless = True
                 logger.info("[IntentRouter] Auto-routing to VECTORLESS: Local file '%s' is small/queried for summary", file_name)
@@ -522,10 +554,10 @@ class HybridRAGWorkflow:
         tasks = [vector_task, graph_task]
         if state.get("enable_lexical_fusion", False):
             tasks.append(timed(asyncio.to_thread(
-                VectorlessService().search_chunks,
-                query=rq,
-                top_k=fetch_n,
-                filters=state.get("filters"),
+                _search_vectorless_chunks,
+                rq,
+                fetch_n,
+                state.get("filters"),
             )))
 
         timed_results = await asyncio.gather(*tasks)
@@ -632,24 +664,23 @@ class HybridRAGWorkflow:
         results = []
         
         try:
-            from backend.services.vectorless_service import VectorlessService
-            vectorless = VectorlessService()
-
             if attachment_content:
                 # Retrieve from direct request attachment
-                results = vectorless.search_attachment(
-                    query=query,
-                    attachment_content=attachment_content,
-                    attachment_name=attachment_name,
-                    max_results=max_results
+                results = await asyncio.to_thread(
+                    _search_vectorless_attachment,
+                    query,
+                    attachment_content,
+                    attachment_name,
+                    max_results,
                 )
                 logger.info("[VectorlessAgent] Extracted %d chunks from attachment", len(results))
             else:
                 # Retrieve from local document chunk cache
-                results = vectorless.search_chunks(
-                    query=query,
-                    top_k=max_results,
-                    filters=filters
+                results = await asyncio.to_thread(
+                    _search_vectorless_chunks,
+                    query,
+                    max_results,
+                    filters,
                 )
                 logger.info("[VectorlessAgent] Retrieved %d chunks from local chunks", len(results))
         except Exception as e:
