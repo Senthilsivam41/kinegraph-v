@@ -1,7 +1,7 @@
 """
 Application Configuration
 """
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
 from typing import Optional
 
@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     # API
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
+    CORS_ALLOWED_ORIGINS: str = "http://localhost:8080,http://127.0.0.1:8080"
+    CORS_ALLOW_CREDENTIALS: bool = False
     
     # OpenAI
     OPENAI_API_KEY: str
@@ -30,7 +32,7 @@ class Settings(BaseSettings):
     # Neo4j
     NEO4J_URI: str = "bolt://localhost:7687"
     NEO4J_USER: str = "neo4j"
-    NEO4J_PASSWORD: str
+    NEO4J_PASSWORD: str = Field(min_length=16)
     
     # Redis
     REDIS_HOST: str = "localhost"
@@ -73,6 +75,18 @@ class Settings(BaseSettings):
 
     # Metrics DB (optional — defaults to SQLite eval/metrics.db)
     DATABASE_URL: Optional[str] = None
+
+    @property
+    def cors_allowed_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.CORS_ALLOWED_ORIGINS.split(",") if origin.strip()]
+
+    @model_validator(mode="after")
+    def validate_security_configuration(self):
+        if not self.cors_allowed_origins:
+            raise ValueError("CORS_ALLOWED_ORIGINS must contain at least one origin")
+        if "*" in self.cors_allowed_origins and self.CORS_ALLOW_CREDENTIALS:
+            raise ValueError("credentialed CORS cannot use a wildcard origin")
+        return self
 
     class Config:
         env_file = ".env"

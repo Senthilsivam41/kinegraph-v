@@ -45,7 +45,7 @@ open http://localhost:8000/docs
 open http://localhost:7474
 ```
 - Username: `neo4j`
-- Password: `kinetic_password_change_in_production`
+- Password: the unique value configured in `NEO4J_PASSWORD` (never commit it)
 
 ## How to Use
 

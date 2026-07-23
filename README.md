@@ -27,6 +27,7 @@
 The system uses **LangGraph** to orchestrate complex query workflows and **Celery** for asynchronous document processing.
 
 Development is guided by the evidence-first [Kinegraph Architecture Principles](docs/ARCHITECTURE_PRINCIPLES.md), including explicit product vision, measurable goals, and a decision gate for new retrieval features.
+Deployment secrets, read-only Cypher controls, and CORS configuration are documented in [Security Configuration](docs/SECURITY.md).
 
 ---
 
@@ -296,7 +297,7 @@ flowchart LR
 # Clone the repository and copy environment template
 cp .env.example .env
 
-# Edit .env and add your OpenAI API key
+# Edit .env and add your OpenAI API key and a unique Neo4j password
 # PARSER_URL is pre-configured to http://liteparse:5707 inside Docker
 # For local dev outside Docker, set PARSER_URL=http://localhost:5707
 nano .env
@@ -307,7 +308,7 @@ nano .env
 ```bash
 # Build and start all services via Docker Compose (resides in infra/)
 cd infra
-docker compose up --build -d
+docker compose --env-file ../.env up --build -d
 ```
 
 ### 3. Verify Health

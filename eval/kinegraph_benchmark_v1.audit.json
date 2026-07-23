@@ -1,6 +1,6 @@
 {
   "accepted_for_evaluation": false,
-  "audit_content_sha256": "e82b7a01071c82e8b48f95e11afbfa5d0ca79f0cc5747337683a71e56aa26631",
+  "audit_content_sha256": "02b6571021b2831fbaa68ac3419cc0e04217f8787e4e54266e78d199c7df4d88",
   "dataset_version": "1.1.0-draft",
   "rows": [
     {
@@ -352,7 +352,7 @@
           "evidence_excerpt": null,
           "evidence_excerpt_sha256": null,
           "source_path": "docs/QUICKSTART.md",
-          "source_sha256": "1ad9b8ede745cb56e7b62e622c81774d4044ffdb1e07deff11f6081b07359e21",
+          "source_sha256": "864a74ff29d76ea56ff307b76d871b3f80920fbb8e0dcd656842e84c2156f1d6",
           "supporting_chunk_ids": [],
           "verification": "pending"
         },
@@ -397,7 +397,7 @@
           "evidence_excerpt": null,
           "evidence_excerpt_sha256": null,
           "source_path": "docs/QUICKSTART.md",
-          "source_sha256": "1ad9b8ede745cb56e7b62e622c81774d4044ffdb1e07deff11f6081b07359e21",
+          "source_sha256": "864a74ff29d76ea56ff307b76d871b3f80920fbb8e0dcd656842e84c2156f1d6",
           "supporting_chunk_ids": [],
           "verification": "pending"
         }
@@ -434,7 +434,7 @@
           "evidence_excerpt": null,
           "evidence_excerpt_sha256": null,
           "source_path": "README.md",
-          "source_sha256": "22fbd967db5d79572fa1e438db67ebe36aecda888991ee315b4a0b29c755cf8e",
+          "source_sha256": "d91fabec853073b09385cde8cbe1a13e3f46c93804ca083ae7047dcd16e30402",
           "supporting_chunk_ids": [],
           "verification": "pending"
         }
@@ -459,7 +459,7 @@
       "change_rationale": "The upload endpoint, multipart fields, and response shape require current FastAPI contract review.",
       "original_reference_sha256": "92981b901c707ce66805e47a2047fec41cc5bf481f75545e00ab717299ef678e",
       "question_sha256": "4a2f7bd89278b4cc5e9e8188afff9b7bb8e9569da59c509b6efb9bc032c83e72",
-      "reference_contexts_sha256": "4d2f2888fa1839847f62f6a82691813b4c0fc800c4b3074b1e539f71a57a12de",
+      "reference_contexts_sha256": "017a20c33773c786b0a11a6f7620180ad424db43a0250c9e210554a13e8a263a",
       "reference_status": "pending",
       "reviewer": {
         "name": null,
@@ -478,7 +478,7 @@
         }
       ],
       "supporting_chunk_ids": [
-        "benchmark-context-sha256:4d2f2888fa1839847f62f6a82691813b4c0fc800c4b3074b1e539f71a57a12de"
+        "benchmark-context-sha256:017a20c33773c786b0a11a6f7620180ad424db43a0250c9e210554a13e8a263a"
       ],
       "technical_review_status": "pending",
       "technical_review_tags": [
@@ -524,7 +524,7 @@
       ]
     },
     {
-      "audited_reference": "To open the Neo4j Browser, you can navigate to http://localhost:7474. You will need to log in with the username 'neo4j' and the password 'kinetic_password_change_in_production'.",
+      "audited_reference": "To open the Neo4j Browser, you can navigate to http://localhost:7474. You will need to log in with the username 'neo4j' and the password 'the value configured in NEO4J_PASSWORD'.",
       "benchmark_id": "KGV1-015",
       "categories": [
         "multi_hop",
@@ -532,9 +532,9 @@
         "misspelled"
       ],
       "change_rationale": "A checked-in development credential must be labeled non-production and reviewed as a security-sensitive claim.",
-      "original_reference_sha256": "c7202f3568e61346c9f48580d285b3a1f42b013a172f518eb0d995a53b5718f0",
+      "original_reference_sha256": "33bcba677c1b18cc33d857d0e3a3e0bb797e04ad17990d4b742aeee35ddc747a",
       "question_sha256": "3ad9992a865a96a09724eb0cbfa7406d336ef3b231964260ec37067fe017d3d5",
-      "reference_contexts_sha256": "4d2f2888fa1839847f62f6a82691813b4c0fc800c4b3074b1e539f71a57a12de",
+      "reference_contexts_sha256": "017a20c33773c786b0a11a6f7620180ad424db43a0250c9e210554a13e8a263a",
       "reference_status": "needs_correction",
       "reviewer": {
         "name": null,
@@ -547,13 +547,13 @@
           "evidence_excerpt": null,
           "evidence_excerpt_sha256": null,
           "source_path": "docs/QUICKSTART.md",
-          "source_sha256": "1ad9b8ede745cb56e7b62e622c81774d4044ffdb1e07deff11f6081b07359e21",
+          "source_sha256": "864a74ff29d76ea56ff307b76d871b3f80920fbb8e0dcd656842e84c2156f1d6",
           "supporting_chunk_ids": [],
           "verification": "pending"
         }
       ],
       "supporting_chunk_ids": [
-        "benchmark-context-sha256:4d2f2888fa1839847f62f6a82691813b4c0fc800c4b3074b1e539f71a57a12de"
+        "benchmark-context-sha256:017a20c33773c786b0a11a6f7620180ad424db43a0250c9e210554a13e8a263a"
       ],
       "technical_review_status": "pending",
       "technical_review_tags": [
@@ -584,7 +584,7 @@
           "evidence_excerpt": null,
           "evidence_excerpt_sha256": null,
           "source_path": "docs/QUICKSTART.md",
-          "source_sha256": "1ad9b8ede745cb56e7b62e622c81774d4044ffdb1e07deff11f6081b07359e21",
+          "source_sha256": "864a74ff29d76ea56ff307b76d871b3f80920fbb8e0dcd656842e84c2156f1d6",
           "supporting_chunk_ids": [],
           "verification": "pending"
         }
@@ -734,7 +734,7 @@
           "evidence_excerpt": null,
           "evidence_excerpt_sha256": null,
           "source_path": "docs/QUICKSTART.md",
-          "source_sha256": "1ad9b8ede745cb56e7b62e622c81774d4044ffdb1e07deff11f6081b07359e21",
+          "source_sha256": "864a74ff29d76ea56ff307b76d871b3f80920fbb8e0dcd656842e84c2156f1d6",
           "supporting_chunk_ids": [],
           "verification": "pending"
         }
@@ -751,5 +751,5 @@
   ],
   "schema_version": "kinegraph.benchmark.reference-audit.v1",
   "source_dataset": "eval/kinegraph_benchmark_v1.csv",
-  "source_dataset_sha256": "627fec2a1403d652eb60e5405240d68c4c0be90bc84522b0e6fbd93abe7fc614"
+  "source_dataset_sha256": "d874acd6beb529ba8e9114b094f2102962bf79b8ba30b22632c9624fc5ad6ab4"
 }

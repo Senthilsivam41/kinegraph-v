@@ -31,6 +31,76 @@ class CallbackTask(Task):
         super().on_success(retval, task_id, args, kwargs)
 
 
+async def _persist_document(
+    task: Task,
+    *,
+    doc_id: str,
+    file_name: str,
+    text: str,
+    chunks: list[str],
+    chunk_metadata: list[Dict[str, Any]],
+    chunk_ids: list[str],
+    metadata: Dict[str, Any],
+) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]]]:
+    """Run all async ingestion work in one event loop and close every client."""
+    chroma = ChromaService()
+    neo4j = None
+    try:
+        task.update_state(state='PROGRESS', meta={'status': 'Storing in ChromaDB...'})
+        success = await chroma.add_documents(
+            texts=chunks,
+            metadatas=chunk_metadata,
+            ids=chunk_ids,
+        )
+        if not success:
+            raise RuntimeError("Failed to store documents in ChromaDB")
+        print(f"[Task {task.request.id}] Stored in ChromaDB")
+
+        try:
+            from backend.services.vectorless_service import VectorlessService
+            VectorlessService().save_document_chunks(
+                doc_id=doc_id,
+                file_name=file_name,
+                chunks=chunks,
+                metadatas=chunk_metadata,
+                ids=chunk_ids,
+            )
+            print(f"[Task {task.request.id}] Stored chunks and raw text for Vectorless RAG")
+        except Exception as exc:
+            print(f"[Task {task.request.id}] Error saving chunks for Vectorless RAG: {exc}")
+
+        task.update_state(state='PROGRESS', meta={'status': 'Extracting entities...'})
+        entities, relationships = await extract_entities_and_relationships(text[:10000])
+        print(
+            f"[Task {task.request.id}] Extracted {len(entities)} entities "
+            f"and {len(relationships)} relationships"
+        )
+
+        task.update_state(state='PROGRESS', meta={'status': 'Storing in Neo4j...'})
+        neo4j = Neo4jService()
+        success = await neo4j.add_document_graph(
+            doc_id=doc_id,
+            content=text[:5000],
+            metadata={
+                "file_name": file_name,
+                "total_chunks": len(chunks),
+                **metadata,
+            },
+            entities=entities,
+            relationships=relationships,
+            chunks=chunks,
+            chunk_ids=chunk_ids,
+        )
+        if not success:
+            raise RuntimeError("Failed to store document in Neo4j")
+        print(f"[Task {task.request.id}] Stored in Neo4j")
+        return entities, relationships
+    finally:
+        if neo4j is not None:
+            neo4j.close()
+        chroma.close()
+
+
 @celery_app.task(
     base=CallbackTask,
     bind=True,
@@ -90,78 +160,16 @@ def process_document(self, file_path: str, metadata: Dict[str, Any]) -> Dict[str
             }
             chunk_metadata.append(chunk_meta)
         
-        # Update state
-        self.update_state(state='PROGRESS', meta={'status': 'Storing in ChromaDB...'})
-        
-        # Store in ChromaDB
-        chroma = ChromaService()
-        success = asyncio.run(
-            chroma.add_documents(
-                texts=chunks,
-                metadatas=chunk_metadata,
-                ids=chunk_ids
-            )
-        )
-        
-        if not success:
-            raise Exception("Failed to store documents in ChromaDB")
-        
-        print(f"[Task {self.request.id}] Stored in ChromaDB")
-
-        # Store in Local Lexical Cache for Vectorless RAG
-        try:
-            from backend.services.vectorless_service import VectorlessService
-            vectorless = VectorlessService()
-            vectorless.save_document_chunks(
-                doc_id=doc_id,
-                file_name=file_name,
-                chunks=chunks,
-                metadatas=chunk_metadata,
-                ids=chunk_ids
-            )
-            print(f"[Task {self.request.id}] Stored chunks and raw text for Vectorless RAG")
-        except Exception as ve:
-            print(f"[Task {self.request.id}] Error saving chunks for Vectorless RAG: {ve}")
-        
-        # Update state
-        self.update_state(state='PROGRESS', meta={'status': 'Extracting entities...'})
-        
-        # Extract entities from full text (or from a summary for large documents)
-        text_sample = text[:10000]  # Use first 10k chars for entity extraction
-        entities, relationships = asyncio.run(
-            extract_entities_and_relationships(text_sample)
-        )
-        
-        print(f"[Task {self.request.id}] Extracted {len(entities)} entities and {len(relationships)} relationships")
-        
-        # Update state
-        self.update_state(state='PROGRESS', meta={'status': 'Storing in Neo4j...'})
-        
-        # Store in Neo4j
-        neo4j = Neo4jService()
-        try:
-            success = asyncio.run(
-                neo4j.add_document_graph(
-                    doc_id=doc_id,
-                    content=text[:5000],  # Store summary in graph
-                    metadata={
-                        "file_name": file_name,
-                        "total_chunks": len(chunks),
-                        **metadata
-                    },
-                    entities=entities,
-                    relationships=relationships,
-                    chunks=chunks,
-                    chunk_ids=chunk_ids,
-                )
-            )
-            
-            if not success:
-                raise Exception("Failed to store document in Neo4j")
-            
-            print(f"[Task {self.request.id}] Stored in Neo4j")
-        finally:
-            neo4j.close()
+        entities, relationships = asyncio.run(_persist_document(
+            self,
+            doc_id=doc_id,
+            file_name=file_name,
+            text=text,
+            chunks=chunks,
+            chunk_metadata=chunk_metadata,
+            chunk_ids=chunk_ids,
+            metadata=metadata,
+        ))
         
         # Clean up uploaded file
         try:

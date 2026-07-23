@@ -24,6 +24,12 @@ class ChromaService:
             kw["base_url"] = "https://openrouter.ai/api/v1"
         self.embeddings = OpenAIEmbeddings(**kw)
         self.collection_name = settings.CHROMA_COLLECTION_NAME
+
+    def close(self) -> None:
+        """Release the shared Chroma HTTP client and its connection pool."""
+        close_client = getattr(self.client, "close", None)
+        if callable(close_client):
+            close_client()
     
     def get_or_create_collection(self):
         """Get or create the collection"""
