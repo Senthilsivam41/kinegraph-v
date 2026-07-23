@@ -106,6 +106,15 @@ def test_read_only_cypher_is_bounded_and_literals_do_not_trigger_false_positive(
     assert safe.endswith("LIMIT $result_limit")
 
 
+def test_read_only_cypher_masks_escaped_literals_without_regex_backtracking():
+    escaped = "\\\\" * 200
+    query = f"MATCH (d:Document) WHERE d.content CONTAINS '{escaped}' RETURN d"
+
+    safe = validate_read_only_cypher(query, 6)
+
+    assert safe.endswith("LIMIT $result_limit")
+
+
 @pytest.mark.parametrize(
     "query",
     [

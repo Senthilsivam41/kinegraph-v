@@ -14,15 +14,47 @@ class UnsafeCypherError(ValueError):
     """Raised when generated Cypher exceeds the read-only query contract."""
 
 
-_CYPHER_LITERAL = re.compile(
-    r"'(?:\\.|''|[^'])*'|\"(?:\\.|\"\"|[^\"])*\"|`(?:``|[^`])*`",
-    re.DOTALL,
-)
 _FORBIDDEN_CYPHER = re.compile(
     r"\b(?:CALL|CREATE|DELETE|DETACH|DROP|FOREACH|GRANT|LOAD|MERGE|REMOVE|RENAME|"
     r"REVOKE|SET|SHOW|START|STOP|TERMINATE|USE|ALTER|DENY|SKIP|LIMIT)\b",
     re.IGNORECASE,
 )
+
+
+def _mask_cypher_literals(query: str) -> str:
+    """Replace Cypher literals with spaces without regex backtracking.
+
+    Generated Cypher is untrusted input. A small linear scanner prevents clause
+    validation from treating keywords inside literals as executable syntax,
+    without exposing the validator to regex denial-of-service.
+    """
+    masked = list(query)
+    index = 0
+    while index < len(query):
+        delimiter = query[index]
+        if delimiter not in {"'", '"', "`"}:
+            index += 1
+            continue
+
+        masked[index] = " "
+        index += 1
+        while index < len(query):
+            char = query[index]
+            masked[index] = " "
+            if char == delimiter:
+                if index + 1 < len(query) and query[index + 1] == delimiter:
+                    masked[index + 1] = " "
+                    index += 2
+                    continue
+                index += 1
+                break
+            if char == "\\" and delimiter != "`" and index + 1 < len(query):
+                masked[index + 1] = " "
+                index += 2
+                continue
+            index += 1
+
+    return "".join(masked)
 
 
 def validate_read_only_cypher(query: str, result_limit: int) -> str:
@@ -35,7 +67,7 @@ def validate_read_only_cypher(query: str, result_limit: int) -> str:
         raise ValueError("result_limit must be between 1 and 100")
 
     stripped = query.strip()
-    masked = _CYPHER_LITERAL.sub(" ", stripped)
+    masked = _mask_cypher_literals(stripped)
     if ";" in masked:
         raise UnsafeCypherError("Multiple Cypher statements are not allowed")
     if "//" in masked or "/*" in masked or "*/" in masked:
