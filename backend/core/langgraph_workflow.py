@@ -309,7 +309,9 @@ class HybridRAGWorkflow:
         workflow.add_node("fusion_node",     self._fusion_node)
         workflow.add_node("rerank_node",     self._rerank_node)
         workflow.add_node("generate_node",   self._generate_node)
-        workflow.add_node("grounding_critique", self._grounding_critique)
+        # Keep the graph node name distinct from the WorkflowState field of the
+        # same name; LangGraph rejects node/state-key collisions.
+        workflow.add_node("grounding_critique_node", self._grounding_critique)
         workflow.add_node("format_results",  self._format_results)
 
         workflow.set_entry_point("intent_router")
@@ -338,8 +340,8 @@ class HybridRAGWorkflow:
         # Common tail
         workflow.add_edge("fusion_node",    "rerank_node")
         workflow.add_edge("rerank_node",    "generate_node")
-        workflow.add_edge("generate_node",  "grounding_critique")
-        workflow.add_edge("grounding_critique", "format_results")
+        workflow.add_edge("generate_node",  "grounding_critique_node")
+        workflow.add_edge("grounding_critique_node", "format_results")
         workflow.add_edge("format_results", END)
 
         return workflow.compile()
