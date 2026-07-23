@@ -1,0 +1,350 @@
+{
+  "summary": {
+    "total_samples": 20,
+    "overall_composite_score": 0.3697,
+    "composite_confidence_interval_95": [
+      0.262,
+      0.4704
+    ],
+    "composite_metric_weights": {
+      "faithfulness": 0.35,
+      "context_precision": 0.3,
+      "context_recall": 0.2,
+      "answer_relevancy": 0.15
+    },
+    "metrics_evaluated": [
+      "faithfulness",
+      "answer_relevancy",
+      "context_precision",
+      "context_recall",
+      "answer_correctness"
+    ],
+    "quality_distribution": {
+      "fair": 9,
+      "poor": 9,
+      "good": 2
+    },
+    "eval_mode": "heuristic_or_mixed",
+    "accepted_as_ragas": false,
+    "metric_values_valid": true,
+    "profile": "hybrid",
+    "profile_preference": "not established; compare separate accepted manifests"
+  },
+  "per_metric": {
+    "faithfulness": {
+      "mean": 0.2035,
+      "median": 0.125,
+      "std": 0.2485,
+      "min": 0.0,
+      "max": 0.9444,
+      "description": "Fraction of answer claims supported by retrieved context"
+    },
+    "answer_relevancy": {
+      "mean": 0.0294,
+      "median": 0.0323,
+      "std": 0.0299,
+      "min": 0.0,
+      "max": 0.125,
+      "description": "How well the answer addresses the question"
+    },
+    "context_precision": {
+      "mean": 0.75,
+      "median": 1.0,
+      "std": 0.4443,
+      "min": 0.0,
+      "max": 1.0,
+      "description": "Signal-to-noise: most relevant chunks ranked first"
+    },
+    "context_recall": {
+      "mean": 0.3454,
+      "median": 0.3269,
+      "std": 0.3038,
+      "min": 0.0,
+      "max": 0.8409,
+      "description": "Fraction of ground-truth info present in context"
+    },
+    "answer_correctness": {
+      "mean": 0.0292,
+      "median": 0.0227,
+      "std": 0.0257,
+      "min": 0.0,
+      "max": 0.1017,
+      "description": "Answer accuracy vs reference ground truth"
+    }
+  },
+  "per_category": {
+    "compound": {
+      "samples": 13,
+      "sample_ids": [
+        "benchmark-001",
+        "benchmark-003",
+        "benchmark-004",
+        "benchmark-005",
+        "benchmark-009",
+        "benchmark-010",
+        "benchmark-011",
+        "benchmark-012",
+        "benchmark-014",
+        "benchmark-016",
+        "benchmark-017",
+        "benchmark-018",
+        "benchmark-019"
+      ],
+      "metrics": {
+        "faithfulness": 0.1538,
+        "answer_relevancy": 0.0245,
+        "context_precision": 0.7692,
+        "context_recall": 0.3649,
+        "answer_correctness": 0.0205
+      },
+      "mean_workflow_latency_ms": 42053.06
+    },
+    "exact_token": {
+      "samples": 5,
+      "sample_ids": [
+        "benchmark-010",
+        "benchmark-011",
+        "benchmark-013",
+        "benchmark-014",
+        "benchmark-015"
+      ],
+      "metrics": {
+        "faithfulness": 0.075,
+        "answer_relevancy": 0.0288,
+        "context_precision": 0.4,
+        "context_recall": 0.1733,
+        "answer_correctness": 0.0273
+      },
+      "mean_workflow_latency_ms": 34978.5
+    },
+    "misspelled": {
+      "samples": 3,
+      "sample_ids": [
+        "benchmark-001",
+        "benchmark-010",
+        "benchmark-015"
+      ],
+      "metrics": {
+        "faithfulness": 0.1667,
+        "answer_relevancy": 0.0314,
+        "context_precision": 1.0,
+        "context_recall": 0.4253,
+        "answer_correctness": 0.0272
+      },
+      "mean_workflow_latency_ms": 36629.63
+    },
+    "multi_hop": {
+      "samples": 12,
+      "sample_ids": [
+        "benchmark-009",
+        "benchmark-010",
+        "benchmark-011",
+        "benchmark-012",
+        "benchmark-013",
+        "benchmark-014",
+        "benchmark-015",
+        "benchmark-016",
+        "benchmark-017",
+        "benchmark-018",
+        "benchmark-019",
+        "benchmark-020"
+      ],
+      "metrics": {
+        "faithfulness": 0.1516,
+        "answer_relevancy": 0.0365,
+        "context_precision": 0.6667,
+        "context_recall": 0.2335,
+        "answer_correctness": 0.0274
+      },
+      "mean_workflow_latency_ms": 39085.69
+    },
+    "single_hop": {
+      "samples": 8,
+      "sample_ids": [
+        "benchmark-001",
+        "benchmark-002",
+        "benchmark-003",
+        "benchmark-004",
+        "benchmark-005",
+        "benchmark-006",
+        "benchmark-007",
+        "benchmark-008"
+      ],
+      "metrics": {
+        "faithfulness": 0.2812,
+        "answer_relevancy": 0.0186,
+        "context_precision": 0.875,
+        "context_recall": 0.5133,
+        "answer_correctness": 0.0319
+      },
+      "mean_workflow_latency_ms": 48469.1
+    },
+    "two_reference_facets": {
+      "samples": 6,
+      "sample_ids": [
+        "benchmark-009",
+        "benchmark-014",
+        "benchmark-017",
+        "benchmark-018",
+        "benchmark-019",
+        "benchmark-020"
+      ],
+      "metrics": {
+        "faithfulness": 0.2407,
+        "answer_relevancy": 0.0369,
+        "context_precision": 0.8333,
+        "context_recall": 0.258,
+        "answer_correctness": 0.0272
+      },
+      "mean_workflow_latency_ms": 42743.68
+    }
+  },
+  "retrieval_diagnostics": {
+    "graph_stage_latency_ms": {
+      "samples": 15,
+      "p50": 2277.84,
+      "p95": 4578.53
+    },
+    "graph_paths": {
+      "traversal_candidate_count": 200,
+      "complete_path_count": 0,
+      "all_complete": false,
+      "empty_seed_count": 0,
+      "traversal_failure_count": 0,
+      "cycle_prevention_count": 2125,
+      "missing_evidence_edge_count": 2270
+    },
+    "candidate_survival": {
+      "observed_candidates": 286,
+      "sent_to_generation": 49,
+      "dropped_pre_fusion": 5,
+      "dropped_reranking": 232,
+      "dropped_final_truncation": 0
+    }
+  },
+  "worst_samples": [
+    {
+      "question": "What are the advantages of using Vector Search in the KineticGraph-Vectra system?",
+      "composite_score": 0.0,
+      "faithfulness": 0.0,
+      "answer_relevancy": 0.0,
+      "context_precision": 0.0,
+      "context_recall": 0.0,
+      "answer_correctness": 0.0
+    },
+    {
+      "question": "How can the test document 'test.pdf' be ingested into the system, and what is the expected response regarding its processing status?",
+      "composite_score": 0.0,
+      "faithfulness": 0.0,
+      "answer_relevancy": 0.0,
+      "context_precision": 0.0,
+      "context_recall": 0.0,
+      "answer_correctness": 0.0143
+    },
+    {
+      "question": "What are the necessary steps to set up the KineticGraph-Vectra environment, and how does the inclusion of the OpenAI API key play a crucial role in this process?",
+      "composite_score": 0.004679999999999999,
+      "faithfulness": 0.0,
+      "answer_relevancy": 0.0312,
+      "context_precision": 0.0,
+      "context_recall": 0.0,
+      "answer_correctness": 0.0222
+    },
+    {
+      "question": "What are the correct formatting practices for the OPENAI_API_KEY in a .env file, and what security best practices should be followed regarding API keys?",
+      "composite_score": 0.005355,
+      "faithfulness": 0.0,
+      "answer_relevancy": 0.0357,
+      "context_precision": 0.0,
+      "context_recall": 0.0,
+      "answer_correctness": 0.0392
+    },
+    {
+      "question": "What is the process for uploading a document using the API at http://localhost:8000/api/v1/ingest/document?",
+      "composite_score": 0.00789,
+      "faithfulness": 0.0,
+      "answer_relevancy": 0.0526,
+      "context_precision": 0.0,
+      "context_recall": 0.0,
+      "answer_correctness": 0.0286
+    }
+  ],
+  "best_samples": [
+    {
+      "question": "How does the use of Reciprocal Rank Fusion enhance the query system in hybrid mode?",
+      "composite_score": 0.76105,
+      "faithfulness": 0.9444,
+      "answer_relevancy": 0.125,
+      "context_precision": 1.0,
+      "context_recall": 0.5588,
+      "answer_correctness": 0.1017
+    },
+    {
+      "question": "How does ChromaDB address the challenge of distance score comparison with Neo4j in the context of normalized ranking and hybrid retrieval systems?",
+      "composite_score": 0.648175,
+      "faithfulness": 0.5,
+      "answer_relevancy": 0.0333,
+      "context_precision": 1.0,
+      "context_recall": 0.8409,
+      "answer_correctness": 0.0172
+    },
+    {
+      "question": "How does KineticGraph-Vectra compare to other data processing methods in terms of performance?",
+      "composite_score": 0.58277,
+      "faithfulness": 0.375,
+      "answer_relevancy": 0.0,
+      "context_precision": 1.0,
+      "context_recall": 0.7576,
+      "answer_correctness": 0.0
+    },
+    {
+      "question": "How does KineticGraph-Vectra enhance data retrieval through its workflow?",
+      "composite_score": 0.58247,
+      "faithfulness": 0.375,
+      "answer_relevancy": 0.0,
+      "context_precision": 1.0,
+      "context_recall": 0.7561,
+      "answer_correctness": 0.0755
+    },
+    {
+      "question": "How does the hybrid search approach utilizing Reciprocal Rank Fusion (RRF) enhance the retrieval of entity relationships and improve context recall compared to traditional methods?",
+      "composite_score": 0.55926,
+      "faithfulness": 0.375,
+      "answer_relevancy": 0.0294,
+      "context_precision": 1.0,
+      "context_recall": 0.618,
+      "answer_correctness": 0.0208
+    }
+  ],
+  "recommendations": [
+    "Low faithfulness: LLM hallucinating. Tighten system prompt with 'only use provided context'.",
+    "Low answer relevancy: Answers drift off-topic. Add query intent classification.",
+    "Low context recall: Missing relevant chunks. Increase chunk overlap or add BM25 fallback.",
+    "Low answer correctness: Verify knowledge-base freshness and consider fine-tuning."
+  ],
+  "benchmark_status": "diagnostic_only",
+  "acceptance": {
+    "accepted_as_ragas": false,
+    "reference_audit_accepted": false,
+    "reference_audit_reason": "eval/kinegraph_benchmark_v1.audit.json has accepted_for_evaluation=false"
+  },
+  "provenance": {
+    "git_revision": "d86ab43991f683c8b2a95fd8f33fe90ab5faaea6",
+    "dataset": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/eval/kinegraph_benchmark_v1.csv",
+    "dataset_rows": 20,
+    "profile": {
+      "name": "hybrid",
+      "requested_mode": "hybrid",
+      "enable_lexical_fusion": false,
+      "declared_effective_modes": [
+        "hybrid"
+      ],
+      "allow_mode_downgrade": false,
+      "allow_vectorless_auto_route": false,
+      "use_reference_context_as_attachment": false
+    },
+    "generation_model": "qwen/qwen3.6-27b",
+    "judge_model": "qwen/qwen3.6-27b",
+    "embedding_strategy": "local HuggingFace embeddings for OpenRouter compatibility"
+  }
+}
