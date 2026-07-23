@@ -1,5 +1,7 @@
 from copy import deepcopy
 
+import pytest
+
 from eval.experiment_validation import ValidationPolicy
 from eval.traversal_sweep import build_sweep_report, evaluate_traversal_candidate
 
@@ -72,6 +74,69 @@ def test_sweep_preserves_baseline_as_rollback_default():
     assert report["rollback_hops"] == 2
     assert report["default_changed"] is False
     assert report["candidates"]["2"]["role"] == "accepted_baseline"
+
+
+def test_traversal_candidate_fails_on_insufficient_recall_delta():
+    """Category recall improvement below 0.05 must block promotion."""
+    baseline = _manifest(2, recall=0.55, p95=100)
+    # delta = 0.04 — under the 0.05 threshold
+    candidate = _manifest(3, recall=0.59, p95=110)
+
+    result = evaluate_traversal_candidate(baseline, candidate)
+
+    assert result["promotion_eligible"] is False
+    assert any("context recall" in r for r in result["reasons"])
+    assert result["two_reference_facet_context_recall"]["delta"] == pytest.approx(0.04)
+
+
+def test_traversal_candidate_fails_on_precision_below_threshold():
+    """Overall context_precision below 0.90 must block promotion even if recall improves."""
+    baseline = _manifest(2, recall=0.55, precision=0.92, p95=100)
+    # Recall improves but precision drops to 0.88
+    candidate = _manifest(3, recall=0.62, precision=0.88, p95=110)
+
+    result = evaluate_traversal_candidate(baseline, candidate)
+
+    assert result["promotion_eligible"] is False
+    assert any("context precision" in r for r in result["reasons"])
+
+
+def test_traversal_candidate_fails_on_excessive_latency_ratio():
+    """p95 latency > 125% of baseline must block promotion."""
+    baseline = _manifest(2, recall=0.55, p95=100)
+    # ratio = 1.30 — above the 1.25 ceiling
+    candidate = _manifest(3, recall=0.62, p95=130)
+
+    result = evaluate_traversal_candidate(baseline, candidate)
+
+    assert result["promotion_eligible"] is False
+    assert any("latency" in r for r in result["reasons"])
+    assert result["graph_p95_latency_ms"]["ratio"] == pytest.approx(1.30)
+
+
+def test_traversal_candidate_fails_on_traversal_failures():
+    """Non-zero traversal_failure_count must block promotion."""
+    baseline = _manifest(2, recall=0.55, p95=100)
+    candidate = deepcopy(_manifest(3, recall=0.62, p95=110))
+    candidate["report"]["retrieval_diagnostics"]["graph_paths"]["traversal_failure_count"] = 1
+
+    result = evaluate_traversal_candidate(baseline, candidate)
+
+    assert result["promotion_eligible"] is False
+    assert any("traversal failure" in r for r in result["reasons"])
+
+
+def test_traversal_candidate_fails_on_extra_changed_lever():
+    """Changing more than max_hops must block promotion (one-lever rule)."""
+    baseline = _manifest(2, recall=0.55, p95=100)
+    # Change both max_hops and max_results — two levers
+    candidate = deepcopy(_manifest(3, recall=0.62, p95=110))
+    candidate["pipeline_config"]["retrieval"]["max_results"] = 10
+
+    result = evaluate_traversal_candidate(baseline, candidate)
+
+    assert result["promotion_eligible"] is False
+    assert any("only changed experiment lever" in r for r in result["reasons"])
 
 
 def test_sweep_rejects_missing_hop_manifest():

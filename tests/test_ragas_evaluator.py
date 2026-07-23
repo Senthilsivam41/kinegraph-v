@@ -212,3 +212,166 @@ def test_vectorless_profile_forwards_attachment_and_persists_effective_mode():
     assert result["effective_mode"] == "vectorless"
     assert result["mode_profile_error"] is None
     assert result["provenance"]["profile"]["name"] == "vectorless"
+
+
+# ---------------------------------------------------------------------------
+# Helper fixtures for retrieval diagnostic tests
+# ---------------------------------------------------------------------------
+
+
+def _results_with_provenance(provenance_list, ragas_failed=False):
+    """Build a results DataFrame with realistic provenance for diagnostic tests."""
+    rows = []
+    for idx, prov in enumerate(provenance_list):
+        rows.append({
+            "question": f"Q{idx}",
+            "faithfulness": 0.8,
+            "answer_relevancy": 0.7,
+            "context_precision": 0.9,
+            "context_recall": 0.7,
+            "ragas_failed": ragas_failed,
+            "ragas_error": None,
+            "provenance": prov,
+            "sample_id": f"KGV1-{idx:03d}",
+            "categories": [],
+            "profile_name": "hybrid",
+            "workflow_latency_ms": float(10 * (idx + 1)),
+        })
+    return pd.DataFrame(rows)
+
+
+def _make_provenance(
+    *,
+    graph_latency=50.0,
+    empty_seed=False,
+    traversal_failure=False,
+    cycle_prevention_count=0,
+    missing_evidence_edge_count=0,
+    traversal_candidate_count=1,
+    complete_path_count=1,
+    sent_to_generation=True,
+    dropped_at=None,
+):
+    return {
+        "latency_ms": {"stages": {"graph_retrieval_ms": graph_latency}},
+        "retrieval": {
+            "candidate_lifecycle": [
+                {"sent_to_generation": sent_to_generation, "dropped_at": dropped_at}
+            ],
+            "graph_path_audit": {
+                "traversal_candidate_count": traversal_candidate_count,
+                "complete_path_count": complete_path_count,
+                "retriever_diagnostics": {
+                    "empty_seed": empty_seed,
+                    "traversal_failure": traversal_failure,
+                    "cycle_prevention_count": cycle_prevention_count,
+                    "missing_evidence_edge_count": missing_evidence_edge_count,
+                },
+            },
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# Retrieval diagnostic aggregation (commit 9562a93)
+# ---------------------------------------------------------------------------
+
+
+def test_report_aggregates_graph_diagnostic_counters():
+    """empty_seed, traversal_failure, cycle_prevention, missing_evidence are summed correctly."""
+    provenance = [
+        _make_provenance(empty_seed=True, cycle_prevention_count=2),
+        _make_provenance(traversal_failure=True, missing_evidence_edge_count=3),
+    ]
+    results = _results_with_provenance(provenance)
+
+    report = RAGASEvaluator.__new__(RAGASEvaluator).generate_report(results)
+    diag = report["retrieval_diagnostics"]["graph_paths"]
+
+    assert diag["empty_seed_count"] == 1
+    assert diag["traversal_failure_count"] == 1
+    assert diag["cycle_prevention_count"] == 2
+    assert diag["missing_evidence_edge_count"] == 3
+
+
+def test_report_graph_latency_p50_and_p95_are_computed():
+    """p50 and p95 percentiles are both present and ordered correctly."""
+    provenance = [
+        _make_provenance(graph_latency=10.0),
+        _make_provenance(graph_latency=20.0),
+        _make_provenance(graph_latency=100.0),
+    ]
+    results = _results_with_provenance(provenance)
+
+    report = RAGASEvaluator.__new__(RAGASEvaluator).generate_report(results)
+    latency = report["retrieval_diagnostics"]["graph_stage_latency_ms"]
+
+    assert "p50" in latency
+    assert "p95" in latency
+    assert latency["p50"] <= latency["p95"]
+    assert latency["samples"] == 3
+
+
+def test_report_candidate_survival_counts_all_drop_stages():
+    """pre_fusion, reranking, and final_truncation drops are counted independently."""
+    provenance = [
+        _make_provenance(sent_to_generation=True, dropped_at=None),
+        _make_provenance(sent_to_generation=False, dropped_at="pre_fusion"),
+        _make_provenance(sent_to_generation=False, dropped_at="reranking"),
+        _make_provenance(sent_to_generation=False, dropped_at="final_truncation"),
+    ]
+    results = _results_with_provenance(provenance)
+
+    report = RAGASEvaluator.__new__(RAGASEvaluator).generate_report(results)
+    survival = report["retrieval_diagnostics"]["candidate_survival"]
+
+    assert survival["sent_to_generation"] == 1
+    assert survival["dropped_pre_fusion"] == 1
+    assert survival["dropped_reranking"] == 1
+    assert survival["dropped_final_truncation"] == 1
+
+
+def test_report_graph_paths_all_complete_false_when_incomplete():
+    """all_complete is False when complete_path_count < traversal_candidate_count."""
+    provenance = [
+        _make_provenance(traversal_candidate_count=2, complete_path_count=1),
+    ]
+    results = _results_with_provenance(provenance)
+
+    report = RAGASEvaluator.__new__(RAGASEvaluator).generate_report(results)
+    paths = report["retrieval_diagnostics"]["graph_paths"]
+
+    assert paths["all_complete"] is False
+    assert paths["traversal_candidate_count"] == 2
+    assert paths["complete_path_count"] == 1
+
+
+def test_report_returns_none_latency_when_no_provenance_records():
+    """p50 and p95 are None when no provenance rows carry graph latency data."""
+    results = _results()  # no provenance column
+
+    report = RAGASEvaluator.__new__(RAGASEvaluator).generate_report(results)
+    latency = report["retrieval_diagnostics"]["graph_stage_latency_ms"]
+
+    assert latency["p50"] is None
+    assert latency["p95"] is None
+    assert latency["samples"] == 0
+
+
+# ---------------------------------------------------------------------------
+# per_category with missing sample_id column (commit 8b2bd43)
+# ---------------------------------------------------------------------------
+
+
+def test_per_category_sample_ids_empty_when_no_sample_id_column():
+    """sample_ids gracefully falls back to [] when sample_id column is absent."""
+    results = pd.concat([_results(), _results()], ignore_index=True)
+    results["categories"] = [["single_hop"], ["single_hop"]]
+    results["profile_name"] = "hybrid"
+    results["workflow_latency_ms"] = [10.0, 20.0]
+    # Intentionally omit 'sample_id' column
+
+    report = RAGASEvaluator.__new__(RAGASEvaluator).generate_report(results)
+
+    assert report["per_category"]["single_hop"]["sample_ids"] == []
+    assert report["per_category"]["single_hop"]["samples"] == 2
