@@ -55,6 +55,7 @@ def main() -> None:
     )
     parser.add_argument("--preflight-only", action="store_true")
     parser.add_argument("--judge-smoke-test", action="store_true")
+    parser.add_argument("--enable-adaptive-routing", action="store_true")
     args = parser.parse_args()
 
     forwarded = [
@@ -84,6 +85,8 @@ def main() -> None:
         forwarded.append("--preflight-only")
     if args.judge_smoke_test:
         forwarded.append("--judge-smoke-test")
+    if args.enable_adaptive_routing:
+        forwarded.append("--enable-adaptive-routing")
 
     os.execv(sys.executable, [sys.executable, *forwarded])
 

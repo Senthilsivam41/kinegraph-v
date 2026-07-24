@@ -144,7 +144,7 @@ production until its candidate manifest passes the gate:
 PYTHONPATH=. venv/bin/python eval/ragas_evaluator.py \
   --profile adaptive_hybrid --run-label routing-legacy
 PYTHONPATH=. venv/bin/python eval/ragas_evaluator.py \
-  --profile adaptive_hybrid --enable-conservative-routing \
+  --profile adaptive_hybrid --enable-adaptive-routing \
   --baseline-manifest reports/ragas_routing-legacy-adaptive_hybrid_manifest.json \
   --run-label routing-conservative
 ```

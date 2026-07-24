@@ -47,6 +47,21 @@ Neo4j cannot store nested maps as native properties, so context links and relati
 
 The migration is additive and idempotent: it updates entities with existing `MENTIONS` links, reports entities without source context, and does not delete or re-embed data. See [`docs/v3_schema_audit.md`](docs/v3_schema_audit.md) for the schema-gap audit and design rationale.
 
+### Kinegraph v3 ADR-001 Adaptive Routing
+
+The experimental ADR-001 router builds a deterministic, versioned execution
+plan instead of silently applying a classifier label. With
+`enable_adaptive_routing=true`, each request records route confidence, facets,
+exact tokens, entity hints, attachment eligibility, required channels,
+rejected alternatives, and rationale.
+
+Compound, comparison, exact-token, tied-intent, and low-confidence questions
+remain Hybrid. A high-confidence single-facet query may use Vector or Graph,
+but measurable initial weakness escalates it back to Hybrid before RRF.
+Eligible bounded attachments may use Vectorless. Legacy routing remains the
+default until the adaptive benchmark profile passes its precision, recall, and
+latency gates. See [ADR-001](docs/architecture/ADR-001-Adaptive-Routing.md).
+
 ### 2. Robust RAGAS Evaluation & Diagnostics
 - **Live Failure Interception**: [`RAGASEvaluator`](eval/ragas_evaluator.py) records evaluation failures and may compute keyword heuristics for diagnostics, but the benchmark gate rejects any row with `ragas_failed=True`. Fallback scores cannot be reported as RAGAS.
 - **Concurrent Batch Eval**: Added `evaluate_live_workflow` and `evaluate_live_single` supporting concurrent, rate-limited live workflow evaluations asynchronously, resulting in faster and safer benchmark runs.
@@ -406,7 +421,7 @@ The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor s
   PYTHONPATH=. python eval/ragas_evaluator.py --profile hybrid_lexical --vector-weight 1.0 --graph-weight 1.0 --lexical-weight 0.6 --run-label lexical06
   ```
 - **Explicit Mode Slices**: `--profile hybrid`, `hybrid_lexical`, and `vectorless` produce separate artifacts. Hybrid profiles pin Hybrid execution; the Vectorless profile uses one deterministic corpus assembled from the frozen reference contexts and never calls Chroma or Neo4j. No profile changes the production default.
-- **Routing Experiment**: `--profile adaptive_hybrid --enable-conservative-routing` evaluates the high-confidence, single-facet downgrade policy as one reversible lever. The legacy router remains the production default until an accepted manifest passes the architecture gate.
+- **Routing Experiment**: `--profile adaptive_hybrid --enable-adaptive-routing` evaluates the versioned ADR-001 execution-plan policy as one reversible lever. Weak single-channel plans can escalate to Hybrid before RRF; the legacy router remains the production default until an accepted manifest passes the architecture gate.
 - **Live Diagnostics**: Single-query and concurrent live execution are implemented by `evaluate_live_single` and `evaluate_live_workflow`. Every row persists a redacted `kinegraph.eval.provenance.v1` trace with routing rationale, channel candidates, recovery, fusion/reranking drops, candidate survival, complete graph-path audits, traversal failure behavior, citations, critic output, and channel/stage latency.
 - **Acceptance Gate**: The CLI fails before retrieval when judge or local
   embedding setup is invalid. Diagnostic keyword fallbacks remain available to

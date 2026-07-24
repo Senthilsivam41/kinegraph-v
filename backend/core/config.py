@@ -68,6 +68,9 @@ class Settings(BaseSettings):
     FUSION_VECTOR_WEIGHT: float = 1.0
     FUSION_GRAPH_WEIGHT: float = 1.0
     FUSION_LEXICAL_WEIGHT: float = 0.7
+    ADAPTIVE_ROUTING_ENABLED: bool = False
+    ADAPTIVE_ROUTING_MIN_CONFIDENCE: float = Field(default=0.80, ge=0.0, le=1.0)
+    # Deprecated compatibility flag; either flag enables the ADR-001 policy.
     CONSERVATIVE_ROUTING_ENABLED: bool = False
 
     # Faithfulness controls
