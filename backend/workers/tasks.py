@@ -6,11 +6,15 @@ from celery.utils.log import get_task_logger
 from backend.workers.celery_app import celery_app
 from backend.workers.document_processor import (
     extract_text_from_pdf,
-    chunk_text,
+    build_document_chunks,
     extract_entities_and_relationships,
-    generate_chunk_id,
     generate_document_id
 )
+from backend.graph_ingestion.adaptive_chunking import (
+    CHUNK_POLICY_VERSION,
+    build_ingestion_validation_report,
+)
+from backend.core.config import settings
 from backend.services.chroma_service import ChromaService
 from backend.services.neo4j_service import Neo4jService
 from backend.services.vectorless_service import VectorlessService
@@ -156,30 +160,35 @@ def process_document(self, file_path: str, metadata: Dict[str, Any]) -> Dict[str
         
         # Update state
         self.update_state(state='PROGRESS', meta={'status': 'Chunking text...'})
-        
-        # Chunk the text
-        chunks = chunk_text(text)
-        
-        logger.info("[Task %s] Created %d chunks", self.request.id, len(chunks))
-        
-        # Generate document ID
+
+        # Generate document ID before chunking so records carry provenance.
         doc_id = generate_document_id(file_path)
-        
-        # Prepare metadata for chunks
         file_name = str(metadata.get("original_file_name") or Path(file_path).name)
+
+        records = build_document_chunks(
+            text,
+            document_id=doc_id,
+            adaptive_enabled=bool(
+                metadata.get("adaptive_chunking", settings.ADAPTIVE_CHUNKING_ENABLED)
+            ),
+        )
+        chunks = [record.text for record in records]
+        logger.info(
+            "[Task %s] Created %d chunks (policy=%s adaptive=%s)",
+            self.request.id,
+            len(chunks),
+            CHUNK_POLICY_VERSION,
+            settings.ADAPTIVE_CHUNKING_ENABLED,
+        )
+
+        chunk_ids = [record.chunk_id for record in records]
         chunk_metadata = []
-        chunk_ids = []
-        
-        for i, chunk in enumerate(chunks):
-            chunk_id = generate_chunk_id(chunk, i)
-            chunk_ids.append(chunk_id)
-            
+        for record in records:
             chunk_meta = {
-                "document_id": doc_id,
-                "chunk_index": i,
+                **record.to_metadata(),
                 "file_name": file_name,
-                "total_chunks": len(chunks),
-                **metadata
+                "total_chunks": len(records),
+                **metadata,
             }
             chunk_metadata.append(chunk_meta)
         
@@ -206,6 +215,13 @@ def process_document(self, file_path: str, metadata: Dict[str, Any]) -> Dict[str
                 e,
             )
         
+        validation = build_ingestion_validation_report(
+            chunk_ids=chunk_ids,
+            verified_chunk_ids=chunk_ids,
+            enriched_entity_ids=[e.get("name") for e in entities if e.get("name")],
+            incomplete_entity_ids=[],
+        )
+
         # Return results
         return {
             "document_id": doc_id,
@@ -213,6 +229,11 @@ def process_document(self, file_path: str, metadata: Dict[str, Any]) -> Dict[str
             "total_chunks": len(chunks),
             "entities_count": len(entities),
             "relationships_count": len(relationships),
+            "chunk_policy_version": CHUNK_POLICY_VERSION,
+            "adaptive_chunking": bool(
+                metadata.get("adaptive_chunking", settings.ADAPTIVE_CHUNKING_ENABLED)
+            ),
+            "validation": validation,
             "status": "success"
         }
         

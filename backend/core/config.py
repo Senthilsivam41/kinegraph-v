@@ -72,6 +72,10 @@ class Settings(BaseSettings):
     ADAPTIVE_ROUTING_MIN_CONFIDENCE: float = Field(default=0.80, ge=0.0, le=1.0)
     # Deprecated compatibility flag; either flag enables the ADR-001 policy.
     CONSERVATIVE_ROUTING_ENABLED: bool = False
+    # ADR-002 structural-first chunking (default remains recursive-only).
+    ADAPTIVE_CHUNKING_ENABLED: bool = False
+    CHUNK_SIZE: int = Field(default=1000, ge=64)
+    CHUNK_OVERLAP: int = Field(default=200, ge=0)
 
     # Faithfulness controls
     GENERATION_TEMPERATURE: float = Field(default=0.0, ge=0.0, le=0.2)

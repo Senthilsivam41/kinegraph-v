@@ -18,6 +18,13 @@ from backend.graph_ingestion.schema import OntologySchema
 from backend.graph_ingestion.extractors import get_extractor_stack
 from backend.graph_ingestion.dedup import EntityResolver
 from backend.graph_ingestion.enrichment import NodeEnricher
+from backend.graph_ingestion.adaptive_chunking import (
+    CHUNK_POLICY_VERSION,
+    ChunkRecord,
+    build_ingestion_validation_report,
+    chunk_document,
+)
+from backend.workers.document_processor import generate_document_id
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +57,17 @@ class IdempotentGraphIngester:
                 chroma_client=self.chroma_service.client,
             ).enrich(chunk_ids=chunk_ids)
             result["status"] = "success" if result["complete"] else "incomplete"
+            incomplete = []
+            skipped = int(result.get("skipped_without_verified_context", 0) or 0)
+            if skipped:
+                incomplete = [f"entity_without_verified_context:{idx}" for idx in range(skipped)]
+            missing_count = int(result.get("missing_vector_links", 0) or 0)
+            verified_ids = chunk_ids if missing_count == 0 else []
+            result["validation"] = build_ingestion_validation_report(
+                chunk_ids=chunk_ids,
+                verified_chunk_ids=verified_ids,
+                incomplete_entity_ids=incomplete,
+            )
             return result
         except Exception as exc:
             logger.exception("Automatic v3 node enrichment failed")
@@ -60,6 +78,11 @@ class IdempotentGraphIngester:
                 "complete": False,
                 "status": "failed",
                 "error": str(exc),
+                "validation": build_ingestion_validation_report(
+                    chunk_ids=chunk_ids,
+                    verified_chunk_ids=[],
+                    incomplete_entity_ids=["enrichment_failed"],
+                ),
             }
 
     def close(self):
@@ -88,15 +111,59 @@ class IdempotentGraphIngester:
             return False
 
     def chunk_text(self, text: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> List[str]:
-        """Split text into overlapping chunks using standard splitter."""
-        from langchain.text_splitter import RecursiveCharacterTextSplitter
-        splitter = RecursiveCharacterTextSplitter(
+        """Split text into overlapping chunks using the recursive fallback policy."""
+        records = chunk_document(
+            text,
+            document_id="doc_legacy",
+            adaptive_enabled=False,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
-            length_function=len,
-            separators=["\n\n", "\n", " ", ""]
         )
-        return splitter.split_text(text)
+        return [record.text for record in records]
+
+    def build_chunks(
+        self,
+        text: str,
+        *,
+        document_id: str,
+        adaptive_enabled: bool | None = None,
+        chunk_size: int | None = None,
+        chunk_overlap: int | None = None,
+    ) -> List[ChunkRecord]:
+        """Build ADR-002 chunk records (adaptive when enabled)."""
+        enabled = (
+            settings.ADAPTIVE_CHUNKING_ENABLED
+            if adaptive_enabled is None
+            else adaptive_enabled
+        )
+        if not enabled:
+            # Preserve testability: callers/tests may patch chunk_text.
+            texts = self.chunk_text(
+                text,
+                chunk_size=settings.CHUNK_SIZE if chunk_size is None else chunk_size,
+                chunk_overlap=settings.CHUNK_OVERLAP if chunk_overlap is None else chunk_overlap,
+            )
+            return [
+                ChunkRecord(
+                    text=part,
+                    chunk_type="recursive",
+                    chunk_id=f"chunk_{idx}_{self.compute_hash(part)}",
+                    ordinal=idx,
+                    document_id=document_id,
+                    policy_version=CHUNK_POLICY_VERSION,
+                    tokenizer_version="recursive-character-v1",
+                    overlap=settings.CHUNK_OVERLAP if chunk_overlap is None else chunk_overlap,
+                    boundary_reason="unstructured_text",
+                )
+                for idx, part in enumerate(texts)
+            ]
+        return chunk_document(
+            text,
+            document_id=document_id,
+            adaptive_enabled=True,
+            chunk_size=settings.CHUNK_SIZE if chunk_size is None else chunk_size,
+            chunk_overlap=settings.CHUNK_OVERLAP if chunk_overlap is None else chunk_overlap,
+        )
 
     def ingest_file(self, file_path: str, metadata: Dict[str, Any] = None) -> Dict[str, Any]:
         """
@@ -123,41 +190,40 @@ class IdempotentGraphIngester:
             logger.warning("Empty file skipped: %s", file_path)
             return {"status": "skipped", "reason": "empty content"}
 
-        # 2. Chunk text and filter by content hash
-        chunks = self.chunk_text(content)
+        doc_id = generate_document_id(file_path)
+        records = self.build_chunks(content, document_id=doc_id)
         nodes_to_ingest = []
         skipped_chunks = 0
 
-        for idx, chunk_text_content in enumerate(chunks):
-            chunk_hash = self.compute_hash(chunk_text_content)
+        for record in records:
+            chunk_hash = record.content_hash()
             if self.is_chunk_ingested(chunk_hash):
                 skipped_chunks += 1
                 continue
                 
-            # Create LlamaIndex TextNode
             node_meta = {
                 "file_name": file_path_obj.name,
-                "chunk_index": idx,
-                "total_chunks": len(chunks),
-                "chunk_hash": chunk_hash,
-                **metadata
+                "total_chunks": len(records),
+                **record.to_metadata(),
+                **metadata,
             }
-            node = TextNode(text=chunk_text_content, metadata=node_meta)
+            node = TextNode(text=record.text, metadata=node_meta, id_=record.chunk_id)
             nodes_to_ingest.append(node)
 
         if not nodes_to_ingest:
-            logger.info("All %d chunks for file '%s' already ingested.", len(chunks), file_path_obj.name)
+            logger.info("All %d chunks for file '%s' already ingested.", len(records), file_path_obj.name)
             return {
                 "file_name": file_path_obj.name,
                 "status": "skipped",
-                "total_chunks": len(chunks),
+                "total_chunks": len(records),
                 "skipped_chunks": skipped_chunks,
-                "ingested_chunks": 0
+                "ingested_chunks": 0,
+                "chunk_policy_version": CHUNK_POLICY_VERSION,
             }
 
         logger.info(
             "Ingesting %d / %d chunks for file '%s'...",
-            len(nodes_to_ingest), len(chunks), file_path_obj.name
+            len(nodes_to_ingest), len(records), file_path_obj.name
         )
 
         # 3. Extract and resolve entities using PropertyGraphIndex pipeline
@@ -180,9 +246,11 @@ class IdempotentGraphIngester:
         return {
             "file_name": file_path_obj.name,
             "status": "success",
-            "total_chunks": len(chunks),
+            "total_chunks": len(records),
             "skipped_chunks": skipped_chunks,
             "ingested_chunks": len(nodes_to_ingest),
+            "chunk_policy_version": CHUNK_POLICY_VERSION,
+            "adaptive_chunking": settings.ADAPTIVE_CHUNKING_ENABLED,
             "enrichment": enrichment,
         }
 
@@ -219,24 +287,24 @@ class IdempotentGraphIngester:
             if not content.strip():
                 continue
                 
-            chunks = self.chunk_text(content)
-            total_chunks += len(chunks)
+            doc_id = generate_document_id(str(file_path))
+            records = self.build_chunks(content, document_id=doc_id)
+            total_chunks += len(records)
             file_nodes = []
             
-            for idx, chunk_text_content in enumerate(chunks):
-                chunk_hash = self.compute_hash(chunk_text_content)
+            for record in records:
+                chunk_hash = record.content_hash()
                 if self.is_chunk_ingested(chunk_hash):
                     skipped_chunks += 1
                     continue
                     
                 node_meta = {
                     "file_name": file_path.name,
-                    "chunk_index": idx,
-                    "total_chunks": len(chunks),
-                    "chunk_hash": chunk_hash,
-                    **metadata
+                    "total_chunks": len(records),
+                    **record.to_metadata(),
+                    **metadata,
                 }
-                node = TextNode(text=chunk_text_content, metadata=node_meta)
+                node = TextNode(text=record.text, metadata=node_meta, id_=record.chunk_id)
                 file_nodes.append(node)
                 
             if file_nodes:
@@ -244,17 +312,19 @@ class IdempotentGraphIngester:
                 file_summaries.append({
                     "file_name": file_path.name,
                     "status": "pending_ingestion",
-                    "total_chunks": len(chunks),
+                    "total_chunks": len(records),
                     "skipped_chunks": skipped_chunks,
-                    "ingested_chunks": len(file_nodes)
+                    "ingested_chunks": len(file_nodes),
+                    "chunk_policy_version": CHUNK_POLICY_VERSION,
                 })
             else:
                 file_summaries.append({
                     "file_name": file_path.name,
                     "status": "skipped",
-                    "total_chunks": len(chunks),
-                    "skipped_chunks": len(chunks),
-                    "ingested_chunks": 0
+                    "total_chunks": len(records),
+                    "skipped_chunks": len(records),
+                    "ingested_chunks": 0,
+                    "chunk_policy_version": CHUNK_POLICY_VERSION,
                 })
 
         if not all_nodes_to_ingest:

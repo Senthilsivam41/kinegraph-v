@@ -8,12 +8,12 @@ load_dotenv(os.path.abspath('.env'))
 
 sys.path.insert(0, os.path.abspath('.'))
 
+from backend.core.config import settings
 from backend.services.chroma_service import ChromaService
 from backend.services.neo4j_service import Neo4jService
 from backend.workers.document_processor import (
-    chunk_text,
+    build_document_chunks,
     extract_entities_and_relationships,
-    generate_chunk_id
 )
 
 DOCS_DIR = "docs"
@@ -26,20 +26,22 @@ async def ingest_file(filename: str):
     print(f"\nProcessing '{filename}' ({len(content)} chars)...")
     doc_id = f"doc_{filename.replace('.', '_')}"
     
-    # 1. Chunk document
-    chunks = chunk_text(content)
-    print(f"  Created {len(chunks)} chunks.")
+    # 1. Chunk document (ADR-002 contract; adaptive when enabled)
+    records = build_document_chunks(content, document_id=doc_id)
+    chunks = [record.text for record in records]
+    print(
+        f"  Created {len(chunks)} chunks "
+        f"(adaptive={settings.ADAPTIVE_CHUNKING_ENABLED})."
+    )
     
     chunk_metadata = []
     chunk_ids = []
-    for i, chunk in enumerate(chunks):
-        chunk_id = generate_chunk_id(chunk, i)
-        chunk_ids.append(chunk_id)
+    for record in records:
+        chunk_ids.append(record.chunk_id)
         chunk_meta = {
-            "document_id": doc_id,
-            "chunk_index": i,
+            **record.to_metadata(),
             "file_name": filename,
-            "total_chunks": len(chunks)
+            "total_chunks": len(records),
         }
         chunk_metadata.append(chunk_meta)
         
