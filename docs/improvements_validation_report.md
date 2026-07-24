@@ -183,10 +183,10 @@ sleep 30
 
 # Run the RAGAS evaluation against your benchmark dataset  
 python scripts/run_ragas_evaluation.py \
-    --dataset eval/kinegraph_benchmark_v1.csv \
-    --model gpt-4o-mini \
+    --profile hybrid \
+    --model qwen/qwen3.6-27b \
     --max-hops 3 \
-    --strategy bfs
+    --run-label traversal-depth-3
     
 # Compare results with v1 baseline
 ```

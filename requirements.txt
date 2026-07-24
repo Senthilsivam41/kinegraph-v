@@ -45,14 +45,15 @@ pytest==7.4.4
 pytest-asyncio==0.23.3
 
 # ── Evaluation & Observability ─────────────────────────────────────────
-# RAGAS evaluation framework
-ragas>=0.1.7
-datasets>=2.18.0
+# RAGAS evaluation framework. Pin the accepted-baseline stack so judge API
+# changes cannot silently alter scores between architecture releases.
+ragas==0.4.3
+datasets==5.0.0
 langchain-huggingface>=0.0.1,<0.1.0
 rapidfuzz
 
 # Default cross-encoder for semantic-first graph-aware reranking
-sentence-transformers>=2.6.0
+sentence-transformers==5.6.0
 
 # Notebook evaluation
 jupyter>=1.0.0

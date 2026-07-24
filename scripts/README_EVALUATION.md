@@ -1,110 +1,107 @@
 # Evaluation Pipeline Guide
 
-## Prerequisites
+Kinegraph accepts a benchmark only when the reference audit is approved, the
+declared retrieval profile is preserved for every query, and every requested
+metric is produced by RAGAS. Heuristic fallback values are diagnostic-only.
+
+## Reproducible environment
+
+Install the pinned evaluation stack from the repository:
 
 ```bash
-pip install ragas openai pandas datasets langchain-openai langchain-anthropic python-dotenv
+python -m pip install -r requirements.txt
 ```
 
-Ensure `.env` file has:
-- `OPENAI_API_KEY` or `OPENAI_AI_KEY` (for GPT-4o-mini)  
-- `ANTHROPIC_API_KEY` (optional, for critic model)
+For the default Qwen 3.6 judge through OpenRouter, configure:
 
----
-
-## Running Evaluations
-
-### 1. Generate Test Dataset (First Time Only)
-```bash
-python scripts/generate_testset.py --size 20 --output eval/kinegraph_benchmark_v1.csv
+```dotenv
+OPENROUTER_API_KEY=sk-or-your-key
+RAGAS_JUDGE_PROVIDER=openrouter
+RAGAS_JUDGE_BASE_URL=https://openrouter.ai/api/v1
+LLM_MODEL=qwen/qwen3.6-27b
 ```
 
-This creates 20 benchmark questions covering:
-- 40% simple factual lookup
-- 40% multi-hop reasoning  
-- 20% abstract synthesis/comparison
+`OPENAI_API_KEY` remains a backward-compatible fallback. Semantic RAGAS metrics
+use the locally cached `sentence-transformers/all-MiniLM-L6-v2` model so the
+judge does not try to call an OpenRouter embedding endpoint.
 
-### 2. Run Live Evaluation (Recommended)
-```bash
-cd /home/user/kinegraph-v
-docker compose up --build -d    # Start services if not running
-sleep 30                        # Wait for health checks
+## Preflight without databases or paid judge calls
 
-python scripts/run_ragas_evaluation.py \
-    --dataset eval/kinegraph_benchmark_v1.csv \
-    --max-hops 3 \
-    --model gpt-4o-mini
-```
-
-### 3. Run Offline Evaluation (With Pre-computed Answers)
-```bash
-# First generate answers manually or from a previous run
-python scripts/run_ragas_evaluation.py \
-    --mode offline \
-    --dataset eval/kinegraph_benchmark_v1.csv \
-    -o reports/offline_eval
-
-# This uses pre-computed answers file:
-# eval/pre_computed_answers.json
-```
-
-### 4. Run with Custom Parameters
 ```bash
 python scripts/run_ragas_evaluation.py \
-    --max-hops 5 \
-    --model gpt-4-turbo \
-    -o reports/custom_run
+  --model qwen/qwen3.6-27b \
+  --judge-provider openrouter \
+  --preflight-only
 ```
 
----
+Preflight validates imports, credentials, the OpenRouter-compatible judge
+client, local embedding availability, and metric registration. It does not call
+the judge model or start Neo4j/ChromaDB.
 
-## Output Files
+To test the actual Qwen/OpenRouter/RAGAS request path with one small paid sample:
 
-Results are saved to `reports/` directory:
+```bash
+python scripts/run_ragas_evaluation.py \
+  --model qwen/qwen3.6-27b \
+  --judge-provider openrouter \
+  --judge-smoke-test
+```
 
-| File | Description |
-|------|-------------|
-| `v2_YYYYMMDD_HHMMSS_results.csv` | Detailed per-sample scores |
-| `v2_YYYYMMDD_HHMMSS_report.json` | Aggregated metrics report |
-| `spider_graph_ragas_v2_YYYYMMDD.png` | Visual spider chart of scores |
+The smoke test must produce all five finite RAGAS metrics or it exits with
+status `2` and prints the underlying judge error.
 
----
+## Accepted live benchmark
 
-## Expected Results with v2 Improvements
+First complete and approve `eval/kinegraph_benchmark_v1.audit.json` with a named
+human reviewer. Then start the services and run one fixed profile:
 
-| Metric | Current (v1) | Target (v2) | With v2 Improvements |
-|--------|-------------|-------------|---------------------|
-| Faithfulness | 0.33 | ≥0.75 | **0.80-0.90** ✅ |
-| Answer Relevancy | 0.10 | ≥0.65 | **0.70-0.80** ✅ |
-| Context Precision | 1.00 | Maintain | **0.95+** ⚠️ |
-| Context Recall | 0.35 | ≥0.65 | **0.72-0.82** ✅ |
-| Answer Correctness | 0.37 | ≥0.60 | **0.62-0.75** ⚠️ |
+```bash
+cd infra
+docker compose up --build -d
+cd ..
 
----
+python scripts/run_ragas_evaluation.py \
+  --profile hybrid \
+  --max-hops 2 \
+  --model qwen/qwen3.6-27b \
+  --run-label v1-qwen36
+```
+
+Run other retrieval modes as separate benchmark slices:
+
+```bash
+python scripts/run_ragas_evaluation.py --profile hybrid_lexical --run-label v1-qwen36
+python scripts/run_ragas_evaluation.py --profile vectorless --run-label v1-qwen36
+```
+
+The compatibility launcher delegates to `eval/ragas_evaluator.py`, which owns
+the reference-approval, fixed-profile, provenance, and all-rows-success gates.
+Offline answer-only evaluation is intentionally not exposed because it lacks
+retrieved contexts and cannot produce comparable retrieval metrics.
+
+## Acceptance and outputs
+
+An accepted run requires:
+
+- exactly 20 evaluated benchmark rows;
+- no live workflow failures;
+- no effective-mode escape from the declared profile;
+- `ragas_failed == false` for every row;
+- finite values for every requested metric;
+- an approved, hash-matching reference audit;
+- persisted Git revision, dataset hash, configuration, models, and provenance.
+
+Accepted artifacts are written under `reports/` using the run label and profile.
+If any gate fails, diagnostic provenance is retained but no accepted report,
+manifest, or spider graph is updated.
 
 ## Troubleshooting
 
-### "RAGAS not installed" error
-```bash
-pip install ragas datasets openai langchain-openai
-```
-
-### "Workflow execution failed" errors  
-- Check Neo4j and ChromaDB are running: `docker compose ps`
-- Verify API keys in `.env` file
-- Run validation script first to test core logic:
-  ```bash
-  python scripts/validate_improvements.py --demo
-  ```
-
-### "Benchmark CSV missing columns" error  
-Ensure your dataset has both `user_input` and `reference` columns. The generator creates these automatically.
-
----
-
-## Quick Start (All-in-One)
-```bash
-python scripts/generate_testset.py --size 20 --output eval/kinegraph_benchmark_v1.csv && \
-docker compose up --build -d && sleep 30 && \
-python scripts/run_ragas_evaluation.py --max-hops 3
-```
+- `RAGAS PREFLIGHT FAILED ... local cache`: cache the configured sentence
+  transformer before running in local-only mode.
+- `401` or `403`: verify `OPENROUTER_API_KEY` and the selected provider.
+- `404` or model-not-found: verify the exact OpenRouter model slug.
+- `BENCHMARK REJECTED ... audit`: complete the human reference review; do not
+  bypass it to create a baseline.
+- profile rejection: run Hybrid, Hybrid+BM25, Vectorless, or adaptive routing as
+  separate slices rather than allowing silent route downgrades.

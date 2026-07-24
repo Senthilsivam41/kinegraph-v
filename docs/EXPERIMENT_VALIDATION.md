@@ -61,8 +61,9 @@ PYTHONPATH=. venv/bin/python eval/ragas_evaluator.py \
   --max-hops 2 \
   --max-results 6 \
   --candidate-pool-size 25 \
-  --generation-model gpt-4o-mini \
-  --judge-model gpt-4o-mini \
+  --generation-model qwen/qwen3.6-27b \
+  --judge-model qwen/qwen3.6-27b \
+  --judge-provider openrouter \
   --run-label baseline
 ```
 
@@ -74,8 +75,9 @@ PYTHONPATH=. venv/bin/python eval/ragas_evaluator.py \
   --max-hops 3 \
   --max-results 6 \
   --candidate-pool-size 25 \
-  --generation-model gpt-4o-mini \
-  --judge-model gpt-4o-mini \
+  --generation-model qwen/qwen3.6-27b \
+  --judge-model qwen/qwen3.6-27b \
+  --judge-provider openrouter \
   --baseline-manifest reports/ragas_baseline_manifest.json \
   --run-label hop3
 ```

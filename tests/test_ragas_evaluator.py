@@ -6,7 +6,10 @@ import pandas as pd
 import pytest
 
 from backend.app.models import QueryMode
+import eval.ragas_evaluator as ragas_module
 from eval.ragas_evaluator import (
+    ALL_METRICS,
+    RAGASConfigurationError,
     RAGASEvaluator,
     RAGASValidationError,
     require_successful_ragas,
@@ -24,6 +27,114 @@ def _results(ragas_failed=False):
         "ragas_failed": ragas_failed,
         "ragas_error": "judge unavailable" if ragas_failed else None,
     }])
+
+
+def test_openrouter_qwen_preflight_uses_explicit_endpoint_and_local_embeddings(
+    monkeypatch,
+):
+    captured = {}
+
+    class FakeChatOpenAI:
+        def __init__(self, **kwargs):
+            captured["judge"] = kwargs
+
+    class FakeEmbeddings:
+        def __init__(self, **kwargs):
+            captured["embeddings"] = kwargs
+
+    monkeypatch.setattr(ragas_module, "ChatOpenAI", FakeChatOpenAI)
+    monkeypatch.setattr(ragas_module, "HuggingFaceEmbeddings", FakeEmbeddings)
+
+    evaluator = RAGASEvaluator(
+        openai_api_key="sk-or-test",
+        model="qwen/qwen3.6-27b",
+        metrics=ALL_METRICS,
+        provider="openrouter",
+    )
+
+    assert evaluator.readiness() == {
+        "ready": True,
+        "provider": "openrouter",
+        "judge_model": "qwen/qwen3.6-27b",
+        "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+        "local_embeddings_only": True,
+        "metrics": ALL_METRICS,
+        "setup_error": None,
+    }
+    assert captured["judge"]["base_url"] == "https://openrouter.ai/api/v1"
+    assert captured["judge"]["temperature"] == 0
+    assert captured["embeddings"]["model_kwargs"] == {"local_files_only": True}
+
+
+def test_preflight_fails_closed_and_preserves_embedding_bootstrap_error(monkeypatch):
+    class FakeChatOpenAI:
+        def __init__(self, **kwargs):
+            pass
+
+    class BrokenEmbeddings:
+        def __init__(self, **kwargs):
+            raise OSError("model is not present in the local cache")
+
+    monkeypatch.setattr(ragas_module, "ChatOpenAI", FakeChatOpenAI)
+    monkeypatch.setattr(ragas_module, "HuggingFaceEmbeddings", BrokenEmbeddings)
+
+    with pytest.raises(
+        RAGASConfigurationError,
+        match="model is not present in the local cache",
+    ):
+        RAGASEvaluator(
+            openai_api_key="sk-or-test",
+            model="qwen/qwen3.6-27b",
+            provider="openrouter",
+        )
+
+
+def test_explicit_diagnostic_fallback_reports_the_real_setup_error(monkeypatch):
+    class FakeChatOpenAI:
+        def __init__(self, **kwargs):
+            pass
+
+    class BrokenEmbeddings:
+        def __init__(self, **kwargs):
+            raise OSError("local embedding unavailable")
+
+    monkeypatch.setattr(ragas_module, "ChatOpenAI", FakeChatOpenAI)
+    monkeypatch.setattr(ragas_module, "HuggingFaceEmbeddings", BrokenEmbeddings)
+    evaluator = RAGASEvaluator(
+        openai_api_key="sk-or-test",
+        provider="openrouter",
+        allow_heuristic_fallback=True,
+    )
+
+    result = evaluator.evaluate_single(
+        question="What is RRF?",
+        answer="RRF combines ranked lists.",
+        contexts=["RRF combines ranked lists."],
+    )
+
+    assert result["ragas_failed"] is True
+    assert "OSError: local embedding unavailable" in result["ragas_error"]
+
+
+def test_openrouter_environment_key_is_supported(monkeypatch):
+    captured = {}
+
+    class FakeChatOpenAI:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    class FakeEmbeddings:
+        def __init__(self, **kwargs):
+            pass
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-from-environment")
+    monkeypatch.setattr(ragas_module, "ChatOpenAI", FakeChatOpenAI)
+    monkeypatch.setattr(ragas_module, "HuggingFaceEmbeddings", FakeEmbeddings)
+
+    evaluator = RAGASEvaluator(model="qwen/qwen3.6-27b")
+
+    assert evaluator.readiness()["provider"] == "openrouter"
+    assert captured["openai_api_key"] == "sk-or-from-environment"
 
 
 def test_successful_ragas_rows_are_accepted():
