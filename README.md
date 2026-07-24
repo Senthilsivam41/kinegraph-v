@@ -385,9 +385,15 @@ The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor s
   ```bash
   PYTHONPATH=. python scripts/ingest_docs.py
   ```
+- **Qwen 3.6 judge preflight**: Validate the OpenRouter client, exact model
+  slug, local embedding cache, and all five metric registrations without
+  starting databases or making a paid judge call:
+  ```bash
+  PYTHONPATH=. venv/bin/python scripts/run_ragas_evaluation.py --model qwen/qwen3.6-27b --judge-provider openrouter --preflight-only
+  ```
 - **Live Pipeline Benchmarking**: Execute the live RAG pipeline on the checked-in benchmark questions and compute RAGAS metrics:
   ```bash
-  PYTHONPATH=. python eval/ragas_evaluator.py --profile hybrid --max-hops 2 --max-results 6 --candidate-pool-size 25
+  PYTHONPATH=. venv/bin/python scripts/run_ragas_evaluation.py --profile hybrid --max-hops 2 --max-results 6 --candidate-pool-size 25 --model qwen/qwen3.6-27b --run-label v1-qwen36
   ```
 - **Bounded hop-depth sweep**: After the reference audit is accepted, run hops 1, 2, and 3 sequentially with every other lever frozen:
   ```bash
@@ -402,7 +408,11 @@ The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor s
 - **Explicit Mode Slices**: `--profile hybrid`, `hybrid_lexical`, and `vectorless` produce separate artifacts. Hybrid profiles pin Hybrid execution; the Vectorless profile uses one deterministic corpus assembled from the frozen reference contexts and never calls Chroma or Neo4j. No profile changes the production default.
 - **Routing Experiment**: `--profile adaptive_hybrid --enable-conservative-routing` evaluates the high-confidence, single-facet downgrade policy as one reversible lever. The legacy router remains the production default until an accepted manifest passes the architecture gate.
 - **Live Diagnostics**: Single-query and concurrent live execution are implemented by `evaluate_live_single` and `evaluate_live_workflow`. Every row persists a redacted `kinegraph.eval.provenance.v1` trace with routing rationale, channel candidates, recovery, fusion/reranking drops, candidate survival, complete graph-path audits, traversal failure behavior, citations, critic output, and channel/stage latency.
-- **Acceptance Gate**: Diagnostic keyword fallbacks remain available, but the CLI exits with status `2` and refuses to update the report or chart when any result has `ragas_failed=True`.
+- **Acceptance Gate**: The CLI fails before retrieval when judge or local
+  embedding setup is invalid. Diagnostic keyword fallbacks remain available to
+  library callers only by explicit opt-in; any such row has
+  `ragas_failed=True`, so the benchmark refuses to update its accepted report,
+  manifest, or chart.
 - **Controlled Experiment Gate**: Accepted runs record the dataset SHA-256, Git revision, complete retrieval configuration, generation and judge models, and a weighted composite with a deterministic 95% bootstrap interval. An optional baseline manifest enforces one changed lever, a ±0.01 tie tolerance, and a maximum 0.05 regression for any individual metric. See [Controlled Benchmark Experiments](docs/EXPERIMENT_VALIDATION.md).
 - **Result Contract**: Evaluation consumes the workflow's `answer` and retrieved `chunks`; requested/effective mode and full retrieval diagnostics are stored in the per-query provenance JSONL. Diagnostic provenance is written even when the RAGAS acceptance gate rejects a run.
 

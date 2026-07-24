@@ -1,7 +1,8 @@
 """
-RAGAS Evaluation Module — KineticGraph-Vectra
-Metrics: faithfulness, answer_relevancy, context_precision, context_recall, answer_correctness
-Falls back to keyword-heuristics when ragas/openai are not installed.
+RAGAS Evaluation Module — KineticGraph-Vectra.
+
+Heuristic scores are available only for explicitly requested diagnostic runs.
+Accepted benchmark runs fail closed when the RAGAS judge cannot be configured.
 """
 from __future__ import annotations
 
@@ -55,10 +56,14 @@ try:
     _RAGAS_AVAILABLE = True
 except ImportError:
     _RAGAS_AVAILABLE = False
-    logger.warning("ragas not installed — using heuristic fallback. pip install ragas datasets")
+    logger.warning(
+        "ragas is not installed; accepted evaluation is unavailable. "
+        "Install the pinned requirements to enable it."
+    )
 
 try:
-    from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+    from langchain_openai import ChatOpenAI
+    from langchain_huggingface import HuggingFaceEmbeddings
     _OPENAI_AVAILABLE = True
 except ImportError:
     _OPENAI_AVAILABLE = False
@@ -77,6 +82,10 @@ METRIC_DESCRIPTIONS = {
 
 class RAGASValidationError(RuntimeError):
     """Raised when a benchmark contains fallback scores presented as RAGAS."""
+
+
+class RAGASConfigurationError(RuntimeError):
+    """Raised when the configured RAGAS judge cannot be initialized."""
 
 
 def require_successful_ragas(
@@ -186,52 +195,91 @@ class RAGASEvaluator:
         self,
         openai_api_key: Optional[str] = None,
         model: str = settings.LLM_MODEL,
-        embedding_model: str = "text-embedding-3-small",
+        embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
         metrics: Optional[List[str]] = None,
         critic_model: Optional[str] = None,
         critic_api_key: Optional[str] = None,
         critic_base_url: Optional[str] = None,
+        provider: Optional[str] = None,
+        base_url: Optional[str] = None,
+        local_embeddings_only: bool = True,
+        allow_heuristic_fallback: bool = False,
     ) -> None:
-        import os
-        self.openai_api_key = openai_api_key or os.getenv("OPENAI_AI_KEY") or os.getenv("OPENAI_API_KEY")
+        self.openai_api_key = (
+            openai_api_key
+            or os.getenv("OPENROUTER_API_KEY")
+            or os.getenv("OPENAI_AI_KEY")
+            or os.getenv("OPENAI_API_KEY")
+            or getattr(settings, "OPENAI_API_KEY", None)
+        )
         self.model = model
         self.embedding_model = embedding_model
         self.metrics_names = metrics or DEFAULT_METRICS
         self.critic_model = critic_model
         self.critic_api_key = critic_api_key
         self.critic_base_url = critic_base_url
+        self.provider = (provider or os.getenv("RAGAS_JUDGE_PROVIDER") or "").strip().lower()
+        self.base_url = base_url or os.getenv("RAGAS_JUDGE_BASE_URL")
+        self.local_embeddings_only = local_embeddings_only
+        self.allow_heuristic_fallback = allow_heuristic_fallback
         self._llm = None
         self._critic_llm = None
         self._embeddings = None
         self._ragas_metrics: List[Any] = []
+        self._setup_error: Optional[str] = None
         self._setup()
+        if not self.allow_heuristic_fallback:
+            self.require_ready()
 
     def _setup(self) -> None:
-        if not (_RAGAS_AVAILABLE and _OPENAI_AVAILABLE):
+        if not _RAGAS_AVAILABLE:
+            self._setup_error = "ragas and datasets are not installed"
             return
-        import os
-        try:
-            is_openrouter = self.openai_api_key and (
-                self.openai_api_key.startswith("sk-or-") or "openrouter" in self.openai_api_key
+        if not _OPENAI_AVAILABLE:
+            self._setup_error = (
+                "langchain-openai and langchain-huggingface are not installed"
             )
+            return
+        try:
+            if not self.openai_api_key:
+                raise ValueError(
+                    "No judge API key configured. Set OPENROUTER_API_KEY or "
+                    "OPENAI_API_KEY, or pass openai_api_key explicitly."
+                )
 
-            kw: Dict[str, Any] = {"model": self.model, "temperature": 0}
-            ekw: Dict[str, Any] = {"model": self.embedding_model}
+            is_openrouter = (
+                self.provider == "openrouter"
+                or bool(self.base_url and "openrouter.ai" in self.base_url)
+                or self.openai_api_key.startswith("sk-or-")
+            )
+            if self.provider and self.provider not in {"openai", "openrouter"}:
+                raise ValueError(
+                    f"Unsupported RAGAS judge provider '{self.provider}'. "
+                    "Use 'openai' or 'openrouter'."
+                )
 
-            if self.openai_api_key:
-                kw["openai_api_key"] = self.openai_api_key
-                ekw["openai_api_key"] = self.openai_api_key
+            judge_base_url = self.base_url
+            if is_openrouter and not judge_base_url:
+                judge_base_url = "https://openrouter.ai/api/v1"
+            kw: Dict[str, Any] = {
+                "model": self.model,
+                "temperature": 0,
+                "openai_api_key": self.openai_api_key,
+            }
+            if judge_base_url:
+                kw["base_url"] = judge_base_url
+            self._llm = ChatOpenAI(**kw)
 
-            if is_openrouter:
-                kw["base_url"] = "https://openrouter.ai/api/v1"
-                self._llm = ChatOpenAI(**kw)
-                
-                # Use local free embeddings to avoid OpenRouter 402/payment limit errors
-                from langchain_huggingface import HuggingFaceEmbeddings
-                self._embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-            else:
-                self._llm = ChatOpenAI(**kw)
-                self._embeddings = OpenAIEmbeddings(**ekw)
+            # RAGAS semantic metrics need embeddings, but OpenRouter is an LLM
+            # router and should not be treated as an embedding endpoint. Keeping
+            # this model local also makes baseline runs reproducible.
+            model_kwargs: Dict[str, Any] = {}
+            if self.local_embeddings_only:
+                model_kwargs["local_files_only"] = True
+            self._embeddings = HuggingFaceEmbeddings(
+                model_name=self.embedding_model,
+                model_kwargs=model_kwargs,
+            )
 
             # Setup separate evaluation model (critic) if requested
             if self.critic_model:
@@ -267,10 +315,53 @@ class RAGASEvaluator:
                 "context_recall": context_recall,
                 "answer_correctness": answer_correctness,
             }
-            self._ragas_metrics = [_map[m] for m in self.metrics_names if m in _map]
+            unknown_metrics = sorted(set(self.metrics_names) - set(_map))
+            if unknown_metrics:
+                raise ValueError(
+                    f"Unsupported RAGAS metric(s): {', '.join(unknown_metrics)}"
+                )
+            self._ragas_metrics = [_map[m] for m in self.metrics_names]
+            self._setup_error = None
             logger.info("RAGASEvaluator ready with metrics: %s", self.metrics_names)
         except Exception as exc:
-            logger.error("RAGAS setup failed: %s", exc)
+            self._llm = None
+            self._critic_llm = None
+            self._embeddings = None
+            self._ragas_metrics = []
+            self._setup_error = f"{type(exc).__name__}: {exc}"
+            logger.exception("RAGAS setup failed")
+
+    def readiness(self) -> Dict[str, Any]:
+        """Return a secret-free, persistable description of judge readiness."""
+        return {
+            "ready": self._setup_error is None and bool(self._ragas_metrics),
+            "provider": (
+                "openrouter"
+                if (
+                    self.provider == "openrouter"
+                    or bool(self.base_url and "openrouter.ai" in self.base_url)
+                    or bool(
+                        self.openai_api_key
+                        and self.openai_api_key.startswith("sk-or-")
+                    )
+                )
+                else (self.provider or "openai")
+            ),
+            "judge_model": self.critic_model or self.model,
+            "embedding_model": self.embedding_model,
+            "local_embeddings_only": self.local_embeddings_only,
+            "metrics": list(self.metrics_names),
+            "setup_error": self._setup_error,
+        }
+
+    def require_ready(self) -> None:
+        """Fail before retrieval starts when judge configuration is invalid."""
+        status = self.readiness()
+        if not status["ready"]:
+            raise RAGASConfigurationError(
+                "RAGAS judge preflight failed: "
+                + (self._setup_error or "no metrics were initialized")
+            )
 
     # ------------------------------------------------------------------
     # Core evaluation
@@ -289,7 +380,11 @@ class RAGASEvaluator:
             return {
                 **scores,
                 "ragas_failed": True,
-                "ragas_error": "RAGAS not available or not configured"
+                "ragas_error": (
+                    f"RAGAS setup failed: {self._setup_error}"
+                    if self._setup_error
+                    else "RAGAS not available or not configured"
+                ),
             }
 
         from datasets import Features, Sequence, Value
@@ -318,7 +413,7 @@ class RAGASEvaluator:
                 metrics=active,
                 llm=self._critic_llm or self._llm,
                 embeddings=self._embeddings,
-                raise_exceptions=False,
+                raise_exceptions=True,
             )
             scores_dict = {}
             nan_metrics = []
@@ -879,7 +974,32 @@ if __name__ == "__main__":
     )
     parser.add_argument("--generation-model", default=settings.LLM_MODEL)
     parser.add_argument("--judge-model", default=settings.LLM_MODEL)
-    parser.add_argument("--judge-embedding-model", default="text-embedding-3-small")
+    parser.add_argument(
+        "--judge-provider",
+        choices=["openrouter", "openai"],
+        default=os.getenv("RAGAS_JUDGE_PROVIDER", "openrouter"),
+        help="OpenAI-compatible provider used only by the RAGAS judge",
+    )
+    parser.add_argument(
+        "--judge-base-url",
+        default=os.getenv("RAGAS_JUDGE_BASE_URL"),
+        help="Optional OpenAI-compatible judge endpoint override",
+    )
+    parser.add_argument(
+        "--judge-embedding-model",
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        help="Locally cached embedding model used by semantic RAGAS metrics",
+    )
+    parser.add_argument(
+        "--preflight-only",
+        action="store_true",
+        help="Validate judge and local embedding initialization, then exit without retrieval",
+    )
+    parser.add_argument(
+        "--judge-smoke-test",
+        action="store_true",
+        help="Run one small paid RAGAS judge request, then exit without databases",
+    )
     parser.add_argument(
         "--baseline-manifest",
         help="Optional accepted manifest to compare using the one-lever ratchet gate",
@@ -898,6 +1018,8 @@ if __name__ == "__main__":
     parser.add_argument("--graph-weight", type=float, default=settings.FUSION_GRAPH_WEIGHT)
     parser.add_argument("--lexical-weight", type=float, default=settings.FUSION_LEXICAL_WEIGHT)
     args = parser.parse_args()
+    if args.preflight_only and args.judge_smoke_test:
+        parser.error("--preflight-only and --judge-smoke-test are mutually exclusive")
     if args.enable_lexical_fusion:
         if args.profile == "vectorless":
             parser.error("dedicated vectorless cannot enable Hybrid lexical fusion")
@@ -922,9 +1044,48 @@ if __name__ == "__main__":
     run_git_revision = current_git_revision(repo_root)
     run_working_tree_clean = working_tree_is_clean(repo_root)
     
-    print("Checking RAGAS Evaluator configuration...")
-    print(f"RAGAS Available: {_RAGAS_AVAILABLE}")
-    print(f"OpenAI API Key Set: {bool(os.getenv('OPENAI_API_KEY'))}")
+    print("Checking RAGAS evaluator configuration...")
+    try:
+        evaluator = RAGASEvaluator(
+            model=args.judge_model,
+            embedding_model=args.judge_embedding_model,
+            metrics=ALL_METRICS,
+            provider=args.judge_provider,
+            base_url=args.judge_base_url,
+        )
+    except RAGASConfigurationError as exc:
+        print(f"RAGAS PREFLIGHT FAILED: {exc}", file=sys.stderr)
+        sys.exit(2)
+    readiness = evaluator.readiness()
+    print(json.dumps(readiness, indent=2, sort_keys=True))
+    if args.preflight_only:
+        print("RAGAS preflight passed; no benchmark queries were executed.")
+        sys.exit(0)
+    if args.judge_smoke_test:
+        smoke_scores = evaluator.evaluate_single(
+            question="What does Reciprocal Rank Fusion combine?",
+            answer="Reciprocal Rank Fusion combines multiple ranked result lists.",
+            contexts=[
+                "Reciprocal Rank Fusion combines multiple ranked result lists "
+                "using reciprocal-rank contributions."
+            ],
+            ground_truth=(
+                "Reciprocal Rank Fusion combines multiple ranked result lists."
+            ),
+        )
+        smoke_results = pd.DataFrame([smoke_scores])
+        try:
+            require_successful_ragas(
+                smoke_results,
+                expected_rows=1,
+                required_metrics=ALL_METRICS,
+            )
+        except RAGASValidationError as exc:
+            print(f"RAGAS JUDGE SMOKE TEST FAILED: {exc}", file=sys.stderr)
+            sys.exit(2)
+        print(json.dumps(smoke_scores, indent=2, sort_keys=True))
+        print("RAGAS judge smoke test passed; no benchmark queries were executed.")
+        sys.exit(0)
     
     # Run the live pipeline
     from backend.services.chroma_service import ChromaService
@@ -981,12 +1142,6 @@ if __name__ == "__main__":
         generation_model=args.generation_model,
     )
 
-    evaluator = RAGASEvaluator(
-        openai_api_key=os.getenv("OPENAI_API_KEY"),
-        model=args.judge_model,
-        embedding_model=args.judge_embedding_model,
-        metrics=['faithfulness', 'answer_relevancy', 'context_precision', 'context_recall', 'answer_correctness']
-    )
     print("\nRunning concurrent live workflow and RAGAS evaluation...")
     try:
         results_df = asyncio.run(evaluator.evaluate_live_workflow(
@@ -1108,6 +1263,7 @@ if __name__ == "__main__":
             "grounding_critique": True,
             "grounding_critic_temperature": settings.FAITHFULNESS_CRITIC_TEMPERATURE,
         },
+        "evaluation": readiness,
     }
     manifest = build_manifest(
         run_label=artifact_label,
