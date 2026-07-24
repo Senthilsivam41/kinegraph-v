@@ -25,6 +25,7 @@ from langgraph.graph import END, StateGraph
 
 from backend.app.models import DocumentChunk, QueryMode
 from backend.graph_retrieval.multi_hop import TraversalStrategy
+from backend.core.adaptive_routing import build_execution_plan
 from backend.core.config import settings
 from backend.core.context_ranker import ContextRanker
 from backend.core.grounding import (
@@ -153,6 +154,7 @@ class WorkflowState(TypedDict):
     requested_mode: QueryMode
     mode: QueryMode
     allow_mode_downgrade: bool
+    enable_adaptive_routing: bool
     enable_conservative_routing: bool
     allow_vectorless_auto_route: bool
     routing_details: Dict[str, Any]
@@ -396,30 +398,9 @@ class HybridRAGWorkflow:
         rewritten = rewrite_query_for_retrieval(state["query"], intent)
 
         requested_mode = state.get("requested_mode", state["mode"])
-        effective_mode = requested_mode
-        downgrade_reason = "explicit caller mode preserved"
-        if requested_mode == QueryMode.HYBRID:
-            conservative = state.get("enable_conservative_routing", False)
-            can_downgrade = state.get("allow_mode_downgrade", True) and (
-                not conservative
-                or (
-                    intent_result.get("confidence") == "high"
-                    and not intent_result.get("coverage_sensitive", False)
-                )
-            )
-            if can_downgrade and suggested_mode in {"vector", "graph"}:
-                effective_mode = QueryMode(suggested_mode)
-                downgrade_reason = (
-                    "high-confidence single-facet classifier downgrade"
-                    if conservative
-                    else "legacy classifier downgrade"
-                )
-            elif not state.get("allow_mode_downgrade", True):
-                downgrade_reason = "benchmark profile requires requested mode"
-            else:
-                downgrade_reason = "conservative routing retained hybrid for uncertain or coverage-sensitive query"
 
-        # Check for auto-routing to Vectorless RAG
+        # Determine Vectorless eligibility without overriding an explicit
+        # non-Hybrid caller mode. The execution-plan policy applies the final rule.
         attachment_content = state.get("attachment_content")
         filters = state.get("filters")
         query_lower = state["query"].lower()
@@ -431,17 +412,16 @@ class HybridRAGWorkflow:
             "summarize", "summary", "tldr", "overall theme", "recap", "synopsis", "outline", "explain the main"
         ])
 
-        should_use_vectorless = False
-
-        if requested_mode == QueryMode.VECTORLESS:
-            should_use_vectorless = True
-        elif (
+        vectorless_eligible = False
+        vectorless_reason = None
+        if (
             requested_mode == QueryMode.HYBRID
             and state.get("allow_vectorless_auto_route", True)
             and attachment_content
         ):
             if len(attachment_content) < 40000 or is_summary_query:
-                should_use_vectorless = True
+                vectorless_eligible = True
+                vectorless_reason = "eligible bounded attachment route"
                 logger.info("[IntentRouter] Auto-routing to VECTORLESS: Attachment content detected (len=%d, is_summary=%s)", len(attachment_content), is_summary_query)
         elif (
             requested_mode == QueryMode.HYBRID
@@ -452,21 +432,33 @@ class HybridRAGWorkflow:
             file_name = filters["file_name"]
             doc_text = await asyncio.to_thread(_load_vectorless_document, file_name)
             if doc_text and (len(doc_text) < 40000 or is_summary_query):
-                should_use_vectorless = True
+                vectorless_eligible = True
+                vectorless_reason = "eligible bounded local-document route"
                 logger.info("[IntentRouter] Auto-routing to VECTORLESS: Local file '%s' is small/queried for summary", file_name)
 
-        if should_use_vectorless:
-            effective_mode = QueryMode.VECTORLESS
-            downgrade_reason = (
-                "explicit vectorless mode"
-                if requested_mode == QueryMode.VECTORLESS
-                else "eligible attachment or local-file vectorless route"
-            )
+        adaptive_enabled = bool(
+            state.get("enable_adaptive_routing", False)
+            or state.get("enable_conservative_routing", False)
+        )
+        execution_plan = build_execution_plan(
+            intent_result=intent_result,
+            requested_mode=requested_mode.value,
+            allow_mode_downgrade=state.get("allow_mode_downgrade", True),
+            adaptive_enabled=adaptive_enabled,
+            lexical_enabled=state.get("enable_lexical_fusion", False),
+            vectorless_eligible=vectorless_eligible,
+            vectorless_reason=vectorless_reason,
+            minimum_confidence=settings.ADAPTIVE_ROUTING_MIN_CONFIDENCE,
+        )
+        effective_mode = QueryMode(execution_plan.effective_mode)
+        compatibility_decision = execution_plan.decision
+        if requested_mode == QueryMode.HYBRID and not state.get("allow_mode_downgrade", True):
+            compatibility_decision = "benchmark profile requires requested mode"
 
         logger.info(
-            "[IntentRouter] query=%r intent=%s mode=%s→%s rewritten=%r",
+            "[IntentRouter] query=%r intent=%s mode=%s→%s policy=%s rewritten=%r",
             state["query"][:60], intent, state["mode"].value,
-            effective_mode.value, rewritten[:60],
+            effective_mode.value, execution_plan.policy, rewritten[:60],
         )
 
         state["intent"] = intent
@@ -478,9 +470,11 @@ class HybridRAGWorkflow:
             "requested_mode": requested_mode.value,
             "effective_mode": effective_mode.value,
             "allow_mode_downgrade": state.get("allow_mode_downgrade", True),
+            "enable_adaptive_routing": adaptive_enabled,
             "enable_conservative_routing": state.get("enable_conservative_routing", False),
             "allow_vectorless_auto_route": state.get("allow_vectorless_auto_route", True),
-            "decision": downgrade_reason,
+            "decision": compatibility_decision,
+            "execution_plan": execution_plan.to_dict(),
         }
         state["latency_breakdown"] = {
             "intent_router_ms": round((time.perf_counter() - t0) * 1000, 2)
@@ -720,7 +714,177 @@ class HybridRAGWorkflow:
             initial.weak = True
             if "incomplete_question_facet_coverage" not in initial.reasons:
                 initial.reasons.append("incomplete_question_facet_coverage")
+        route_initial_assessment = initial.to_dict()
+        route_escalation: Dict[str, Any] = {
+            "triggered": False,
+            "from_mode": mode.value,
+            "to_mode": mode.value,
+            "trigger_reasons": [],
+            "added_channels": [],
+            "initial_channel_counts": {
+                "vector": len(state["vector_results"]),
+                "graph": len(state["graph_results"]),
+                "lexical": len(state.get("lexical_results", [])),
+            },
+            "added_candidate_counts": {},
+        }
+
+        execution_plan = routing.get("execution_plan") or {}
+        if (
+            initial.weak
+            and execution_plan.get("policy") == "adaptive"
+            and execution_plan.get("fallback_mode") == QueryMode.HYBRID.value
+            and mode in (QueryMode.VECTOR, QueryMode.GRAPH)
+        ):
+            route_escalation["triggered"] = True
+            route_escalation["to_mode"] = QueryMode.HYBRID.value
+            route_escalation["trigger_reasons"] = list(initial.reasons)
+            fetch_n = max(state["max_results"], state["candidate_pool_size"])
+            original_query = state["query"]
+
+            if mode == QueryMode.VECTOR:
+                try:
+                    graph_results, graph_diagnostics = await self._retrieve_graph(
+                        query=original_query,
+                        n_results=fetch_n,
+                        max_hops=state["max_hops"],
+                        traversal_strategy=state["traversal_strategy"],
+                        community_id=state.get("community_id"),
+                    )
+                    state["graph_results"] = self.recovery.annotate_results(
+                        graph_results,
+                        original_query,
+                        original_query,
+                        "adaptive_route_escalation",
+                    )
+                    state["graph_retrieval_diagnostics"] = graph_diagnostics
+                    route_escalation["added_channels"].append("graph")
+                    route_escalation["added_candidate_counts"]["graph"] = len(
+                        state["graph_results"]
+                    )
+                except Exception as exc:
+                    state.setdefault("retrieval_failures", {})["adaptive_graph"] = (
+                        f"{type(exc).__name__}: {exc}"[:500]
+                    )
+            else:
+                try:
+                    vector_results = await self.chroma.similarity_search(
+                        query=original_query,
+                        n_results=fetch_n,
+                        filters=state.get("filters"),
+                    )
+                    state["vector_results"] = self.recovery.annotate_results(
+                        vector_results,
+                        original_query,
+                        original_query,
+                        "adaptive_route_escalation",
+                    )
+                    route_escalation["added_channels"].append("vector")
+                    route_escalation["added_candidate_counts"]["vector"] = len(
+                        state["vector_results"]
+                    )
+                except Exception as exc:
+                    state.setdefault("retrieval_failures", {})["adaptive_vector"] = (
+                        f"{type(exc).__name__}: {exc}"[:500]
+                    )
+
+            if state.get("enable_lexical_fusion", False):
+                try:
+                    lexical_results = await asyncio.to_thread(
+                        _search_vectorless_chunks,
+                        original_query,
+                        fetch_n,
+                        state.get("filters"),
+                    )
+                    state["lexical_results"] = self.recovery.annotate_results(
+                        lexical_results,
+                        original_query,
+                        original_query,
+                        "adaptive_route_escalation",
+                    )
+                    route_escalation["added_channels"].append("lexical")
+                    route_escalation["added_candidate_counts"]["lexical"] = len(
+                        state["lexical_results"]
+                    )
+                except Exception as exc:
+                    state.setdefault("retrieval_failures", {})["adaptive_lexical"] = (
+                        f"{type(exc).__name__}: {exc}"[:500]
+                    )
+
+            state["initial_candidates"] = {
+                "vector": list(state["vector_results"]),
+                "graph": list(state["graph_results"]),
+                "lexical": list(state.get("lexical_results", [])),
+            }
+            state["mode"] = QueryMode.HYBRID
+            mode = QueryMode.HYBRID
+            require_graph = True
+            routing["effective_mode"] = QueryMode.HYBRID.value
+            routing["decision"] = (
+                "adaptive route escalated to hybrid after measurable initial weakness"
+            )
+            execution_plan["effective_mode"] = QueryMode.HYBRID.value
+            execution_plan["required_channels"] = [
+                "vector",
+                "graph",
+                *(
+                    ["lexical"]
+                    if state.get("enable_lexical_fusion", False)
+                    else []
+                ),
+            ]
+            execution_plan["recommended_channels"] = list(
+                execution_plan["required_channels"]
+            )
+            execution_plan["alternatives"] = [
+                {
+                    "mode": route_escalation["from_mode"],
+                    "rejected_reason": (
+                        "initial single-channel retrieval was measurably weak"
+                    ),
+                },
+                {
+                    "mode": (
+                        QueryMode.GRAPH.value
+                        if route_escalation["from_mode"] == QueryMode.VECTOR.value
+                        else QueryMode.VECTOR.value
+                    ),
+                    "rejected_reason": (
+                        "fallback requires combined evidence rather than another "
+                        "single-channel plan"
+                    ),
+                },
+                {
+                    "mode": QueryMode.VECTORLESS.value,
+                    "rejected_reason": "no eligible attachment or local document",
+                },
+            ]
+            execution_plan["decision"] = routing["decision"]
+            execution_plan["route_escalation"] = dict(route_escalation)
+            routing["execution_plan"] = execution_plan
+            routing["route_escalation"] = dict(route_escalation)
+
+            initial = self.recovery.assess(
+                state["vector_results"],
+                state["graph_results"],
+                require_graph=True,
+                require_source_diversity=True,
+            )
+            facet_coverage = self.recovery.assess_facet_coverage(
+                routing.get("facets", [state["query"]]),
+                [
+                    *state["vector_results"],
+                    *state["graph_results"],
+                    *state.get("lexical_results", []),
+                ],
+            )
+            if routing.get("coverage_sensitive") and not facet_coverage.complete:
+                initial.weak = True
+                if "incomplete_question_facet_coverage" not in initial.reasons:
+                    initial.reasons.append("incomplete_question_facet_coverage")
         details: Dict[str, Any] = {
+            "route_initial_assessment": route_initial_assessment,
+            "route_escalation": route_escalation,
             "initial_assessment": initial.to_dict(),
             "initial_facet_coverage": facet_coverage.to_dict(),
             "structured_recovery_used": False,
@@ -729,7 +893,7 @@ class HybridRAGWorkflow:
             "vocabulary": [],
             "generated_hypothesis": None,
         }
-        state["recovery_triggered"] = False
+        state["recovery_triggered"] = bool(route_escalation["triggered"])
 
         if (
             not state["enable_conditional_recovery"]
@@ -1205,6 +1369,7 @@ class HybridRAGWorkflow:
         enable_conditional_recovery: bool = True,
         enable_hyde_fallback: bool = False,
         enable_grounding_critique: bool = True,
+        enable_adaptive_routing: bool = settings.ADAPTIVE_ROUTING_ENABLED,
         enable_conservative_routing: bool = settings.CONSERVATIVE_ROUTING_ENABLED,
         allow_mode_downgrade: bool = True,
         allow_vectorless_auto_route: bool = True,
@@ -1221,6 +1386,7 @@ class HybridRAGWorkflow:
             requested_mode=mode,
             mode=mode,
             allow_mode_downgrade=allow_mode_downgrade,
+            enable_adaptive_routing=enable_adaptive_routing,
             enable_conservative_routing=enable_conservative_routing,
             allow_vectorless_auto_route=allow_vectorless_auto_route,
             routing_details={},
@@ -1280,6 +1446,7 @@ class HybridRAGWorkflow:
         enable_conditional_recovery: bool = True,
         enable_hyde_fallback: bool = False,
         enable_grounding_critique: bool = True,
+        enable_adaptive_routing: bool = settings.ADAPTIVE_ROUTING_ENABLED,
         enable_conservative_routing: bool = settings.CONSERVATIVE_ROUTING_ENABLED,
         allow_mode_downgrade: bool = True,
         allow_vectorless_auto_route: bool = True,
@@ -1309,6 +1476,7 @@ class HybridRAGWorkflow:
             requested_mode=mode,
             mode=mode,
             allow_mode_downgrade=allow_mode_downgrade,
+            enable_adaptive_routing=enable_adaptive_routing,
             enable_conservative_routing=enable_conservative_routing,
             allow_vectorless_auto_route=allow_vectorless_auto_route,
             routing_details={},

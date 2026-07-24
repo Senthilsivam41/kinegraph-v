@@ -1,6 +1,6 @@
 # ADR-001: Adaptive Routing
 
-- **Status:** Proposed
+- **Status:** Implemented behind an experimental flag; benchmark promotion pending
 - **Date:** 2026-07-23
 - **Decision:** Use a confidence-aware, reversible execution-plan router.
 
@@ -23,8 +23,30 @@ mode, alternatives, signals, and rationale.
 ## Consequences
 
 Routing is slightly more expensive to observe and test, but no longer hides a
-lossy downgrade. Legacy routing remains available behind a feature flag until
-the adaptive profile passes its benchmark gate.
+lossy downgrade. Adaptive routing remains behind a feature flag and legacy
+routing remains the default until the adaptive profile passes its benchmark
+gate.
+
+## Implementation
+
+- `backend/core/adaptive_routing.py` owns the deterministic, versioned
+  `kinegraph.adaptive-routing.v1` execution-plan contract.
+- `enable_adaptive_routing` activates the policy. The deprecated
+  `enable_conservative_routing` flag remains a rollback-compatible alias.
+- Every plan records numeric confidence, literal facets, exact tokens, entity
+  candidates, attachment eligibility, required and recommended channels,
+  rejected alternatives, rationale, and an optional Hybrid fallback trigger.
+- Exact-token queries retain Hybrid and recommend the lexical channel; BM25 is
+  executed only when the separate lexical experiment flag is enabled.
+- A high-confidence single-channel plan escalates to Hybrid before RRF when its
+  initial retrieval has insufficient results, low score, missing graph
+  evidence, low source diversity, or incomplete facet coverage.
+- API responses expose requested mode, effective mode, and the complete routing
+  details. Benchmark provenance persists the same execution plan.
+
+This implementation does not promote adaptive routing to the production
+default and does not claim a metric improvement. Promotion still requires the
+accepted benchmark slices below.
 
 ## Alternatives rejected
 

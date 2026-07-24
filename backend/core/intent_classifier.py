@@ -35,6 +35,39 @@ _TRIGGERS: Dict[str, list] = {
     "conceptual":     ["explain", "describe", "overview", "concept", "purpose", "role of"],
 }
 
+_EXACT_TOKEN_PATTERNS = (
+    (r"https?://[^\s)>\]]+", re.IGNORECASE),
+    (r"(?<!\w)--[a-z][a-z0-9-]*", re.IGNORECASE),
+    (r"\b[A-Z][A-Z0-9_]{2,}\b", 0),
+    (r"\b[\w.-]+\.(?:pdf|md|txt|json|ya?ml|toml|env|py|sh|csv)\b", re.IGNORECASE),
+    (r"(?:^|\s)(?:docker(?:\s+compose)?|pip|python|curl|git)\s+[^\n,;]+", re.IGNORECASE),
+)
+
+_ENTITY_STOP_WORDS = {
+    "How", "What", "When", "Where", "Which", "Who", "Why",
+    "Compare", "Define", "Describe", "Explain", "List", "Show",
+}
+
+
+def analyze_query_signals(query: str) -> Dict[str, Any]:
+    """Extract observable routing signals without generating graph seeds."""
+    exact_tokens = []
+    for pattern, flags in _EXACT_TOKEN_PATTERNS:
+        for match in re.findall(pattern, query, flags=flags | re.MULTILINE):
+            token = str(match).strip()
+            if token and token not in exact_tokens:
+                exact_tokens.append(token)
+    entity_candidates = []
+    for token in re.findall(r"\b(?:[A-Z][A-Za-z0-9.+-]{2,}|[A-Z]{2,})\b", query):
+        if token not in _ENTITY_STOP_WORDS and token not in entity_candidates:
+            entity_candidates.append(token)
+    return {
+        "exact_tokens": exact_tokens[:12],
+        "has_exact_tokens": bool(exact_tokens),
+        # Candidates are routing hints only. They are never authoritative graph seeds.
+        "entity_candidates": entity_candidates[:12],
+    }
+
 
 def _trigger_matches(query: str, trigger: str) -> bool:
     """Match whole trigger phrases instead of arbitrary substrings."""
@@ -84,6 +117,7 @@ def classify_intent(query: str) -> Dict[str, Any]:
     if best_score > 0 and scores["comparison"] == best_score:
         best_intent = "comparison"
     facets = extract_query_facets(query)
+    query_signals = analyze_query_signals(query)
 
     if best_score == 0:
         # No clear signal — default to hybrid
@@ -97,13 +131,30 @@ def classify_intent(query: str) -> Dict[str, Any]:
             "tied_intents": [],
             "facets": facets,
             "coverage_sensitive": len(facets) > 1,
+            "route_confidence": 0.25,
+            "relationship_signal": False,
+            **query_signals,
             "route_rationale": "no trigger matched; retain broad hybrid coverage",
         }
 
     desc, mode = INTENT_CATALOG[best_intent]
     tied_intents = [intent for intent, score in scores.items() if score == best_score]
     coverage_sensitive = scores["comparison"] > 0 or len(facets) > 1
-    confidence = "high" if best_score >= 2 else "medium"
+    runner_up = max(
+        (score for intent, score in scores.items() if intent != best_intent),
+        default=0,
+    )
+    route_confidence = min(0.95, 0.50 + (0.18 * best_score) + (0.08 * (best_score - runner_up)))
+    if len(tied_intents) > 1:
+        route_confidence -= 0.20
+    if coverage_sensitive:
+        route_confidence -= 0.15
+    route_confidence = round(max(0.10, route_confidence), 2)
+    confidence = (
+        "high" if route_confidence >= 0.80
+        else "medium" if route_confidence >= 0.55
+        else "low"
+    )
     return {
         "intent": best_intent,
         "description": desc,
@@ -116,9 +167,13 @@ def classify_intent(query: str) -> Dict[str, Any]:
         "tied_intents": tied_intents if len(tied_intents) > 1 else [],
         "facets": facets,
         "coverage_sensitive": coverage_sensitive,
+        "route_confidence": route_confidence,
+        "relationship_signal": scores["relationship"] > 0,
+        **query_signals,
         "route_rationale": (
             f"selected {best_intent} from deterministic trigger scores; "
-            f"confidence={confidence}; coverage_sensitive={coverage_sensitive}"
+            f"confidence={confidence} ({route_confidence:.2f}); "
+            f"coverage_sensitive={coverage_sensitive}"
         ),
     }
 

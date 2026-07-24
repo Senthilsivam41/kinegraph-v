@@ -45,7 +45,10 @@ async def query_system(query_request: QueryRequest, request: Request):
             enable_hyde_fallback=query_request.enable_hyde_fallback,
             enable_grounding_critique=query_request.enable_grounding_critique,
             enable_lexical_fusion=query_request.enable_lexical_fusion,
+            enable_adaptive_routing=query_request.enable_adaptive_routing,
             enable_conservative_routing=query_request.enable_conservative_routing,
+            allow_mode_downgrade=query_request.allow_mode_downgrade,
+            allow_vectorless_auto_route=query_request.allow_vectorless_auto_route,
             vector_fusion_weight=query_request.vector_fusion_weight,
             graph_fusion_weight=query_request.graph_fusion_weight,
             lexical_fusion_weight=query_request.lexical_fusion_weight,
@@ -59,6 +62,8 @@ async def query_system(query_request: QueryRequest, request: Request):
         return QueryResponse(
             query=query_request.query,
             mode=query_request.mode,
+            requested_mode=QueryMode(result["requested_mode"]),
+            effective_mode=QueryMode(result["effective_mode"]),
             results=chunks,
             total_results=len(chunks),
             execution_time_ms=execution_time,
@@ -73,6 +78,7 @@ async def query_system(query_request: QueryRequest, request: Request):
             citation_validation=result["citation_validation"],
             grounding_critique=result["grounding_critique"],
             answer_relevancy=result["answer_relevancy"],
+            routing_details=result["routing"],
         )
 
     except Exception as e:

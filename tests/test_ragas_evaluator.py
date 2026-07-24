@@ -257,6 +257,7 @@ def test_live_evaluation_forwards_precision_controls_to_workflow():
         max_results=6,
         max_hops=1,
         candidate_pool_size=25,
+        enable_adaptive_routing=True,
     ))
 
     call = workflow.execute_with_answer.await_args.kwargs
@@ -264,6 +265,7 @@ def test_live_evaluation_forwards_precision_controls_to_workflow():
     assert call["max_results"] == 6
     assert call["max_hops"] == 1
     assert call["candidate_pool_size"] == 25
+    assert call["enable_adaptive_routing"] is True
     assert call["include_trace"] is True
     assert result["max_hops"] == 1
     assert result["max_results"] == 6

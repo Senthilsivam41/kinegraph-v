@@ -508,6 +508,7 @@ class RAGASEvaluator:
         vector_fusion_weight: float = settings.FUSION_VECTOR_WEIGHT,
         graph_fusion_weight: float = settings.FUSION_GRAPH_WEIGHT,
         lexical_fusion_weight: float = settings.FUSION_LEXICAL_WEIGHT,
+        enable_adaptive_routing: bool = settings.ADAPTIVE_ROUTING_ENABLED,
         enable_conservative_routing: bool = settings.CONSERVATIVE_ROUTING_ENABLED,
         allow_mode_downgrade: bool = True,
         allow_vectorless_auto_route: bool = True,
@@ -533,6 +534,7 @@ class RAGASEvaluator:
                 vector_fusion_weight=vector_fusion_weight,
                 graph_fusion_weight=graph_fusion_weight,
                 lexical_fusion_weight=lexical_fusion_weight,
+                enable_adaptive_routing=enable_adaptive_routing,
                 enable_conservative_routing=enable_conservative_routing,
                 allow_mode_downgrade=allow_mode_downgrade,
                 allow_vectorless_auto_route=allow_vectorless_auto_route,
@@ -605,6 +607,7 @@ class RAGASEvaluator:
             "vector_fusion_weight": vector_fusion_weight,
             "graph_fusion_weight": graph_fusion_weight,
             "lexical_fusion_weight": lexical_fusion_weight,
+            "enable_adaptive_routing": enable_adaptive_routing,
             **scores,
         }
 
@@ -620,6 +623,7 @@ class RAGASEvaluator:
         vector_fusion_weight: float = settings.FUSION_VECTOR_WEIGHT,
         graph_fusion_weight: float = settings.FUSION_GRAPH_WEIGHT,
         lexical_fusion_weight: float = settings.FUSION_LEXICAL_WEIGHT,
+        enable_adaptive_routing: bool = settings.ADAPTIVE_ROUTING_ENABLED,
         enable_conservative_routing: bool = settings.CONSERVATIVE_ROUTING_ENABLED,
         allow_mode_downgrade: bool = True,
         allow_vectorless_auto_route: bool = True,
@@ -664,6 +668,7 @@ class RAGASEvaluator:
                         vector_fusion_weight=vector_fusion_weight,
                         graph_fusion_weight=graph_fusion_weight,
                         lexical_fusion_weight=lexical_fusion_weight,
+                        enable_adaptive_routing=enable_adaptive_routing,
                         enable_conservative_routing=enable_conservative_routing,
                         allow_mode_downgrade=allow_mode_downgrade,
                         allow_vectorless_auto_route=allow_vectorless_auto_route,
@@ -1005,9 +1010,14 @@ if __name__ == "__main__":
         help="Optional accepted manifest to compare using the one-lever ratchet gate",
     )
     parser.add_argument(
+        "--enable-adaptive-routing",
+        action="store_true",
+        help="Experimental ADR-001 execution-plan policy; use with --profile adaptive_hybrid",
+    )
+    parser.add_argument(
         "--enable-conservative-routing",
         action="store_true",
-        help="Experimental routing policy; use with --profile adaptive_hybrid",
+        help="Deprecated alias for --enable-adaptive-routing",
     )
     parser.add_argument(
         "--enable-lexical-fusion",
@@ -1025,8 +1035,10 @@ if __name__ == "__main__":
             parser.error("dedicated vectorless cannot enable Hybrid lexical fusion")
         args.profile = "hybrid_lexical"
     profile = get_profile(args.profile)
-    if args.enable_conservative_routing and profile.name != "adaptive_hybrid":
-        parser.error("--enable-conservative-routing requires --profile adaptive_hybrid")
+    if args.enable_conservative_routing:
+        args.enable_adaptive_routing = True
+    if args.enable_adaptive_routing and profile.name != "adaptive_hybrid":
+        parser.error("--enable-adaptive-routing requires --profile adaptive_hybrid")
     if not 1 <= args.max_hops <= 5:
         parser.error("--max-hops must be between 1 and 5")
     if not 1 <= args.max_results <= 100:
@@ -1155,6 +1167,7 @@ if __name__ == "__main__":
             vector_fusion_weight=args.vector_weight,
             graph_fusion_weight=args.graph_weight,
             lexical_fusion_weight=args.lexical_weight,
+            enable_adaptive_routing=args.enable_adaptive_routing,
             enable_conservative_routing=args.enable_conservative_routing,
             allow_mode_downgrade=profile.allow_mode_downgrade,
             allow_vectorless_auto_route=profile.allow_vectorless_auto_route,
@@ -1234,6 +1247,7 @@ if __name__ == "__main__":
         "retrieval": {
             "profile": profile.to_dict(),
             "mode": profile.requested_mode.value,
+            "enable_adaptive_routing": args.enable_adaptive_routing,
             "enable_conservative_routing": args.enable_conservative_routing,
             "max_results": args.max_results,
             "max_hops": args.max_hops,

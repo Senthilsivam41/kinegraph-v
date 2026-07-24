@@ -47,9 +47,27 @@ class QueryRequest(BaseModel):
         description="Verify structured citations and filter unsupported claims before returning the answer",
     )
     enable_lexical_fusion: bool = Field(default=False, description="Opt-in BM25 channel for hybrid fusion")
+    enable_adaptive_routing: bool = Field(
+        default=settings.ADAPTIVE_ROUTING_ENABLED,
+        description=(
+            "Experimental ADR-001 execution-plan router with confidence-aware "
+            "downgrades and weak-route Hybrid fallback"
+        ),
+    )
     enable_conservative_routing: bool = Field(
         default=settings.CONSERVATIVE_ROUTING_ENABLED,
-        description="Experimental: downgrade Hybrid only for high-confidence single-facet queries",
+        description="Deprecated compatibility alias for enable_adaptive_routing",
+    )
+    allow_mode_downgrade: bool = Field(
+        default=True,
+        description=(
+            "Set false to prevent Vector/Graph downgrades; Vectorless eligibility "
+            "is controlled independently"
+        ),
+    )
+    allow_vectorless_auto_route: bool = Field(
+        default=True,
+        description="Permit eligible attachment/local-document requests to use Vectorless",
     )
     vector_fusion_weight: float = Field(default=settings.FUSION_VECTOR_WEIGHT, ge=0, le=5)
     graph_fusion_weight: float = Field(default=settings.FUSION_GRAPH_WEIGHT, ge=0, le=5)
@@ -80,6 +98,8 @@ class QueryResponse(BaseModel):
     """Query response model"""
     query: str
     mode: QueryMode
+    requested_mode: Optional[QueryMode] = None
+    effective_mode: Optional[QueryMode] = None
     results: List[DocumentChunk]
     total_results: int
     execution_time_ms: float
@@ -95,6 +115,7 @@ class QueryResponse(BaseModel):
     citation_validation: Optional[Dict[str, Any]] = None
     grounding_critique: Optional[Dict[str, Any]] = None
     answer_relevancy: Optional[Dict[str, Any]] = None
+    routing_details: Optional[Dict[str, Any]] = None
 
 
 class IngestRequest(BaseModel):
