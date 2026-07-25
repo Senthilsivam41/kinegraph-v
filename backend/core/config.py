@@ -77,6 +77,12 @@ class Settings(BaseSettings):
     CHUNK_SIZE: int = Field(default=1000, ge=64)
     CHUNK_OVERLAP: int = Field(default=200, ge=0)
 
+    # ADR-002 adaptive chunking (structural-first). Legacy recursive remains default.
+    ADAPTIVE_CHUNKING_ENABLED: bool = False
+    ADAPTIVE_CHUNKING_ENABLE_SEMANTIC: bool = False
+    CHUNK_SIZE: int = Field(default=1000, ge=200)
+    CHUNK_OVERLAP: int = Field(default=200, ge=0)
+
     # Faithfulness controls
     GENERATION_TEMPERATURE: float = Field(default=0.0, ge=0.0, le=0.2)
     FAITHFULNESS_CRITIC_MODEL: str = "qwen/qwen3.6-27b"

@@ -1,17 +1,21 @@
-import hashlib
-import os
-from pathlib import Path
-from typing import List, Dict, Any
 import logging
+from pathlib import Path
+from typing import List, Dict, Any, Optional
+
 from neo4j import GraphDatabase
 
-from llama_index.core import Document
 from llama_index.core.schema import TextNode
 from llama_index.core.indices.property_graph import PropertyGraphIndex
-from llama_index.core.schema import TransformComponent
 
 from backend.core.config import settings
 from backend.services.chroma_service import ChromaService
+from backend.graph_ingestion.adaptive_chunking import (
+    CHUNKING_POLICY_VERSION,
+    ChunkRecord,
+    build_validation_report,
+    chunk_document,
+    content_hash,
+)
 from backend.graph_ingestion.embedding_wrapper import LangChainEmbeddingWrapper
 from backend.graph_ingestion.stores import get_neo4j_graph_store, get_chroma_vector_store, get_llm
 from backend.graph_ingestion.schema import OntologySchema
@@ -91,7 +95,7 @@ class IdempotentGraphIngester:
 
     def compute_hash(self, content: str) -> str:
         """Compute SHA-256 hash of a string."""
-        return hashlib.sha256(content.encode("utf-8")).hexdigest()
+        return content_hash(content)
 
     def is_chunk_ingested(self, chunk_hash: str) -> bool:
         """Check if a chunk with the given hash is already in the graph database."""
@@ -165,6 +169,65 @@ class IdempotentGraphIngester:
             chunk_overlap=settings.CHUNK_OVERLAP if chunk_overlap is None else chunk_overlap,
         )
 
+    def chunk_records(
+        self,
+        text: str,
+        *,
+        document_id: str,
+        chunk_size: Optional[int] = None,
+        chunk_overlap: Optional[int] = None,
+    ) -> List[ChunkRecord]:
+        """Build ADR-002 chunk records (structural-first when enabled)."""
+        size = chunk_size if chunk_size is not None else settings.CHUNK_SIZE
+        overlap = chunk_overlap if chunk_overlap is not None else settings.CHUNK_OVERLAP
+        policy = (
+            "structural_first"
+            if settings.ADAPTIVE_CHUNKING_ENABLED
+            else "recursive_only"
+        )
+        return chunk_document(
+            text,
+            document_id=document_id,
+            chunk_size=size,
+            chunk_overlap=overlap,
+            policy=policy,
+            enable_semantic=bool(
+                settings.ADAPTIVE_CHUNKING_ENABLED
+                and settings.ADAPTIVE_CHUNKING_ENABLE_SEMANTIC
+            ),
+        )
+
+    def _nodes_from_records(
+        self,
+        records: List[ChunkRecord],
+        *,
+        file_name: str,
+        metadata: Dict[str, Any],
+    ) -> tuple[List[TextNode], int, List[ChunkRecord]]:
+        """Filter already-ingested chunks and build LlamaIndex nodes with stable IDs."""
+        nodes_to_ingest: List[TextNode] = []
+        accepted: List[ChunkRecord] = []
+        skipped_chunks = 0
+        total = len(records)
+        for record in records:
+            chunk_hash = record.chunk_hash or self.compute_hash(record.text)
+            if self.is_chunk_ingested(chunk_hash):
+                skipped_chunks += 1
+                continue
+            node_meta = record.to_metadata(
+                file_name=file_name,
+                total_chunks=total,
+                **metadata,
+            )
+            node = TextNode(
+                text=record.text,
+                id_=record.chunk_id,
+                metadata=node_meta,
+            )
+            nodes_to_ingest.append(node)
+            accepted.append(record)
+        return nodes_to_ingest, skipped_chunks, accepted
+
     def ingest_file(self, file_path: str, metadata: Dict[str, Any] = None) -> Dict[str, Any]:
         """
         Ingests a single file (PDF or Markdown/text) into the PropertyGraphIndex.
@@ -214,6 +277,7 @@ class IdempotentGraphIngester:
             logger.info("All %d chunks for file '%s' already ingested.", len(records), file_path_obj.name)
             return {
                 "file_name": file_path_obj.name,
+                "document_id": document_id,
                 "status": "skipped",
                 "total_chunks": len(records),
                 "skipped_chunks": skipped_chunks,
@@ -242,6 +306,7 @@ class IdempotentGraphIngester:
         )
 
         enrichment = self._enrich_ingested_nodes(nodes_to_ingest)
+        validation = build_validation_report(accepted, enrichment=enrichment)
 
         return {
             "file_name": file_path_obj.name,
@@ -252,6 +317,7 @@ class IdempotentGraphIngester:
             "chunk_policy_version": CHUNK_POLICY_VERSION,
             "adaptive_chunking": settings.ADAPTIVE_CHUNKING_ENABLED,
             "enrichment": enrichment,
+            "ingestion_validation": validation.to_dict(),
         }
 
     def ingest_directory(self, dir_path: str, metadata: Dict[str, Any] = None) -> List[Dict[str, Any]]:
@@ -267,9 +333,12 @@ class IdempotentGraphIngester:
             metadata = {}
 
         all_nodes_to_ingest = []
+        all_accepted: List[ChunkRecord] = []
         skipped_chunks = 0
         total_chunks = 0
         file_summaries = []
+
+        from backend.workers.document_processor import generate_document_id
 
         # 1. Collect and chunk all files, checking content hashes
         for file_path in dir_path_obj.iterdir():
@@ -309,8 +378,10 @@ class IdempotentGraphIngester:
                 
             if file_nodes:
                 all_nodes_to_ingest.extend(file_nodes)
+                all_accepted.extend(accepted)
                 file_summaries.append({
                     "file_name": file_path.name,
+                    "document_id": document_id,
                     "status": "pending_ingestion",
                     "total_chunks": len(records),
                     "skipped_chunks": skipped_chunks,
@@ -320,6 +391,7 @@ class IdempotentGraphIngester:
             else:
                 file_summaries.append({
                     "file_name": file_path.name,
+                    "document_id": document_id,
                     "status": "skipped",
                     "total_chunks": len(records),
                     "skipped_chunks": len(records),
@@ -352,11 +424,18 @@ class IdempotentGraphIngester:
         )
 
         enrichment = self._enrich_ingested_nodes(all_nodes_to_ingest)
+        validation = build_validation_report(all_accepted, enrichment=enrichment)
 
         # Update statuses in summary
         for f in file_summaries:
             if f["status"] == "pending_ingestion":
-                f["status"] = "success"
+                f["status"] = "success" if validation.complete else "incomplete"
                 f["enrichment"] = enrichment
+                f["ingestion_validation"] = validation.to_dict()
+                f["chunking_policy_version"] = (
+                    CHUNKING_POLICY_VERSION
+                    if settings.ADAPTIVE_CHUNKING_ENABLED
+                    else "legacy.recursive"
+                )
 
         return file_summaries

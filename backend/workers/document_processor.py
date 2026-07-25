@@ -1,7 +1,7 @@
 """
 Document Processing Utilities
 """
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Optional, Tuple
 import fitz  # PyMuPDF
 import os
 try:
@@ -11,6 +11,10 @@ except ImportError:  # pragma: no cover - older langchain layouts
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from backend.core.config import settings
+from backend.graph_ingestion.adaptive_chunking import (
+    ChunkRecord,
+    chunk_document,
+)
 from backend.graph_ingestion.lite_parser import LiteParseClient, LiteParseUnavailableError
 import json
 import hashlib
@@ -67,7 +71,7 @@ def chunk_text(
         length_function=len,
         separators=["\n\n", "\n", " ", ""]
     )
-    
+
     chunks = text_splitter.split_text(text)
     return chunks
 
