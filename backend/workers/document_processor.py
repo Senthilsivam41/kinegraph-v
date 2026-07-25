@@ -4,7 +4,10 @@ Document Processing Utilities
 from typing import List, Dict, Any, Tuple
 import fitz  # PyMuPDF
 import os
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+try:
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+except ImportError:  # pragma: no cover - older langchain layouts
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from backend.core.config import settings
@@ -53,15 +56,10 @@ def chunk_text(
     chunk_overlap: int = 200
 ) -> List[str]:
     """
-    Split text into chunks
-    
-    Args:
-        text: Text to split
-        chunk_size: Size of each chunk
-        chunk_overlap: Overlap between chunks
-        
-    Returns:
-        List of text chunks
+    Split text into chunks.
+
+    Legacy recursive splitter used when adaptive chunking is disabled.
+    Prefer ``chunk_document`` / ADR-002 for provenance-aware ingestion.
     """
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
@@ -72,6 +70,30 @@ def chunk_text(
     
     chunks = text_splitter.split_text(text)
     return chunks
+
+
+def build_document_chunks(
+    text: str,
+    *,
+    document_id: str,
+    adaptive_enabled: bool | None = None,
+    chunk_size: int | None = None,
+    chunk_overlap: int | None = None,
+):
+    """Build versioned ChunkRecords via the ADR-002 contract."""
+    from backend.graph_ingestion.adaptive_chunking import chunk_document
+
+    return chunk_document(
+        text,
+        document_id=document_id,
+        adaptive_enabled=(
+            settings.ADAPTIVE_CHUNKING_ENABLED
+            if adaptive_enabled is None
+            else adaptive_enabled
+        ),
+        chunk_size=settings.CHUNK_SIZE if chunk_size is None else chunk_size,
+        chunk_overlap=settings.CHUNK_OVERLAP if chunk_overlap is None else chunk_overlap,
+    )
 
 
 async def extract_entities_and_relationships(

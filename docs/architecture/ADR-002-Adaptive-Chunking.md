@@ -1,6 +1,6 @@
 # ADR-002: Adaptive Chunking
 
-- **Status:** Proposed
+- **Status:** Implemented behind experimental flag
 - **Date:** 2026-07-23
 - **Decision:** Replace one-size-fits-all chunking with a versioned structural-first policy.
 
@@ -20,6 +20,17 @@ page/section location, policy version, and a stable SHA-256-derived ID.
 Graph entities link only to verified chunk IDs. Data migrations are additive,
 idempotent, and report incomplete enrichment rather than inventing context.
 
+## Implementation notes
+
+- Policy module: `backend/graph_ingestion/adaptive_chunking.py`
+- Policy version: `kinegraph.adaptive-chunking.v1`
+- Feature flag: `ADAPTIVE_CHUNKING_ENABLED` (default `false` — recursive-only)
+- Wired into Celery ingest (`backend/workers/tasks.py`), graph ingest
+  (`backend/graph_ingestion/ingest.py`), and `scripts/ingest_docs.py`
+- Semantic boundary refinement remains experimental and is not applied by default
+- Page coordinates depend on richer parser output; markdown path records section
+  locality and reports missing enrichment instead of inventing context
+
 ## Consequences
 
 The index gains richer metadata and migration cost, while retrieval gains
@@ -36,4 +47,5 @@ shows a measurable gain over structural-plus-recursive baselines.
 
 Compare chunk policies on a frozen corpus with document, table, and image-heavy
 slices. Verify stable links, ingestion completeness, Recall@K, context
-precision, latency, and storage impact.
+precision, latency, and storage impact. Recursive remains the production default
+until an accepted benchmark gate promotes adaptive chunking.

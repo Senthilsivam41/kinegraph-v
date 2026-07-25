@@ -62,6 +62,18 @@ Eligible bounded attachments may use Vectorless. Legacy routing remains the
 default until the adaptive benchmark profile passes its precision, recall, and
 latency gates. See [ADR-001](docs/architecture/ADR-001-Adaptive-Routing.md).
 
+### Kinegraph v3 ADR-002 Adaptive Chunking
+
+The experimental ADR-002 chunker replaces one-size-fits-all recursive splits
+with a versioned structural-first contract (`kinegraph.adaptive-chunking.v1`).
+With `ADAPTIVE_CHUNKING_ENABLED=true`, ingestion prefers section, table, and
+image/OCR chunks, falls back to recursive splits only for oversized or
+unstructured regions, and stamps every chunk with stable SHA-256 IDs plus
+policy provenance. Incomplete enrichment is reported rather than invented.
+Recursive chunking remains the production default until a frozen-corpus
+benchmark gate accepts the adaptive policy. See
+[ADR-002](docs/architecture/ADR-002-Adaptive-Chunking.md).
+
 ### 2. Robust RAGAS Evaluation & Diagnostics
 - **Live Failure Interception**: [`RAGASEvaluator`](eval/ragas_evaluator.py) records evaluation failures and may compute keyword heuristics for diagnostics, but the benchmark gate rejects any row with `ragas_failed=True`. Fallback scores cannot be reported as RAGAS.
 - **Concurrent Batch Eval**: Added `evaluate_live_workflow` and `evaluate_live_single` supporting concurrent, rate-limited live workflow evaluations asynchronously, resulting in faster and safer benchmark runs.

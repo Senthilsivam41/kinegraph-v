@@ -25,7 +25,7 @@ slice without unacceptable precision, p95 latency, or cost regression.
 
 ## Phase 3 — Adaptive ingestion and graph evidence
 
-- Implement ADR-002 structural-first chunk contract.
+- Implement ADR-002 structural-first chunk contract. **(Implemented behind `ADAPTIVE_CHUNKING_ENABLED`; recursive remains default.)**
 - Add table/image chunk policies with source coordinates.
 - Migrate additively; verify IDs, enrich touched nodes automatically, and version policy metadata.
 - Compare structural, recursive, and semantic policies on a frozen corpus.
