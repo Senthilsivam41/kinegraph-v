@@ -1,7 +1,22 @@
 from backend.graph_ingestion.ingest import IdempotentGraphIngester
+from backend.graph_ingestion.adaptive_chunking import ChunkRecord, content_hash
 from llama_index.core.schema import TextNode
 from unittest.mock import MagicMock, patch
 import pytest
+
+
+def _record(text: str = "test chunk content", document_id: str = "doc_test") -> ChunkRecord:
+    digest = content_hash(text)
+    return ChunkRecord(
+        chunk_id=f"chunk_{digest}",
+        text=text,
+        chunk_type="recursive",
+        document_id=document_id,
+        ordinal=0,
+        chunk_hash=digest,
+        boundary_reason="unstructured_fallback",
+    )
+
 
 @patch("backend.graph_ingestion.ingest.GraphDatabase.driver")
 @patch("backend.graph_ingestion.ingest.ChromaService")
@@ -20,20 +35,20 @@ def test_ingest_idempotency_skip(mock_get_llm, mock_get_chroma_store, mock_get_n
 
     # Instantiate ingester
     ingester = IdempotentGraphIngester()
-    
-    with patch.object(IdempotentGraphIngester, "chunk_text", return_value=["test chunk content"]):
+
+    with patch.object(IdempotentGraphIngester, "chunk_records", return_value=[_record()]):
         # Run ingestion
         res = ingester.ingest_file("tests/test_schema.py")
-        
+
         # Check results
         assert res["status"] == "skipped"
         assert res["total_chunks"] == 1
         assert res["skipped_chunks"] == 1
         assert res["ingested_chunks"] == 0
-        
+
         # Check that query was called
         mock_session.run.assert_called_once()
-            
+
     ingester.close()
 
 @patch("backend.graph_ingestion.ingest.GraphDatabase.driver")
@@ -53,7 +68,7 @@ def test_ingest_idempotency_ingest(mock_node_enricher, mock_get_extractors, mock
     mock_session.run.return_value = mock_result
     mock_driver.session.return_value.__enter__.return_value = mock_session
     mock_driver_cls.return_value = mock_driver
-    
+
     # Setup extractors mock
     mock_extractor = MagicMock()
     mock_extractor.side_effect = lambda nodes: nodes
@@ -65,11 +80,11 @@ def test_ingest_idempotency_ingest(mock_node_enricher, mock_get_extractors, mock
 
     # Instantiate ingester
     ingester = IdempotentGraphIngester()
-    
-    with patch.object(IdempotentGraphIngester, "chunk_text", return_value=["test chunk content"]):
+
+    with patch.object(IdempotentGraphIngester, "chunk_records", return_value=[_record()]):
         # Run ingestion
         res = ingester.ingest_file("tests/test_schema.py")
-        
+
         # Check results
         assert res["status"] == "success"
         assert res["total_chunks"] == 1
@@ -77,9 +92,13 @@ def test_ingest_idempotency_ingest(mock_node_enricher, mock_get_extractors, mock
         assert res["ingested_chunks"] == 1
         assert res["enrichment"]["verified_vector_links"] == 1
         assert res["enrichment"]["status"] == "success"
-        
-        # Verify PropertyGraphIndex was built
+        assert "ingestion_validation" in res
+
+        # Verify PropertyGraphIndex was built with a stable chunk id
         mock_property_graph_index.assert_called_once()
+        nodes = mock_property_graph_index.call_args.kwargs["nodes"]
+        assert len(nodes) == 1
+        assert nodes[0].node_id.startswith("chunk_")
         mock_node_enricher.return_value.enrich.assert_called_once()
-            
+
     ingester.close()

@@ -102,7 +102,7 @@ flowchart LR
     Parse -->|"yes"| LiteParse["LiteParse: layout-aware Markdown"]
     LiteParse -.->|"unavailable or failed"| PyMuPDF["PyMuPDF fallback"]
     Parse -->|"no"| SourceText["Source text"]
-    LiteParse --> Chunking["Recursive chunking + SHA-256 content hashes"]
+    LiteParse --> Chunking["ADR-002 structural-first or recursive chunking + SHA-256 IDs"]
     PyMuPDF --> Chunking
     SourceText --> Chunking
     Chunking --> Idempotency{"Chunk already in Neo4j?"}

@@ -202,7 +202,7 @@ def process_document(self, file_path: str, metadata: Dict[str, Any]) -> Dict[str
             chunk_ids=chunk_ids,
             metadata=metadata,
         ))
-        
+
         # Clean up uploaded file
         try:
             Path(file_path).unlink()
