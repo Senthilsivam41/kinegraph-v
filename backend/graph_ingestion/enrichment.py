@@ -46,6 +46,44 @@ class KineticVNode:
     relationships: list[RelationshipEvidence] = field(default_factory=list)
     graph_positioning: dict[str, Any] = field(default_factory=dict)
 
+    def neo4j_properties(self) -> dict[str, Any]:
+        """Return a Neo4j-safe property bag containing verified provenance only."""
+        verified_chunks = [
+            chunk for chunk in self.parent_context_chunks
+            if chunk.embedding_verified
+        ]
+        positioning = self.graph_positioning or {}
+        return {
+            "node_id": self.node_id,
+            "entity_type": self.entity_type,
+            "description": self.description,
+            "parent_context_chunk_ids": [
+                chunk.chunk_id for chunk in verified_chunks
+            ],
+            "parent_context_chunks_json": json.dumps(
+                [asdict(chunk) for chunk in verified_chunks],
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+            "relationships_json": json.dumps(
+                [asdict(relationship) for relationship in self.relationships],
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+            "community_id": str(positioning.get("community_id") or ""),
+            "centrality_score": float(
+                positioning.get("centrality_score") or 0.0
+            ),
+            "depth_from_root": int(
+                positioning.get("depth_from_root")
+                if positioning.get("depth_from_root") is not None
+                else -1
+            ),
+            "schema_version": "3",
+            "vector_links_verified": bool(verified_chunks)
+            and len(verified_chunks) == len(self.parent_context_chunks),
+        }
+
 
 class ChromaChunkValidator:
     """Resolve graph chunk IDs to Chroma records that contain embeddings."""
@@ -176,14 +214,20 @@ class NodeEnricher:
 
         return weights
 
-    @staticmethod
-    def _default_description(node: dict, chunks: list[ContextChunkLink]) -> str:
+    def _default_description(
+        self,
+        node: dict,
+        chunks: list[ContextChunkLink],
+    ) -> str:
         """Generate enhanced description with weighted context from multiple chunks."""
         name = node.get("name") or node.get("id") or "Unnamed entity"
         entity_type = node.get("type") or node.get("label") or "entity"
         
         # Use configurable chunk count (default 5) for richer descriptions
-        max_chunks_to_use = min(len(chunks), NodeEnricher._calculate_optimal_chunk_count(node, chunks))
+        max_chunks_to_use = min(
+            len(chunks),
+            self._calculate_optimal_chunk_count(node, chunks),
+        )
         
         if max_chunks_to_use == 0:
             return f"{name} ({entity_type}) - No available context"
@@ -222,14 +266,17 @@ class NodeEnricher:
             f"\nContext summary:\n{evidence_summary}"
         )
 
-    @staticmethod
-    def _calculate_optimal_chunk_count(node: dict, chunks: list[ContextChunkLink]) -> int:
+    def _calculate_optimal_chunk_count(
+        self,
+        node: dict,
+        chunks: list[ContextChunkLink],
+    ) -> int:
         """Dynamically calculate optimal chunk count based on node complexity."""
         # Base on available verified chunks with meaningful content
         meaningful_chunks = [c for c in chunks if len(c.text.strip()) > 10]
         
         if not meaningful_chunks:
-            return min(3, max_context_chunks)
+            return min(3, self.max_context_chunks)
             
         # Scale based on total context length
         total_length = sum(len(c.text.strip()) for c in meaningful_chunks)
@@ -237,11 +284,11 @@ class NodeEnricher:
         
         # More chunks for richer entities (complex descriptions need more context)
         if avg_chunk_length > 200:  # Long descriptive chunks
-            return min(5, max_context_chunks)
+            return min(5, self.max_context_chunks)
         elif avg_chunk_length > 100:  # Medium chunks
-            return min(4, max_context_chunks)
+            return min(4, self.max_context_chunks)
         else:  # Short chunks - use more of them for better coverage
-            return min(6, max_context_chunks)
+            return min(6, self.max_context_chunks)
 
     @staticmethod
     def _graph_positioning(topology: dict[str, set[str]], rooted: set[str]) -> dict[str, dict[str, Any]]:

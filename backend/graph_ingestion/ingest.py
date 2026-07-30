@@ -97,15 +97,22 @@ class IdempotentGraphIngester:
         """Compute SHA-256 hash of a string."""
         return content_hash(content)
 
-    def is_chunk_ingested(self, chunk_hash: str) -> bool:
-        """Check if a chunk with the given hash is already in the graph database."""
+    def is_chunk_ingested(self, chunk_hash: str, document_id: str) -> bool:
+        """Check a document-scoped chunk hash in the graph database."""
         try:
             with self.neo4j_driver.session() as session:
                 query = """
-                    MATCH (n) WHERE (n:Chunk OR n:`__Chunk__`) AND n.chunk_hash = $hash
+                    MATCH (n)
+                    WHERE (n:Chunk OR n:`__Chunk__`)
+                      AND n.document_id = $document_id
+                      AND n.chunk_hash = $hash
                     RETURN count(n) as count
                 """
-                res = session.run(query, hash=chunk_hash)
+                res = session.run(
+                    query,
+                    hash=chunk_hash,
+                    document_id=document_id,
+                )
                 record = res.single()
                 return record["count"] > 0 if record else False
         except Exception as e:
@@ -197,7 +204,7 @@ class IdempotentGraphIngester:
         total = len(records)
         for record in records:
             chunk_digest = record.content_hash()
-            if self.is_chunk_ingested(chunk_digest):
+            if self.is_chunk_ingested(chunk_digest, record.document_id):
                 skipped_chunks += 1
                 continue
             node_meta = record.to_metadata(

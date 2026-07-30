@@ -11,6 +11,7 @@ from backend.app.main import app
 from backend.core.config import Settings
 from backend.services.chroma_service import ChromaService
 from backend.services.neo4j_service import (
+    GraphWriteResult,
     Neo4jService,
     UnsafeCypherError,
     validate_read_only_cypher,
@@ -36,7 +37,11 @@ def test_async_ingestion_closes_chroma_and_neo4j_clients():
     chroma = MagicMock()
     chroma.add_documents = AsyncMock(return_value=True)
     neo4j = MagicMock()
-    neo4j.add_document_graph = AsyncMock(return_value=True)
+    graph_write_result = GraphWriteResult(
+        success=True,
+        enrichment={"complete": True},
+    )
+    neo4j.add_document_graph = AsyncMock(return_value=graph_write_result)
     extractor = AsyncMock(return_value=([{"name": "A"}], []))
 
     with (
@@ -45,7 +50,7 @@ def test_async_ingestion_closes_chroma_and_neo4j_clients():
         patch("backend.workers.tasks.extract_entities_and_relationships", extractor),
         patch("backend.workers.tasks.VectorlessService"),
     ):
-        entities, relationships = asyncio.run(_persist_document(
+        entities, relationships, graph_write = asyncio.run(_persist_document(
             _task(),
             doc_id="doc-1",
             file_name="document.pdf",
@@ -58,6 +63,7 @@ def test_async_ingestion_closes_chroma_and_neo4j_clients():
 
     assert entities == [{"name": "A"}]
     assert relationships == []
+    assert graph_write is graph_write_result
     chroma.close.assert_called_once_with()
     neo4j.close.assert_called_once_with()
 

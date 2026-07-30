@@ -54,8 +54,32 @@ def test_ingest_idempotency_skip(mock_get_llm, mock_get_chroma_store, mock_get_n
 
         # Check that query was called
         mock_session.run.assert_called_once()
+        existence_call = mock_session.run.call_args
+        assert "n.document_id = $document_id" in existence_call.args[0]
+        assert existence_call.kwargs["document_id"] == "doc_test"
 
     ingester.close()
+
+
+def test_document_scoped_dedup_keeps_identical_text_from_another_document():
+    ingester = IdempotentGraphIngester.__new__(IdempotentGraphIngester)
+    ingester.is_chunk_ingested = MagicMock(
+        side_effect=lambda chunk_hash, document_id: document_id == "doc_a"
+    )
+    records = [
+        _record("shared boilerplate", document_id="doc_a"),
+        _record("shared boilerplate", document_id="doc_b"),
+    ]
+
+    nodes, skipped, accepted = ingester._nodes_from_records(
+        records,
+        file_name="shared.md",
+        metadata={},
+    )
+
+    assert skipped == 1
+    assert [record.document_id for record in accepted] == ["doc_b"]
+    assert [node.metadata["document_id"] for node in nodes] == ["doc_b"]
 
 
 @patch("backend.graph_ingestion.ingest.GraphDatabase.driver")
