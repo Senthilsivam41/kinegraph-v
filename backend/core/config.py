@@ -74,13 +74,8 @@ class Settings(BaseSettings):
     CONSERVATIVE_ROUTING_ENABLED: bool = False
     # ADR-002 structural-first chunking (default remains recursive-only).
     ADAPTIVE_CHUNKING_ENABLED: bool = False
-    CHUNK_SIZE: int = Field(default=1000, ge=64)
-    CHUNK_OVERLAP: int = Field(default=200, ge=0)
-
-    # ADR-002 adaptive chunking (structural-first). Legacy recursive remains default.
-    ADAPTIVE_CHUNKING_ENABLED: bool = False
     ADAPTIVE_CHUNKING_ENABLE_SEMANTIC: bool = False
-    CHUNK_SIZE: int = Field(default=1000, ge=200)
+    CHUNK_SIZE: int = Field(default=1000, ge=64)
     CHUNK_OVERLAP: int = Field(default=200, ge=0)
 
     # Faithfulness controls

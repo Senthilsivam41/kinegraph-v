@@ -138,3 +138,34 @@ def test_validation_report_is_additive_and_reports_incomplete_links():
     assert report["policy_version"] == CHUNK_POLICY_VERSION
     # Additive: callers can merge without inventing context.
     assert "invented" not in str(report).lower()
+
+
+def test_chunk_ids_differ_across_documents_with_identical_text():
+    text = "Shared paragraph about Kinetic-V retrieval."
+    a = chunk_document(text, document_id="doc-a", adaptive_enabled=False, chunk_size=200)
+    b = chunk_document(text, document_id="doc-b", adaptive_enabled=False, chunk_size=200)
+    assert a and b
+    assert [c.text for c in a] == [c.text for c in b]
+    assert [c.chunk_id for c in a] != [c.chunk_id for c in b]
+    assert all(c.document_id == "doc-a" for c in a)
+    assert all(c.document_id == "doc-b" for c in b)
+
+
+def test_oversized_table_is_sliced_with_repeated_headers():
+    header = "| ColA | ColB |"
+    separator = "| --- | --- |"
+    rows = [f"| value-{i} | detail-{i}-{'x' * 20} |" for i in range(40)]
+    table = "\n".join([header, separator, *rows])
+    chunks = chunk_document(
+        f"# Tables\n\n{table}",
+        document_id="doc_table",
+        adaptive_enabled=True,
+        chunk_size=120,
+        chunk_overlap=0,
+    )
+    tables = [c for c in chunks if c.chunk_type == "table"]
+    assert len(tables) > 1, "oversized table must be sliced"
+    assert all(len(c.text) <= 120 for c in tables)
+    assert all(header in c.text for c in tables)
+    assert all(c.headers and "ColA" in c.headers for c in tables)
+    assert len({c.table_id for c in tables}) == 1
