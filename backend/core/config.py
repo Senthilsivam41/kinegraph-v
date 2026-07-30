@@ -103,6 +103,12 @@ class Settings(BaseSettings):
             raise ValueError("credentialed CORS cannot use a wildcard origin")
         return self
 
+    @model_validator(mode="after")
+    def validate_chunking_configuration(self):
+        if self.CHUNK_OVERLAP >= self.CHUNK_SIZE:
+            raise ValueError("CHUNK_OVERLAP must be smaller than CHUNK_SIZE")
+        return self
+
     class Config:
         env_file = ".env"
         case_sensitive = True

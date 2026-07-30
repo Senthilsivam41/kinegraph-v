@@ -171,6 +171,29 @@ def test_security_settings_reject_credentialed_wildcard_cors():
         )
 
 
+def test_chunking_settings_are_declared_once_and_reject_invalid_overlap():
+    source = (REPO_ROOT / "backend" / "core" / "config.py").read_text()
+    assert source.count("ADAPTIVE_CHUNKING_ENABLED: bool") == 1
+    assert source.count("CHUNK_SIZE: int") == 1
+    assert source.count("CHUNK_OVERLAP: int") == 1
+
+    configured = Settings(
+        _env_file=None,
+        OPENAI_API_KEY="test-key",
+        NEO4J_PASSWORD="a-secure-test-password",
+    )
+    assert configured.CHUNK_OVERLAP < configured.CHUNK_SIZE
+
+    with pytest.raises(ValidationError, match="CHUNK_OVERLAP must be smaller than CHUNK_SIZE"):
+        Settings(
+            _env_file=None,
+            OPENAI_API_KEY="test-key",
+            NEO4J_PASSWORD="a-secure-test-password",
+            CHUNK_SIZE=200,
+            CHUNK_OVERLAP=200,
+        )
+
+
 def test_default_cors_origins_are_explicit_and_neo4j_secret_is_externalized():
     configured = Settings(
         _env_file=None,
