@@ -177,11 +177,51 @@ def test_legacy_document_ingestion_creates_chunks_and_runs_enrichment():
         ))
 
     assert result.success is True
-    assert result.enrichment == enrichment
+    assert result.enrichment["enriched"] == 1
+    assert result.enrichment["incomplete_entity_ids"] == []
+    assert result.enrichment["linked_entity_ids"] == ["Neo4j"]
     assert any("MERGE (c:__Node__:Chunk" in call.args[0] for call in session.run.call_args_list)
     enricher_cls.return_value.enrich.assert_called_once_with(chunk_ids=["chunk-1"])
     assert chroma_cls.called
     chroma_cls.return_value.close.assert_called_once_with()
+
+
+def test_entity_without_chunk_match_is_not_linked_to_first_chunk():
+    """ADR-002: never invent evidence locality for unmatched entities."""
+    service = Neo4jService.__new__(Neo4jService)
+    session = MagicMock()
+    service.driver = MagicMock()
+    service.driver.session.return_value.__enter__.return_value = session
+
+    with patch("backend.services.chroma_service.ChromaService"), patch(
+        "backend.graph_ingestion.enrichment.NodeEnricher"
+    ) as enricher_cls:
+        enricher_cls.return_value.enrich.return_value = {
+            "enriched": 0,
+            "complete": False,
+            "skipped_without_verified_context": 1,
+        }
+        result = asyncio.run(service.add_document_graph(
+            doc_id="doc-2",
+            content="Only talks about Alpha.",
+            metadata={"file_name": "test.md"},
+            entities=[{"name": "UnmentionedEntity", "type": "Concept"}],
+            relationships=[],
+            chunks=["Only talks about Alpha."],
+            chunk_ids=["chunk-alpha"],
+        ))
+
+    assert result.success is True
+    assert "UnmentionedEntity" in result.enrichment["incomplete_entity_ids"]
+    assert result.enrichment["linked_entity_ids"] == []
+
+    entity_calls = [
+        call for call in session.run.call_args_list
+        if "MERGE (e:Entity" in call.args[0]
+    ]
+    assert len(entity_calls) == 1
+    # Document MENTIONS still allowed; chunk MENTIONS must not invent chunk-alpha.
+    assert entity_calls[0].kwargs["chunk_ids"] == []
 
 
 def test_legacy_relationship_upsert_uses_valid_merge_clause_order():

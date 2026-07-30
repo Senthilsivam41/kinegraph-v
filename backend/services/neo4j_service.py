@@ -199,14 +199,19 @@ class Neo4jService:
                         for chunk_id, chunk in zip(chunk_ids, chunks)
                     ])
                 
-                # Create entity nodes and link to document
+                # Create entity nodes and link to document.
+                # Chunk MENTIONS require a textual match — never invent locality.
+                incomplete_entity_ids: list[str] = []
+                linked_entity_ids: list[str] = []
                 for entity in entities:
                     matching_chunk_ids = [
                         chunk_id for chunk_id, chunk in zip(chunk_ids, chunks)
                         if entity["name"].lower() in chunk.lower()
                     ]
-                    if not matching_chunk_ids and chunk_ids:
-                        matching_chunk_ids = [chunk_ids[0]]
+                    if matching_chunk_ids:
+                        linked_entity_ids.append(entity["name"])
+                    else:
+                        incomplete_entity_ids.append(entity["name"])
                     session.run("""
                         MERGE (e:Entity {name: $name, type: $type})
                         WITH e
@@ -233,16 +238,21 @@ class Neo4jService:
                     """, source=rel['source'], target=rel['target'], rel_type=rel['type'],
                          evidence_text=evidence, weight=float(rel.get("weight", 0.75)))
 
-            enrichment_result = None
+            enrichment_result: Dict[str, Any] = {
+                "incomplete_entity_ids": incomplete_entity_ids,
+                "linked_entity_ids": linked_entity_ids,
+            }
             if chunk_ids:
                 from backend.graph_ingestion.enrichment import NodeEnricher
                 from backend.services.chroma_service import ChromaService
 
                 chroma = ChromaService()
                 try:
-                    enrichment_result = NodeEnricher(
+                    node_enrichment = NodeEnricher(
                         self.driver, chroma.client
                     ).enrich(chunk_ids=chunk_ids)
+                    if isinstance(node_enrichment, dict):
+                        enrichment_result = {**node_enrichment, **enrichment_result}
                 finally:
                     chroma.close()
             return GraphWriteResult(success=True, enrichment=enrichment_result)

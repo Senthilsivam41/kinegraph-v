@@ -21,6 +21,11 @@ _IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
 _TABLE_SEPARATOR_RE = re.compile(r"^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$")
 
 
+def content_hash(text: str) -> str:
+    """SHA-256 digest of chunk text (used for idempotency checks)."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
 @dataclass(frozen=True)
 class ChunkRecord:
     """Source-faithful chunk with provenance and policy metadata."""
@@ -46,11 +51,11 @@ class ChunkRecord:
     overlap: int | None = None
 
     def content_hash(self) -> str:
-        return hashlib.sha256(self.text.encode("utf-8")).hexdigest()
+        return content_hash(self.text)
 
-    def to_metadata(self) -> dict[str, Any]:
+    def to_metadata(self, **extra: Any) -> dict[str, Any]:
         """Flat metadata suitable for Chroma / Neo4j property bags."""
-        payload = {
+        payload: dict[str, Any] = {
             "document_id": self.document_id,
             "chunk_index": self.ordinal,
             "chunk_type": self.chunk_type,
@@ -70,15 +75,24 @@ class ChunkRecord:
             "overlap": self.overlap if self.overlap is not None else -1,
             "chunk_hash": self.content_hash(),
         }
+        for key, value in extra.items():
+            if isinstance(value, (str, int, float, bool)) or value is None:
+                payload[key] = value
         return payload
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
-def stable_chunk_id(text: str, ordinal: int) -> str:
-    """SHA-256-derived stable chunk ID (compatible with Path A IDs)."""
-    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+def stable_chunk_id(
+    text: str,
+    ordinal: int,
+    document_id: str,
+    policy_version: str = CHUNK_POLICY_VERSION,
+) -> str:
+    """SHA-256-derived stable chunk ID scoped to document + policy."""
+    payload = f"{document_id}|{policy_version}|{ordinal}|{text}"
+    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
     return f"chunk_{ordinal}_{digest}"
 
 
@@ -113,7 +127,7 @@ def _make_record(
     return ChunkRecord(
         text=text,
         chunk_type=chunk_type,
-        chunk_id=stable_chunk_id(text, ordinal),
+        chunk_id=stable_chunk_id(text, ordinal, document_id),
         ordinal=ordinal,
         document_id=document_id,
         policy_version=CHUNK_POLICY_VERSION,
@@ -169,13 +183,19 @@ def _parse_blocks(text: str) -> list[dict[str, Any]]:
                 table_lines.append(lines[i])
                 i += 1
             headers = ""
+            separator = ""
+            body_rows = table_lines
             if len(table_lines) >= 2 and _TABLE_SEPARATOR_RE.match(table_lines[1].strip()):
                 headers = table_lines[0].strip()
+                separator = table_lines[1].strip()
+                body_rows = table_lines[2:]
             blocks.append(
                 {
                     "type": "table",
                     "text": "\n".join(table_lines).strip(),
                     "headers": headers,
+                    "separator": separator,
+                    "body_rows": body_rows,
                 }
             )
             continue
@@ -234,6 +254,56 @@ def _chunk_recursive_records(
             )
         )
     return records
+
+
+def _split_table_slices(
+    *,
+    headers: str,
+    separator: str,
+    body_rows: list[str],
+    full_text: str,
+    chunk_size: int,
+) -> list[str]:
+    """Slice oversized tables, repeating header/separator in each slice."""
+    if len(full_text) <= chunk_size:
+        return [full_text]
+
+    preface_parts = [part for part in (headers, separator) if part]
+    preface = "\n".join(preface_parts)
+    preface_len = len(preface) + (1 if preface else 0)
+
+    if not body_rows:
+        # No parseable body — fall back to recursive character split of full table.
+        return _recursive_split(full_text, chunk_size=chunk_size, chunk_overlap=0)
+
+    # If a single row plus header exceeds the budget, still emit it (cannot invent
+    # cell splits without losing table structure) but keep header repeated.
+    slices: list[str] = []
+    current_rows: list[str] = []
+    current_len = preface_len
+
+    def flush() -> None:
+        nonlocal current_rows, current_len
+        if not current_rows:
+            return
+        body = "\n".join(current_rows)
+        slices.append(f"{preface}\n{body}" if preface else body)
+        current_rows = []
+        current_len = preface_len
+
+    for row in body_rows:
+        row_cost = len(row) + (1 if current_rows else 0)
+        if current_rows and current_len + row_cost > chunk_size:
+            flush()
+            row_cost = len(row)
+        current_rows.append(row)
+        current_len += row_cost
+        # Extremely long single row: flush immediately so later rows can start fresh.
+        if current_len > chunk_size and len(current_rows) == 1:
+            flush()
+
+    flush()
+    return slices or [full_text]
 
 
 def _adaptive_chunk(
@@ -337,20 +407,32 @@ def _adaptive_chunk(
             path = current_path()
             table_text = str(block["text"])
             table_hash = hashlib.sha256(table_text.encode("utf-8")).hexdigest()[:16]
-            records.append(
-                _make_record(
-                    text=table_text,
-                    chunk_type="table",
-                    ordinal=ordinal,
-                    document_id=document_id,
-                    section_path=path,
-                    table_id=f"table_{table_hash}",
-                    headers=str(block.get("headers") or ""),
-                    caption="",
-                    boundary_reason="table_block",
-                )
+            table_id = f"table_{table_hash}"
+            headers = str(block.get("headers") or "")
+            slices = _split_table_slices(
+                headers=headers,
+                separator=str(block.get("separator") or ""),
+                body_rows=list(block.get("body_rows") or []),
+                full_text=table_text,
+                chunk_size=chunk_size,
             )
-            ordinal += 1
+            for slice_text in slices:
+                records.append(
+                    _make_record(
+                        text=slice_text,
+                        chunk_type="table",
+                        ordinal=ordinal,
+                        document_id=document_id,
+                        section_path=path,
+                        table_id=table_id,
+                        headers=headers,
+                        caption="",
+                        boundary_reason=(
+                            "table_block_sliced" if len(slices) > 1 else "table_block"
+                        ),
+                    )
+                )
+                ordinal += 1
             continue
 
         if btype == "image":

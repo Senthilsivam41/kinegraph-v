@@ -54,7 +54,7 @@ async def _persist_document(
     chunk_metadata: list[Dict[str, Any]],
     chunk_ids: list[str],
     metadata: Dict[str, Any],
-) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]]]:
+) -> tuple[list[Dict[str, Any]], list[Dict[str, Any]], Any]:
     """Run all async ingestion work in one event loop and close every client."""
     chroma = ChromaService()
     neo4j = None
@@ -119,9 +119,11 @@ async def _persist_document(
             chunk_ids=chunk_ids,
         )
         if not graph_write:
-            raise RuntimeError("Failed to store document in Neo4j")
+            raise RuntimeError(
+                f"Failed to store document in Neo4j: {getattr(graph_write, 'error', None)}"
+            )
         logger.info("[Task %s] Stored in Neo4j", task.request.id)
-        return entities, relationships
+        return entities, relationships, graph_write
     finally:
         if neo4j is not None:
             neo4j.close()
@@ -192,7 +194,7 @@ def process_document(self, file_path: str, metadata: Dict[str, Any]) -> Dict[str
             }
             chunk_metadata.append(chunk_meta)
         
-        entities, relationships = asyncio.run(_persist_document(
+        entities, relationships, graph_write = asyncio.run(_persist_document(
             self,
             doc_id=doc_id,
             file_name=file_name,
@@ -214,12 +216,23 @@ def process_document(self, file_path: str, metadata: Dict[str, Any]) -> Dict[str
                 file_path,
                 e,
             )
-        
+
+        enrichment = getattr(graph_write, "enrichment", None) or {}
+        incomplete_entity_ids = list(enrichment.get("incomplete_entity_ids") or [])
+        linked_entity_ids = list(enrichment.get("linked_entity_ids") or [])
+        missing_vector_links = int(enrichment.get("missing_vector_links", 0) or 0)
+        verified_chunk_ids = chunk_ids if missing_vector_links == 0 else []
+        if enrichment.get("skipped_without_verified_context"):
+            skipped = int(enrichment["skipped_without_verified_context"])
+            incomplete_entity_ids.extend(
+                f"entity_without_verified_context:{idx}" for idx in range(skipped)
+            )
+
         validation = build_ingestion_validation_report(
             chunk_ids=chunk_ids,
-            verified_chunk_ids=chunk_ids,
-            enriched_entity_ids=[e.get("name") for e in entities if e.get("name")],
-            incomplete_entity_ids=[],
+            verified_chunk_ids=verified_chunk_ids,
+            enriched_entity_ids=linked_entity_ids,
+            incomplete_entity_ids=incomplete_entity_ids,
         )
 
         # Return results
@@ -233,8 +246,9 @@ def process_document(self, file_path: str, metadata: Dict[str, Any]) -> Dict[str
             "adaptive_chunking": bool(
                 metadata.get("adaptive_chunking", settings.ADAPTIVE_CHUNKING_ENABLED)
             ),
+            "enrichment": enrichment,
             "validation": validation,
-            "status": "success"
+            "status": "success" if validation.get("complete") else "incomplete",
         }
         
     except Exception as e:
