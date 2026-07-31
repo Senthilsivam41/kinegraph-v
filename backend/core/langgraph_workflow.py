@@ -12,7 +12,6 @@ Improvements over v1:
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import logging
 import re
@@ -36,8 +35,20 @@ from backend.core.grounding import (
     validate_grounded_response,
 )
 from backend.core.intent_classifier import classify_intent, rewrite_query_for_retrieval
-from backend.core.rrf import deduplicate_results, reciprocal_rank_fusion
+from backend.core.retrieval_orchestration import (
+    annotate_channel_candidates,
+    build_candidate_lifecycle,
+    candidate_identity,
+    optimize_context,
+    passthrough_context_report,
+)
+from backend.core.rrf import deduplicate_results_with_report, reciprocal_rank_fusion
 from backend.core.query_recovery import QueryRecoveryEngine
+from backend.core.verification import (
+    apply_response_policy,
+    build_verification_outcome,
+    compute_kinetic_score,
+)
 from backend.services.chroma_service import ChromaService
 from backend.services.neo4j_service import Neo4jService
 from backend.services.vectorless_service import VectorlessService
@@ -182,12 +193,22 @@ class WorkflowState(TypedDict):
     deduplication_details: Dict[str, Any]
     reranked_results: List[Dict[str, Any]]
     reranker_details: Dict[str, Any]
+    enable_retrieval_orchestration: bool
+    enable_cross_encoder_reranking: bool
+    context_max_per_source: int
+    context_max_per_community: int
+    fusion_candidates_before_dedup: List[Dict[str, Any]]
+    context_optimization_details: Dict[str, Any]
+    candidate_lifecycle: Dict[str, Any]
     enable_grounding_critique: bool
+    enable_verification_framework: bool
     grounded_claims: List[Dict[str, Any]]
     citation_context: Dict[str, str]
     citation_validation: Dict[str, Any]
     grounding_critique: Dict[str, Any]
     answer_relevancy: Dict[str, Any]
+    verification_outcome: Dict[str, Any]
+    kinetic_score: Dict[str, Any]
     generated_answer: str
     answer_confidence: float
     latency_breakdown: Dict[str, float]
@@ -254,14 +275,8 @@ def parse_research_synthesis_output(text: str) -> tuple[str, float]:
 
 
 def _candidate_identity(result: Dict[str, Any]) -> str:
-    """Return a stable candidate identifier for trace comparisons."""
-    metadata = result.get("metadata") or {}
-    for key in ("chunk_id", "vector_record_id", "node_id", "id", "citation_id"):
-        value = result.get(key, metadata.get(key))
-        if value not in (None, ""):
-            return str(value)
-    digest = hashlib.sha256(result.get("content", "").encode("utf-8")).hexdigest()
-    return f"content-sha256:{digest}"
+    """Backward-compatible alias for the ADR-003 identity contract."""
+    return candidate_identity(result)
 
 
 # ---------------------------------------------------------------------------
@@ -278,7 +293,7 @@ class HybridRAGWorkflow:
         self,
         chroma_service: ChromaService,
         neo4j_service: Neo4jService,
-        use_cross_encoder: bool = True,
+        use_cross_encoder: Optional[bool] = None,
         generation_model: Optional[str] = None,
         critic_model: Optional[str] = None,
     ) -> None:
@@ -287,11 +302,17 @@ class HybridRAGWorkflow:
         self.graph_retriever_node = LangGraphGraphRetrieverNode(
             use_cypher=False, neo4j_driver=neo4j_service.driver
         )
+        requested_cross_encoder = (
+            settings.CROSS_ENCODER_RERANK_ENABLED
+            if use_cross_encoder is None
+            else use_cross_encoder
+        )
         self.ranker = ContextRanker(
-            use_cross_encoder=use_cross_encoder,
+            use_cross_encoder=requested_cross_encoder,
             model_name=settings.RERANKER_MODEL,
             min_relevance_threshold=settings.RERANKER_MIN_RELEVANCE,
         )
+        self._ranker_cache = {requested_cross_encoder: self.ranker}
 
         generation_model = generation_model or settings.LLM_MODEL
         critic_model = critic_model or settings.FAITHFULNESS_CRITIC_MODEL
@@ -313,6 +334,21 @@ class HybridRAGWorkflow:
         self.recovery = QueryRecoveryEngine(self.llm)
 
         self.graph = self._build_graph()
+
+    def _get_ranker(self, use_cross_encoder: bool) -> ContextRanker:
+        """Resolve a cached ranker so cross-encoder use is request-scoped and explicit."""
+        current = self.ranker
+        if current.requested_cross_encoder == use_cross_encoder:
+            return current
+        cache = getattr(self, "_ranker_cache", {})
+        if use_cross_encoder not in cache:
+            cache[use_cross_encoder] = ContextRanker(
+                use_cross_encoder=use_cross_encoder,
+                model_name=settings.RERANKER_MODEL,
+                min_relevance_threshold=settings.RERANKER_MIN_RELEVANCE,
+            )
+            self._ranker_cache = cache
+        return cache[use_cross_encoder]
 
     # ------------------------------------------------------------------
     # Graph construction
@@ -1044,14 +1080,16 @@ class HybridRAGWorkflow:
     # ------------------------------------------------------------------
 
     async def _fusion_node(self, state: WorkflowState) -> WorkflowState:
-        """Merge results using RRF; deduplicate."""
+        """Merge results using stable-ID RRF, then deduplicate with reasons."""
         t0 = time.perf_counter()
         mode = state["mode"]
 
-        if mode in (QueryMode.VECTOR, QueryMode.VECTORLESS):
-            fused = state["vector_results"]
+        if mode == QueryMode.VECTOR:
+            fused = annotate_channel_candidates(state["vector_results"], "vector")
+        elif mode == QueryMode.VECTORLESS:
+            fused = annotate_channel_candidates(state["vector_results"], "vectorless")
         elif mode == QueryMode.GRAPH:
-            fused = state["graph_results"]
+            fused = annotate_channel_candidates(state["graph_results"], "graph")
         else:
             channels = [
                 ("vector", state["vector_results"], state.get("vector_fusion_weight", 1.0)),
@@ -1066,13 +1104,15 @@ class HybridRAGWorkflow:
             ) if active else []
 
         before_deduplication = list(fused)
-        fused = deduplicate_results(
+        fused, deduplication_report = deduplicate_results_with_report(
             before_deduplication,
             similarity_threshold=settings.RETRIEVAL_DEDUP_THRESHOLD,
         )
+        state["fusion_candidates_before_dedup"] = before_deduplication
         state["fused_results"] = fused
         retained_ids = {_candidate_identity(result) for result in fused}
         state["deduplication_details"] = {
+            **deduplication_report,
             "input_count": len(before_deduplication),
             "output_count": len(fused),
             "removed_candidate_ids": [
@@ -1098,35 +1138,79 @@ class HybridRAGWorkflow:
         This directly improves context_precision.
         """
         t0 = time.perf_counter()
-        reranked = self.ranker.rerank(
+        requested_cross_encoder = state.get(
+            "enable_cross_encoder_reranking",
+            self.ranker.requested_cross_encoder,
+        )
+        ranker = self._get_ranker(requested_cross_encoder)
+        orchestration_enabled = state.get("enable_retrieval_orchestration", False)
+        rerank_top_k = (
+            len(state["fused_results"])
+            if orchestration_enabled
+            else state["max_results"]
+        )
+        reranked, reranker_report = ranker.rerank_with_report(
             query=state["query"],           # use original query for relevance check
             chunks=state["fused_results"],
-            top_k=state["max_results"],
+            top_k=max(1, rerank_top_k),
             preferred_community_id=state.get("community_id"),
         )
-        state["reranked_results"] = reranked
-        retained_ids = {_candidate_identity(result) for result in reranked}
+        if orchestration_enabled:
+            selected, optimization_report = optimize_context(
+                reranked,
+                top_k=state["max_results"],
+                max_per_source=state.get("context_max_per_source", 0),
+                max_per_community=state.get("context_max_per_community", 0),
+            )
+        else:
+            selected = reranked
+            optimization_report = passthrough_context_report(
+                selected,
+                reason="ADR-003 feature flag disabled",
+            )
+        state["reranked_results"] = selected
+        state["context_optimization_details"] = optimization_report
+        retained_ids = {_candidate_identity(result) for result in selected}
         state["reranker_details"] = {
-            "requested_mode": "cross_encoder" if self.ranker.requested_cross_encoder else "keyword",
-            "mode": "cross_encoder" if self.ranker.use_cross_encoder else "keyword",
-            "model": self.ranker.model_name,
-            "fallback": bool(self.ranker.fallback_reason),
-            "fallback_reason": self.ranker.fallback_reason,
-            "minimum_relevance": self.ranker.min_relevance_threshold,
+            **reranker_report,
+            "requested_mode": "cross_encoder" if ranker.requested_cross_encoder else "keyword",
+            "mode": "cross_encoder" if ranker.use_cross_encoder else "keyword",
+            "model": ranker.model_name,
+            "controlled_experiment": bool(requested_cross_encoder),
+            "fallback": bool(ranker.fallback_reason),
+            "fallback_reason": ranker.fallback_reason,
+            "minimum_relevance": ranker.min_relevance_threshold,
             "input_count": len(state["fused_results"]),
-            "output_count": len(reranked),
+            "output_count": len(selected),
             "removed_candidate_ids": [
                 _candidate_identity(result)
                 for result in state["fused_results"]
                 if _candidate_identity(result) not in retained_ids
             ],
         }
+        channel_candidates = {
+            "vectorless" if state["mode"] == QueryMode.VECTORLESS else "vector": list(
+                state["vector_results"]
+            ),
+            "graph": list(state["graph_results"]),
+            "lexical": list(state.get("lexical_results", [])),
+        }
+        state["candidate_lifecycle"] = build_candidate_lifecycle(
+            channel_candidates=channel_candidates,
+            fused_candidates=state.get("fusion_candidates_before_dedup", []),
+            final_candidates=selected,
+            stage_reports=(
+                state.get("deduplication_details", {}),
+                reranker_report,
+                optimization_report,
+            ),
+        )
         state["latency_breakdown"]["rerank_ms"] = round(
             (time.perf_counter() - t0) * 1000, 2
         )
         logger.info(
             "[Rerank] %d → %d chunks after filtering",
-            len(state["fused_results"]), len(reranked),
+            len(state["fused_results"]), len(selected),
         )
         return state
 
@@ -1200,6 +1284,41 @@ class HybridRAGWorkflow:
         """Small seam for testing structured generation and critique."""
         return await (prompt | llm).ainvoke(payload)
 
+    def _finalize_verification(self, state: WorkflowState) -> WorkflowState:
+        """Apply ADR-004 only when explicitly enabled; scoring never overrides refusal."""
+        if not state.get("enable_verification_framework", False):
+            state["verification_outcome"] = {
+                "enabled": False,
+                "reason": "ADR-004 feature flag disabled",
+            }
+            state["kinetic_score"] = {}
+            return state
+
+        outcome = build_verification_outcome(
+            claims=state.get("grounded_claims", []),
+            contexts=state.get("reranked_results", []),
+            citation_validation=state.get("citation_validation", {}),
+            grounding_critique=state.get("grounding_critique", {}),
+            answer_relevancy=state.get("answer_relevancy", {}),
+        )
+        state["verification_outcome"] = outcome
+        state["generated_answer"] = apply_response_policy(
+            state.get("generated_answer", ""), outcome
+        )
+        if outcome["status"] == "refused":
+            state["answer_confidence"] = 0.0
+        elif outcome["status"] == "partial":
+            state["answer_confidence"] = min(state.get("answer_confidence", 0.0), 0.5)
+        state["kinetic_score"] = compute_kinetic_score(
+            outcome=outcome,
+            claims=state.get("grounded_claims", []),
+            contexts=state.get("reranked_results", []),
+            citation_validation=state.get("citation_validation", {}),
+            grounding_critique=state.get("grounding_critique", {}),
+            answer_relevancy=state.get("answer_relevancy", {}),
+        )
+        return state
+
     async def _grounding_critique(self, state: WorkflowState) -> WorkflowState:
         """Remove semantically unsupported claims after citation-ID validation."""
         t0 = time.perf_counter()
@@ -1219,7 +1338,7 @@ class HybridRAGWorkflow:
             state["latency_breakdown"]["grounding_critique_ms"] = round(
                 (time.perf_counter() - t0) * 1000, 2
             )
-            return state
+            return self._finalize_verification(state)
 
         original_count = len(claims)
         try:
@@ -1279,7 +1398,7 @@ class HybridRAGWorkflow:
         state["latency_breakdown"]["grounding_critique_ms"] = round(
             (time.perf_counter() - t0) * 1000, 2
         )
-        return state
+        return self._finalize_verification(state)
 
     # ------------------------------------------------------------------
     # Node: format_results
@@ -1300,6 +1419,12 @@ class HybridRAGWorkflow:
                     "rerank_mode": result.get("rerank_mode", "unknown"),
                     "rerank_components": result.get("rerank_components", {}),
                     "rrf_contributions": result.get("rrf_contributions", {}),
+                    "candidate_id": result.get("candidate_id"),
+                    "source_channels": result.get("source_channels", []),
+                    "original_scores": result.get("original_scores", {}),
+                    "channel_ranks": result.get("channel_ranks", {}),
+                    "graph_paths": result.get("graph_paths", {}),
+                    "retrieval_provenance": result.get("retrieval_provenance", {}),
                     "citation_id": result.get("citation_id"),
                     "intent": state.get("intent", ""),
                 },
@@ -1345,6 +1470,16 @@ class HybridRAGWorkflow:
                 **state.get("reranker_details", {}),
                 "candidates": list(state["reranked_results"]),
             },
+            "retrieval_orchestration": {
+                "enabled": state.get("enable_retrieval_orchestration", False),
+                "context_optimization": state.get("context_optimization_details", {}),
+                "candidate_lifecycle": state.get("candidate_lifecycle", {}),
+            },
+            "verification": {
+                "enabled": state.get("enable_verification_framework", False),
+                "outcome": state.get("verification_outcome", {}),
+                "kinetic_score": state.get("kinetic_score", {}),
+            },
             "final_contexts": list(state["reranked_results"]),
             "latency_ms": state["latency_breakdown"],
         }
@@ -1369,6 +1504,11 @@ class HybridRAGWorkflow:
         enable_conditional_recovery: bool = True,
         enable_hyde_fallback: bool = False,
         enable_grounding_critique: bool = True,
+        enable_verification_framework: bool = settings.VERIFICATION_FRAMEWORK_ENABLED,
+        enable_retrieval_orchestration: bool = settings.RETRIEVAL_ORCHESTRATION_ENABLED,
+        enable_cross_encoder_reranking: Optional[bool] = None,
+        context_max_per_source: int = settings.CONTEXT_OPTIMIZATION_MAX_PER_SOURCE,
+        context_max_per_community: int = settings.CONTEXT_OPTIMIZATION_MAX_PER_COMMUNITY,
         enable_adaptive_routing: bool = settings.ADAPTIVE_ROUTING_ENABLED,
         enable_conservative_routing: bool = settings.CONSERVATIVE_ROUTING_ENABLED,
         allow_mode_downgrade: bool = True,
@@ -1414,12 +1554,26 @@ class HybridRAGWorkflow:
             deduplication_details={},
             reranked_results=[],
             reranker_details={},
+            enable_retrieval_orchestration=enable_retrieval_orchestration,
+            enable_cross_encoder_reranking=(
+                self.ranker.requested_cross_encoder
+                if enable_cross_encoder_reranking is None
+                else enable_cross_encoder_reranking
+            ),
+            context_max_per_source=context_max_per_source,
+            context_max_per_community=context_max_per_community,
+            fusion_candidates_before_dedup=[],
+            context_optimization_details={},
+            candidate_lifecycle={},
             enable_grounding_critique=enable_grounding_critique,
+            enable_verification_framework=enable_verification_framework,
             grounded_claims=[],
             citation_context={},
             citation_validation={},
             grounding_critique={},
             answer_relevancy={},
+            verification_outcome={},
+            kinetic_score={},
             generated_answer="",
             answer_confidence=0.0,
             latency_breakdown={},
@@ -1446,6 +1600,11 @@ class HybridRAGWorkflow:
         enable_conditional_recovery: bool = True,
         enable_hyde_fallback: bool = False,
         enable_grounding_critique: bool = True,
+        enable_verification_framework: bool = settings.VERIFICATION_FRAMEWORK_ENABLED,
+        enable_retrieval_orchestration: bool = settings.RETRIEVAL_ORCHESTRATION_ENABLED,
+        enable_cross_encoder_reranking: Optional[bool] = None,
+        context_max_per_source: int = settings.CONTEXT_OPTIMIZATION_MAX_PER_SOURCE,
+        context_max_per_community: int = settings.CONTEXT_OPTIMIZATION_MAX_PER_COMMUNITY,
         enable_adaptive_routing: bool = settings.ADAPTIVE_ROUTING_ENABLED,
         enable_conservative_routing: bool = settings.CONSERVATIVE_ROUTING_ENABLED,
         allow_mode_downgrade: bool = True,
@@ -1504,12 +1663,26 @@ class HybridRAGWorkflow:
             deduplication_details={},
             reranked_results=[],
             reranker_details={},
+            enable_retrieval_orchestration=enable_retrieval_orchestration,
+            enable_cross_encoder_reranking=(
+                self.ranker.requested_cross_encoder
+                if enable_cross_encoder_reranking is None
+                else enable_cross_encoder_reranking
+            ),
+            context_max_per_source=context_max_per_source,
+            context_max_per_community=context_max_per_community,
+            fusion_candidates_before_dedup=[],
+            context_optimization_details={},
+            candidate_lifecycle={},
             enable_grounding_critique=enable_grounding_critique,
+            enable_verification_framework=enable_verification_framework,
             grounded_claims=[],
             citation_context={},
             citation_validation={},
             grounding_critique={},
             answer_relevancy={},
+            verification_outcome={},
+            kinetic_score={},
             generated_answer="",
             answer_confidence=0.0,
             latency_breakdown={},
@@ -1533,6 +1706,13 @@ class HybridRAGWorkflow:
             "citation_validation": final_state["citation_validation"],
             "grounding_critique": final_state["grounding_critique"],
             "answer_relevancy": final_state["answer_relevancy"],
+            "retrieval_orchestration": {
+                "enabled": final_state["enable_retrieval_orchestration"],
+                "context_optimization": final_state["context_optimization_details"],
+                "candidate_lifecycle": final_state["candidate_lifecycle"],
+            },
+            "verification_outcome": final_state["verification_outcome"],
+            "kinetic_score": final_state["kinetic_score"],
             "fusion": {
                 "lexical_enabled": final_state["enable_lexical_fusion"],
                 "vector_weight": final_state["vector_fusion_weight"],

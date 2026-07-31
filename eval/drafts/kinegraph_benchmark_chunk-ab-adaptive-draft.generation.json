@@ -1,0 +1,43 @@
+{
+  "adaptive_chunking": true,
+  "artifacts": {
+    "dataset_csv": "eval/drafts/kinegraph_benchmark_chunk-ab-adaptive-draft.csv",
+    "dataset_sha256": "899c68f9f49054d7ef717fd09094f6d5c19eb3974c15ce214d249059de1f2b4e",
+    "draft_audit": "eval/drafts/kinegraph_benchmark_chunk-ab-adaptive-draft.audit.json"
+  },
+  "chunk_policy_version": "kinegraph.adaptive-chunking.v1",
+  "cost_complete": false,
+  "created_at": "2026-07-31T03:36:57.615074+00:00",
+  "docs_dir": "docs",
+  "git_revision": "9bb59638388e613597fb1455c2f1b26c0388a833",
+  "models": {
+    "embedding": "text-embedding-3-small",
+    "generation": "gpt-4o-mini",
+    "scoring_embedding_identity": "sentence-transformers/all-MiniLM-L6-v2"
+  },
+  "row_count": 2,
+  "schema_version": "kinegraph.testset.generation.v1",
+  "synthesizer_distribution": [
+    {
+      "name": "single_hop_specific",
+      "weight": 0.4
+    },
+    {
+      "name": "multi_hop_specific",
+      "weight": 0.4
+    },
+    {
+      "name": "multi_hop_abstract",
+      "weight": 0.2
+    }
+  ],
+  "testset_size_requested": 12,
+  "timing": {
+    "elapsed_seconds": 0.0
+  },
+  "usage": {
+    "chunk_count": 599,
+    "cost_complete": false,
+    "note": "dry_run_chunks_only"
+  }
+}

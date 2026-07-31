@@ -1,12 +1,13 @@
 """Versioned, redacted per-query benchmark provenance artifacts."""
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from collections import Counter
 from pathlib import Path
 from typing import Any, Iterable, Mapping
+
+from backend.core.retrieval_orchestration import candidate_identity
 
 
 SCHEMA_VERSION = "kinegraph.eval.provenance.v1"
@@ -46,6 +47,12 @@ _METADATA_KEYS = {
 
 
 def _candidate_lifecycle(trace: Mapping[str, Any]) -> list[dict[str, Any]]:
+    explicit = (
+        ((trace.get("retrieval_orchestration") or {}).get("candidate_lifecycle") or {})
+        .get("candidates")
+    )
+    if isinstance(explicit, list):
+        return _sanitize(explicit)
     initial = trace.get("initial_candidates") or {}
     initial_ids = {
         candidate_id(candidate)
@@ -152,13 +159,7 @@ def _sanitize(value: Any, depth: int = 0) -> Any:
 
 
 def candidate_id(candidate: Mapping[str, Any]) -> str:
-    metadata = candidate.get("metadata") or {}
-    for key in ("chunk_id", "vector_record_id", "node_id", "id", "citation_id"):
-        value = candidate.get(key, metadata.get(key))
-        if value not in (None, ""):
-            return str(value)
-    digest = hashlib.sha256(str(candidate.get("content", "")).encode("utf-8")).hexdigest()
-    return f"content-sha256:{digest}"
+    return candidate_identity(candidate)
 
 
 def candidate_snapshot(candidate: Mapping[str, Any], rank: int) -> dict[str, Any]:
@@ -184,6 +185,10 @@ def candidate_snapshot(candidate: Mapping[str, Any], rank: int) -> dict[str, Any
         "candidate_id": candidate_id(candidate),
         "rank": rank,
         "source": str(candidate.get("source", "unknown")),
+        "source_channels": _sanitize(candidate.get("source_channels") or []),
+        "original_scores": _sanitize(candidate.get("original_scores") or {}),
+        "channel_ranks": _sanitize(candidate.get("channel_ranks") or {}),
+        "graph_paths": _sanitize(candidate.get("graph_paths") or {}),
         "scores": _sanitize(scores),
         "metadata": _sanitize(selected_metadata),
         "excerpt": redact_text(candidate.get("content", ""), limit=180),
@@ -288,6 +293,13 @@ def build_provenance_record(
             "failures": _sanitize(trace.get("retrieval_failures") or {}),
             "recovery": _sanitize(trace.get("recovery") or result.get("recovery") or {}),
             "candidate_lifecycle": _candidate_lifecycle(trace),
+            "context_optimization": _sanitize(
+                ((trace.get("retrieval_orchestration") or {}).get("context_optimization") or {})
+            ),
+            "candidate_provenance_completeness": (
+                ((trace.get("retrieval_orchestration") or {}).get("candidate_lifecycle") or {})
+                .get("candidate_provenance_completeness")
+            ),
             "graph_path_audit": _graph_path_audit(trace),
             "fusion": {
                 **_sanitize({
@@ -321,6 +333,8 @@ def build_provenance_record(
             "citation_validation": _sanitize(result.get("citation_validation") or {}),
             "grounding_critique": _sanitize(result.get("grounding_critique") or {}),
             "answer_relevancy": _sanitize(result.get("answer_relevancy") or {}),
+            "verification_outcome": _sanitize(result.get("verification_outcome") or {}),
+            "kinetic_score": _sanitize(result.get("kinetic_score") or {}),
         },
         "evaluation": {
             "metrics": {

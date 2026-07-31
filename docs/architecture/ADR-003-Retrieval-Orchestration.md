@@ -1,6 +1,6 @@
 # ADR-003: Retrieval Orchestration
 
-- **Status:** Proposed
+- **Status:** Implemented behind an experimental flag; benchmark promotion pending
 - **Date:** 2026-07-23
 - **Decision:** Use a provenance-preserving multi-stage pipeline.
 
@@ -27,6 +27,24 @@ fallback is declared in provenance.
 The system becomes more observable and tunable. Retrieval stays modular: any
 channel can be disabled without breaking the rest of the pipeline.
 
+## Implementation
+
+- `backend/core/retrieval_orchestration.py` owns the versioned
+  `kinegraph.retrieval-orchestration.v1` contract.
+- Stable store IDs replace truncated-content identity in RRF. Fusion retains
+  every contributing channel's original score and rank, plus graph paths.
+- Identity/semantic deduplication, reranking, and context optimization emit a
+  survival or drop decision with a reason for every candidate.
+- Context optimization applies configurable source/community caps after
+  semantic-first reranking and before generation.
+- Cross-encoder reranking is request-scoped, explicitly reported, and disabled
+  by default. Keyword fallback and its cause remain visible.
+- `eval/retrieval_acceptance.py` rejects incomplete or heuristic benchmark
+  evidence and enforces a one-lever cross-encoder comparison.
+- Stable identity and provenance are additive correctness controls. The
+  behavior-changing context optimizer remains gated by
+  `RETRIEVAL_ORCHESTRATION_ENABLED=false` until the required slices pass.
+
 ## Alternatives rejected
 
 - Fuse then generate directly: makes noisy or incomplete context more likely.
@@ -38,3 +56,6 @@ channel can be disabled without breaking the rest of the pipeline.
 Sweep one lever at a time using versioned Hybrid, Hybrid+BM25, and Vectorless
 slices. Measure Precision@K, Recall@K, nDCG, context metrics, p95 latency, and
 candidate provenance completeness.
+
+The acceptance gate is implemented, but no post-implementation run is recorded
+by this ADR. Promotion therefore remains pending.

@@ -15,6 +15,8 @@ def test_profiles_are_explicit_and_do_not_change_production_defaults():
     lexical = get_profile("hybrid_lexical")
     vectorless = get_profile("vectorless")
     adaptive = get_profile("adaptive_hybrid")
+    vector = get_profile("vector")
+    graph = get_profile("graph")
 
     assert hybrid.requested_mode.value == "hybrid"
     assert hybrid.enable_lexical_fusion is False
@@ -24,6 +26,10 @@ def test_profiles_are_explicit_and_do_not_change_production_defaults():
     assert vectorless.requested_mode.value == "vectorless"
     assert adaptive.allow_mode_downgrade is True
     assert set(adaptive.declared_effective_modes) == {"hybrid", "vector", "graph"}
+    assert vector.requested_mode.value == "vector"
+    assert graph.requested_mode.value == "graph"
+    assert vector.declared_effective_modes == ("vector",)
+    assert graph.declared_effective_modes == ("graph",)
 
 
 def test_vectorless_profile_uses_same_frozen_question_reference_and_sources():

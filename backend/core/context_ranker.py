@@ -14,6 +14,8 @@ import json
 from collections import Counter
 from typing import Any, Dict, List, Tuple
 
+from backend.core.retrieval_orchestration import candidate_identity
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -241,18 +243,43 @@ class ContextRanker:
             Filtered and reranked list of chunk dicts, each augmented with
             ``rerank_score``, ``semantic_score``, and auditable graph components.
         """
+        result, _ = self.rerank_with_report(
+            query=query,
+            chunks=chunks,
+            top_k=top_k,
+            preferred_community_id=preferred_community_id,
+        )
+        return result
+
+    def rerank_with_report(
+        self,
+        query: str,
+        chunks: List[Dict[str, Any]],
+        top_k: int = 5,
+        preferred_community_id: str | None = None,
+    ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+        """Rerank once and emit deterministic survival reasons for ADR-003."""
         if not chunks:
-            return []
+            return [], {
+                "input_count": 0,
+                "output_count": 0,
+                "decisions": [],
+                "forced_top_candidate": False,
+            }
 
         scored = self._score_chunks(query, chunks)
-
-        # Apply relevance floor
+        semantic_by_id = {
+            candidate_identity(chunk): float(score) for chunk, score in scored
+        }
         survivors = [
-            (c, s) for c, s in scored if s >= self.min_relevance_threshold
+            (chunk, score)
+            for chunk, score in scored
+            if score >= self.min_relevance_threshold
         ]
-        # If everything is filtered out, keep top-1 to avoid empty context
+        forced_top_candidate = False
         if not survivors:
             survivors = scored[:1]
+            forced_top_candidate = bool(survivors)
 
         communities = [self._community(chunk) for chunk, _ in survivors]
         community_counts = Counter(community for community in communities if community)
@@ -267,10 +294,14 @@ class ContextRanker:
             enriched = dict(chunk)
             enriched["rerank_score"] = round(float(score), 4)
             enriched["semantic_score"] = round(float(semantic_score), 4)
-            enriched["graph_signal_score"] = round(graph_score, 4) if graph_score is not None else None
+            enriched["graph_signal_score"] = (
+                round(graph_score, 4) if graph_score is not None else None
+            )
             enriched["graph_signals_applied"] = graph_score is not None
             enriched["rerank_mode"] = (
-                "graph_aware_cross_encoder" if self.use_cross_encoder else "graph_aware_keyword"
+                "graph_aware_cross_encoder"
+                if self.use_cross_encoder
+                else "graph_aware_keyword"
             )
             enriched["rerank_components"] = {
                 key: round(value, 4) if value is not None else None
@@ -286,6 +317,30 @@ class ContextRanker:
             reverse=True,
         )
         result = reranked[:top_k]
+        retained_ids = {candidate_identity(chunk) for chunk in result}
+        forced_id = candidate_identity(survivors[0][0]) if forced_top_candidate else None
+        decisions = []
+        for chunk in chunks:
+            candidate_id = candidate_identity(chunk)
+            semantic_score = semantic_by_id.get(candidate_id, 0.0)
+            if candidate_id in retained_ids:
+                decision = "survived"
+                reason = (
+                    "forced_top_candidate_after_threshold"
+                    if candidate_id == forced_id
+                    else "selected_by_reranker"
+                )
+            elif semantic_score < self.min_relevance_threshold:
+                decision, reason = "dropped", "below_semantic_relevance_threshold"
+            else:
+                decision, reason = "dropped", "reranker_top_k_exceeded"
+            decisions.append({
+                "candidate_id": candidate_id,
+                "stage": "semantic_reranking",
+                "decision": decision,
+                "reason": reason,
+                "semantic_score": round(semantic_score, 6),
+            })
 
         logger.debug(
             "ContextRanker: %d → %d chunks (threshold=%.3f, mode=%s)",
@@ -294,4 +349,10 @@ class ContextRanker:
             self.min_relevance_threshold,
             "cross-encoder" if self.use_cross_encoder else "keyword",
         )
-        return result
+        return result, {
+            "input_count": len(chunks),
+            "output_count": len(result),
+            "minimum_relevance": self.min_relevance_threshold,
+            "forced_top_candidate": forced_top_candidate,
+            "decisions": decisions,
+        }

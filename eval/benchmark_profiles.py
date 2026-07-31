@@ -58,6 +58,18 @@ PROFILES = {
         declared_effective_modes=(QueryMode.VECTORLESS.value,),
         use_reference_context_as_attachment=True,
     ),
+    "vector": BenchmarkProfile(
+        name="vector",
+        requested_mode=QueryMode.VECTOR,
+        enable_lexical_fusion=False,
+        declared_effective_modes=(QueryMode.VECTOR.value,),
+    ),
+    "graph": BenchmarkProfile(
+        name="graph",
+        requested_mode=QueryMode.GRAPH,
+        enable_lexical_fusion=False,
+        declared_effective_modes=(QueryMode.GRAPH.value,),
+    ),
 }
 
 
@@ -116,6 +128,7 @@ def build_profile_dataset(rows: Iterable[Any], profile: BenchmarkProfile) -> lis
             "sample_id": str(row.get("benchmark_id") or f"benchmark-{index:03d}"),
             "question": str(row["user_input"]),
             "ground_truth": str(row["reference"]),
+            "reference_contexts": _reference_contexts(row.get("reference_contexts")),
             "categories": _query_categories(row),
             "query_style": str(row.get("query_style", "") or "unknown"),
             "synthesizer_name": str(row.get("synthesizer_name", "") or "unknown"),

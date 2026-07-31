@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     GRAPH_MAX_HOPS: int = 2
     RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     RERANKER_MIN_RELEVANCE: float = 0.20
+    CROSS_ENCODER_RERANK_ENABLED: bool = False
+    RETRIEVAL_ORCHESTRATION_ENABLED: bool = False
+    CONTEXT_OPTIMIZATION_MAX_PER_SOURCE: int = Field(default=3, ge=0, le=100)
+    CONTEXT_OPTIMIZATION_MAX_PER_COMMUNITY: int = Field(default=3, ge=0, le=100)
     FUSION_VECTOR_WEIGHT: float = 1.0
     FUSION_GRAPH_WEIGHT: float = 1.0
     FUSION_LEXICAL_WEIGHT: float = 0.7
@@ -82,6 +86,7 @@ class Settings(BaseSettings):
     GENERATION_TEMPERATURE: float = Field(default=0.0, ge=0.0, le=0.2)
     FAITHFULNESS_CRITIC_MODEL: str = "qwen/qwen3.6-27b"
     FAITHFULNESS_CRITIC_TEMPERATURE: float = Field(default=0.0, ge=0.0, le=0.2)
+    VERIFICATION_FRAMEWORK_ENABLED: bool = False
 
     # LangSmith (optional — leave blank to disable remote tracing)
     LANGSMITH_API_KEY: Optional[str] = None

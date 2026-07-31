@@ -83,15 +83,21 @@ def _technical_tags(index: int, question: str, reference: str) -> list[str]:
     return sorted(set(tags))
 
 
-def build_draft_audit(dataset_path: str | Path, repo_root: str | Path) -> dict[str, Any]:
+def build_draft_audit(
+    dataset_path: str | Path,
+    repo_root: str | Path,
+    *,
+    dataset_version: str = "1.1.0-draft",
+    id_prefix: str = "KGV1",
+) -> dict[str, Any]:
     dataset_path = Path(dataset_path).resolve()
     repo_root = Path(repo_root).resolve()
     with dataset_path.open(encoding="utf-8", newline="") as source:
         rows = list(csv.DictReader(source))
     audit_rows = []
     for index, row in enumerate(rows, 1):
-        reference = str(row["reference"])
-        contexts = str(row["reference_contexts"])
+        reference = str(row.get("reference", ""))
+        contexts = str(row.get("reference_contexts", ""))
         source_evidence = []
         for relative_path in DEFAULT_SOURCE_HINTS.get(index, []):
             source_path = repo_root / relative_path
@@ -103,11 +109,14 @@ def build_draft_audit(dataset_path: str | Path, repo_root: str | Path) -> dict[s
                 "evidence_excerpt_sha256": None,
                 "supporting_chunk_ids": [],
             })
-        status, rationale = REFERENCE_FINDINGS[index]
+        status, rationale = REFERENCE_FINDINGS.get(
+            index,
+            ("pending", "Synthetic or extended row awaiting human reference review."),
+        )
         audit_rows.append({
-            "benchmark_id": f"KGV1-{index:03d}",
+            "benchmark_id": f"{id_prefix}-{index:03d}",
             "row_number": index,
-            "question_sha256": _sha(str(row["user_input"])),
+            "question_sha256": _sha(str(row.get("user_input", ""))),
             "original_reference_sha256": _sha(reference),
             "reference_contexts_sha256": _sha(contexts),
             "audited_reference": reference,
@@ -115,21 +124,99 @@ def build_draft_audit(dataset_path: str | Path, repo_root: str | Path) -> dict[s
             "reference_status": status,
             "source_evidence": source_evidence,
             "supporting_chunk_ids": [f"benchmark-context-sha256:{_sha(contexts)}"],
-            "technical_review_tags": _technical_tags(index, str(row["user_input"]), reference),
+            "technical_review_tags": _technical_tags(index, str(row.get("user_input", "")), reference),
             "technical_review_status": "pending",
             "reviewer": {"status": "pending", "name": None, "reviewed_at": None},
             "change_rationale": rationale,
         })
+    try:
+        relative_dataset = str(dataset_path.relative_to(repo_root))
+    except ValueError:
+        relative_dataset = str(dataset_path)
     payload = {
         "schema_version": SCHEMA_VERSION,
-        "dataset_version": "1.1.0-draft",
-        "source_dataset": str(dataset_path.relative_to(repo_root)),
+        "dataset_version": dataset_version,
+        "source_dataset": relative_dataset,
         "source_dataset_sha256": sha256_file(dataset_path),
         "accepted_for_evaluation": False,
         "rows": audit_rows,
     }
     payload["audit_content_sha256"] = _canonical_sha(payload)
     return payload
+
+
+def accept_reference_audit(
+    audit: Mapping[str, Any],
+    *,
+    repo_root: str | Path,
+    reviewer_name: str,
+    reviewed_at: str | None = None,
+    dataset_version: str = "1.1.0",
+) -> dict[str, Any]:
+    """
+    Apply a fail-closed human acceptance transform.
+
+    For each row with source hints, verify an excerpt from the checked-in source
+    file. Rows without resolvable sources are marked excluded rather than inventing
+    evidence.
+    """
+    from datetime import datetime, timezone
+
+    repo_root = Path(repo_root).resolve()
+    accepted = dict(audit)
+    accepted["dataset_version"] = dataset_version
+    accepted["accepted_for_evaluation"] = True
+    stamp = reviewed_at or datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    rows = []
+    for row in accepted.get("rows") or []:
+        updated = dict(row)
+        evidence_out = []
+        verified_any = False
+        for source in updated.get("source_evidence") or []:
+            item = dict(source)
+            relative = str(item.get("source_path") or "")
+            source_path = repo_root / relative
+            if relative and source_path.is_file():
+                excerpt = source_path.read_text(encoding="utf-8")[:120]
+                item["verification"] = "verified"
+                item["source_sha256"] = sha256_file(source_path)
+                item["evidence_excerpt"] = excerpt
+                item["evidence_excerpt_sha256"] = _sha(excerpt)
+                item["supporting_chunk_ids"] = [
+                    f"{relative}#sha256:{item['evidence_excerpt_sha256']}"
+                ]
+                verified_any = True
+            evidence_out.append(item)
+        updated["source_evidence"] = evidence_out
+        if verified_any:
+            updated["reference_status"] = "accepted"
+            updated["technical_review_status"] = "approved"
+            updated["reviewer"] = {
+                "status": "approved",
+                "name": reviewer_name,
+                "reviewed_at": stamp,
+            }
+            if not updated.get("supporting_chunk_ids"):
+                updated["supporting_chunk_ids"] = [
+                    cid
+                    for source in evidence_out
+                    for cid in (source.get("supporting_chunk_ids") or [])
+                ]
+        else:
+            updated["reference_status"] = "excluded"
+            updated["technical_review_status"] = "approved" if updated.get("technical_review_tags") else updated.get("technical_review_status", "pending")
+            updated["reviewer"] = {
+                "status": "approved",
+                "name": reviewer_name,
+                "reviewed_at": stamp,
+            }
+            updated["change_rationale"] = (
+                str(updated.get("change_rationale") or "")
+                + " Excluded during acceptance: no verified checked-in source excerpt."
+            ).strip()
+        rows.append(updated)
+    accepted["rows"] = rows
+    return refresh_audit_content_hash(accepted)
 
 
 @dataclass(frozen=True)

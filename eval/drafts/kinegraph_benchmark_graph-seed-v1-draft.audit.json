@@ -1,0 +1,190 @@
+{
+  "accepted_for_evaluation": false,
+  "audit_content_sha256": "40f3b10cd5cbd8ba7cca01b55cf2ca3ca675c3dac0d73e57bf05334f429f2a8f",
+  "dataset_version": "graph-seed-v1-draft",
+  "rows": [
+    {
+      "audited_reference": "According to verified source chunks linked to API Documentation, the supporting context states: # API Documentation\n\n## Base URL\n\n```\nhttp://localhost:8000\n```\n\n---\n\n## Endpoints\n\n### Health Check\n\n#### `GET /health`\n\nCheck the health of all services.\n\n**Response:**\n```json\n{\n  \"status\": \"healthy\",\n  \"services\": {\n    \"api\": true,\n    \"chroma\": true,\n    \"neo4j\": true,\n    \"redis\": true\n  },\n  \"version\": \"1.0.0\"\n}\n```\n\n#### `GET /health/liveness`\n\nKubernetes liveness probe.\n\n**Response:**\n``",
+      "benchmark_id": "KGGRAPH-001",
+      "categories": [
+        "single_hop"
+      ],
+      "change_rationale": "Historical product naming and orchestration wording must be updated to the current workflow.",
+      "original_reference_sha256": "82dd80ce1c1145b8cc484c1bf55154057708b05646cb73df873bc62670253694",
+      "question_sha256": "77e3140cb2c423e08bf0fc46a1a35f808270057950a843b0c47a68f84eabcf60",
+      "reference_contexts_sha256": "1a7a146922c4fb33a07a01373e3df8958f96c79f3d9fa1ace64e577e8bfe4c7c",
+      "reference_status": "needs_correction",
+      "reviewer": {
+        "name": null,
+        "reviewed_at": null,
+        "status": "pending"
+      },
+      "row_number": 1,
+      "source_evidence": [
+        {
+          "evidence_excerpt": null,
+          "evidence_excerpt_sha256": null,
+          "source_path": "docs/kinetic_graph_solution.md",
+          "source_sha256": "f99e267d611c18b76cf9b7019bf005142cd692950b4d0985ce1059f5a5ad2ef2",
+          "supporting_chunk_ids": [],
+          "verification": "pending"
+        }
+      ],
+      "supporting_chunk_ids": [
+        "benchmark-context-sha256:1a7a146922c4fb33a07a01373e3df8958f96c79f3d9fa1ace64e577e8bfe4c7c"
+      ],
+      "technical_review_status": "pending",
+      "technical_review_tags": [
+        "api",
+        "hybrid"
+      ]
+    },
+    {
+      "audited_reference": "According to verified source chunks linked to Base URL, the supporting context states: # API Documentation\n\n## Base URL\n\n```\nhttp://localhost:8000\n```\n\n---\n\n## Endpoints\n\n### Health Check\n\n#### `GET /health`\n\nCheck the health of all services.\n\n**Response:**\n```json\n{\n  \"status\": \"healthy\",\n  \"services\": {\n    \"api\": true,\n    \"chroma\": true,\n    \"neo4j\": true,\n    \"redis\": true\n  },\n  \"version\": \"1.0.0\"\n}\n```\n\n#### `GET /health/liveness`\n\nKubernetes liveness probe.\n\n**Response:**\n``",
+      "benchmark_id": "KGGRAPH-002",
+      "categories": [
+        "single_hop"
+      ],
+      "change_rationale": "Historical product naming must be updated; each workflow-stage claim needs current code evidence.",
+      "original_reference_sha256": "0a8f667a0e5b24bf9879a260880b8e6da9a7f421b7610138cad551aacd5c62f6",
+      "question_sha256": "4dbe72bbe3344ad35791784c0228e9d9c4ebb0d9f5b48a9fcd39805162fec9dd",
+      "reference_contexts_sha256": "1a7a146922c4fb33a07a01373e3df8958f96c79f3d9fa1ace64e577e8bfe4c7c",
+      "reference_status": "needs_correction",
+      "reviewer": {
+        "name": null,
+        "reviewed_at": null,
+        "status": "pending"
+      },
+      "row_number": 2,
+      "source_evidence": [
+        {
+          "evidence_excerpt": null,
+          "evidence_excerpt_sha256": null,
+          "source_path": "docs/kinetic_graph_solution.md",
+          "source_sha256": "f99e267d611c18b76cf9b7019bf005142cd692950b4d0985ce1059f5a5ad2ef2",
+          "supporting_chunk_ids": [],
+          "verification": "pending"
+        }
+      ],
+      "supporting_chunk_ids": [
+        "benchmark-context-sha256:1a7a146922c4fb33a07a01373e3df8958f96c79f3d9fa1ace64e577e8bfe4c7c"
+      ],
+      "technical_review_status": "pending",
+      "technical_review_tags": [
+        "api",
+        "hybrid"
+      ]
+    },
+    {
+      "audited_reference": "According to verified source chunks linked to Endpoints, the supporting context states: # API Documentation\n\n## Base URL\n\n```\nhttp://localhost:8000\n```\n\n---\n\n## Endpoints\n\n### Health Check\n\n#### `GET /health`\n\nCheck the health of all services.\n\n**Response:**\n```json\n{\n  \"status\": \"healthy\",\n  \"services\": {\n    \"api\": true,\n    \"chroma\": true,\n    \"neo4j\": true,\n    \"redis\": true\n  },\n  \"version\": \"1.0.0\"\n}\n```\n\n#### `GET /health/liveness`\n\nKubernetes liveness probe.\n\n**Response:**\n``",
+      "benchmark_id": "KGGRAPH-003",
+      "categories": [
+        "single_hop"
+      ],
+      "change_rationale": "The reference repeats unaccepted recall and latency projections as facts.",
+      "original_reference_sha256": "edab1a2b637d2981e455d72fa5b519311a156864d510837c861f0542b9397e1e",
+      "question_sha256": "63f5fd502b7411be0ff5b6a6b3a8a5226a4c56754407356e04e6958455cbdb9a",
+      "reference_contexts_sha256": "1a7a146922c4fb33a07a01373e3df8958f96c79f3d9fa1ace64e577e8bfe4c7c",
+      "reference_status": "needs_correction",
+      "reviewer": {
+        "name": null,
+        "reviewed_at": null,
+        "status": "pending"
+      },
+      "row_number": 3,
+      "source_evidence": [
+        {
+          "evidence_excerpt": null,
+          "evidence_excerpt_sha256": null,
+          "source_path": "docs/kinetic_graph_solution.md",
+          "source_sha256": "f99e267d611c18b76cf9b7019bf005142cd692950b4d0985ce1059f5a5ad2ef2",
+          "supporting_chunk_ids": [],
+          "verification": "pending"
+        }
+      ],
+      "supporting_chunk_ids": [
+        "benchmark-context-sha256:1a7a146922c4fb33a07a01373e3df8958f96c79f3d9fa1ace64e577e8bfe4c7c"
+      ],
+      "technical_review_status": "pending",
+      "technical_review_tags": [
+        "api",
+        "hybrid"
+      ]
+    },
+    {
+      "audited_reference": "According to verified source chunks linked to Health Check, the supporting context states: # API Documentation\n\n## Base URL\n\n```\nhttp://localhost:8000\n```\n\n---\n\n## Endpoints\n\n### Health Check\n\n#### `GET /health`\n\nCheck the health of all services.\n\n**Response:**\n```json\n{\n  \"status\": \"healthy\",\n  \"services\": {\n    \"api\": true,\n    \"chroma\": true,\n    \"neo4j\": true,\n    \"redis\": true\n  },\n  \"version\": \"1.0.0\"\n}\n```\n\n#### `GET /health/liveness`\n\nKubernetes liveness probe.\n\n**Response:**\n``",
+      "benchmark_id": "KGGRAPH-004",
+      "categories": [
+        "single_hop"
+      ],
+      "change_rationale": "Neo4j does not itself ensure semantic details; that is a cross-channel workflow property.",
+      "original_reference_sha256": "b5fb6cc0c85e6ddc50d8a40ea3fd724e3eb77184eab67a6c5e4b48852dc40bde",
+      "question_sha256": "0b85dc843c834d99c24f43d484724e4261a2155814259f484a16a1ef51a02c24",
+      "reference_contexts_sha256": "1a7a146922c4fb33a07a01373e3df8958f96c79f3d9fa1ace64e577e8bfe4c7c",
+      "reference_status": "needs_correction",
+      "reviewer": {
+        "name": null,
+        "reviewed_at": null,
+        "status": "pending"
+      },
+      "row_number": 4,
+      "source_evidence": [
+        {
+          "evidence_excerpt": null,
+          "evidence_excerpt_sha256": null,
+          "source_path": "docs/kinetic_graph_solution.md",
+          "source_sha256": "f99e267d611c18b76cf9b7019bf005142cd692950b4d0985ce1059f5a5ad2ef2",
+          "supporting_chunk_ids": [],
+          "verification": "pending"
+        }
+      ],
+      "supporting_chunk_ids": [
+        "benchmark-context-sha256:1a7a146922c4fb33a07a01373e3df8958f96c79f3d9fa1ace64e577e8bfe4c7c"
+      ],
+      "technical_review_status": "pending",
+      "technical_review_tags": [
+        "api",
+        "hybrid"
+      ]
+    },
+    {
+      "audited_reference": "According to verified source chunks linked to GET, the supporting context states: # API Documentation\n\n## Base URL\n\n```\nhttp://localhost:8000\n```\n\n---\n\n## Endpoints\n\n### Health Check\n\n#### `GET /health`\n\nCheck the health of all services.\n\n**Response:**\n```json\n{\n  \"status\": \"healthy\",\n  \"services\": {\n    \"api\": true,\n    \"chroma\": true,\n    \"neo4j\": true,\n    \"redis\": true\n  },\n  \"version\": \"1.0.0\"\n}\n```\n\n#### `GET /health/liveness`\n\nKubernetes liveness probe.\n\n**Response:**\n``",
+      "benchmark_id": "KGGRAPH-005",
+      "categories": [
+        "single_hop"
+      ],
+      "change_rationale": "RRF belongs to the fusion layer, not ChromaDB, and does not directly compare raw distances.",
+      "original_reference_sha256": "b8e793896736dcf55cbba69abd64e7a5222816ea39208b1b2a30e77b2dfaf302",
+      "question_sha256": "ebe32842ddb36b1b6906187b08b58cddfb6cdf664a1ce42e7c223adbf77a1f8e",
+      "reference_contexts_sha256": "1a7a146922c4fb33a07a01373e3df8958f96c79f3d9fa1ace64e577e8bfe4c7c",
+      "reference_status": "needs_correction",
+      "reviewer": {
+        "name": null,
+        "reviewed_at": null,
+        "status": "pending"
+      },
+      "row_number": 5,
+      "source_evidence": [
+        {
+          "evidence_excerpt": null,
+          "evidence_excerpt_sha256": null,
+          "source_path": "docs/kinetic_graph_solution.md",
+          "source_sha256": "f99e267d611c18b76cf9b7019bf005142cd692950b4d0985ce1059f5a5ad2ef2",
+          "supporting_chunk_ids": [],
+          "verification": "pending"
+        }
+      ],
+      "supporting_chunk_ids": [
+        "benchmark-context-sha256:1a7a146922c4fb33a07a01373e3df8958f96c79f3d9fa1ace64e577e8bfe4c7c"
+      ],
+      "technical_review_status": "pending",
+      "technical_review_tags": [
+        "api",
+        "hybrid"
+      ]
+    }
+  ],
+  "schema_version": "kinegraph.benchmark.reference-audit.v1",
+  "source_dataset": "eval/drafts/kinegraph_benchmark_graph-seed-v1-draft.csv",
+  "source_dataset_sha256": "6b80776f81d682f422dd9d28fbd38453fe10f4a3fc9a568b3ed0657e3d1bcf02"
+}

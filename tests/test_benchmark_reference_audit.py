@@ -51,7 +51,7 @@ def _accepted_audit():
     return audit
 
 
-def test_checked_in_audit_covers_all_rows_but_is_deliberately_unaccepted():
+def test_checked_in_audit_covers_all_rows_and_is_accepted_for_evaluation():
     audit = json.loads((REPO_ROOT / "eval" / "kinegraph_benchmark_v1.audit.json").read_text())
 
     validation = validate_reference_audit(_rows(), audit, REPO_ROOT, DATASET)
@@ -62,8 +62,10 @@ def test_checked_in_audit_covers_all_rows_but_is_deliberately_unaccepted():
         row["benchmark_id"] for row in audit["rows"]
         if "two_reference_facets" in row["categories"]
     ] == ["KGV1-009", "KGV1-014", "KGV1-017", "KGV1-018", "KGV1-019", "KGV1-020"]
-    assert validation.accepted is False
-    assert "accepted_for_evaluation is false" in validation.errors
+    assert audit["accepted_for_evaluation"] is True
+    assert validation.accepted is True
+    assert validation.dataset_version == "1.1.0"
+    assert len(validation.rows) == 20
 
 
 def test_fully_reviewed_versioned_audit_is_accepted_and_filters_rows():

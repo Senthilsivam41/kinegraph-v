@@ -38,6 +38,8 @@ from eval.provenance import (
     write_diagnostic_summary,
     write_provenance_jsonl,
 )
+from eval.ir_metrics import aggregate_ir_metrics, score_retrieval
+from eval.kinetic_score import calibrate_shadow_scores, compute_kinetic_score_shadow
 import numpy as np
 import pandas as pd
 
@@ -510,6 +512,9 @@ class RAGASEvaluator:
         lexical_fusion_weight: float = settings.FUSION_LEXICAL_WEIGHT,
         enable_adaptive_routing: bool = settings.ADAPTIVE_ROUTING_ENABLED,
         enable_conservative_routing: bool = settings.CONSERVATIVE_ROUTING_ENABLED,
+        enable_retrieval_orchestration: bool = settings.RETRIEVAL_ORCHESTRATION_ENABLED,
+        enable_cross_encoder_reranking: bool = settings.CROSS_ENCODER_RERANK_ENABLED,
+        enable_verification_framework: bool = settings.VERIFICATION_FRAMEWORK_ENABLED,
         allow_mode_downgrade: bool = True,
         allow_vectorless_auto_route: bool = True,
         attachment_content: Optional[str] = None,
@@ -536,6 +541,9 @@ class RAGASEvaluator:
                 lexical_fusion_weight=lexical_fusion_weight,
                 enable_adaptive_routing=enable_adaptive_routing,
                 enable_conservative_routing=enable_conservative_routing,
+                enable_retrieval_orchestration=enable_retrieval_orchestration,
+                enable_cross_encoder_reranking=enable_cross_encoder_reranking,
+                enable_verification_framework=enable_verification_framework,
                 allow_mode_downgrade=allow_mode_downgrade,
                 allow_vectorless_auto_route=allow_vectorless_auto_route,
                 attachment_content=attachment_content,
@@ -584,6 +592,23 @@ class RAGASEvaluator:
             judge_model=getattr(self, "model", None),
             embedding_model=getattr(self, "embedding_model", None),
         )
+        reference_contexts = []
+        if isinstance(profile, Mapping):
+            reference_contexts = list(profile.get("reference_contexts") or [])
+        ir_metrics = score_retrieval(
+            retrieved_contexts=contexts,
+            reference_contexts=reference_contexts,
+            k=min(5, max(1, max_results)),
+        )
+        path_audit = ((provenance.get("retrieval") or {}).get("graph_path_audit") or {})
+        complete = float(path_audit.get("complete_path_count") or 0)
+        total_paths = float(path_audit.get("traversal_candidate_count") or 0)
+        path_completeness = (complete / total_paths) if total_paths else None
+        kinetic_score_shadow = compute_kinetic_score_shadow(
+            ragas_scores=scores,
+            ir_metrics=ir_metrics,
+            path_completeness=path_completeness,
+        )
 
         return {
             "question": question,
@@ -592,6 +617,7 @@ class RAGASEvaluator:
             "n_contexts": len(contexts),
             "has_ground_truth": bool(ground_truth),
             "ground_truth": ground_truth,
+            "reference_contexts": reference_contexts,
             "workflow_latency_ms": run_latency_ms,
             "eval_latency_ms": eval_latency_ms,
             "workflow_error": workflow_error,
@@ -608,6 +634,16 @@ class RAGASEvaluator:
             "graph_fusion_weight": graph_fusion_weight,
             "lexical_fusion_weight": lexical_fusion_weight,
             "enable_adaptive_routing": enable_adaptive_routing,
+            "enable_retrieval_orchestration": enable_retrieval_orchestration,
+            "enable_cross_encoder_reranking": enable_cross_encoder_reranking,
+            "enable_verification_framework": enable_verification_framework,
+            "candidate_provenance_completeness": (
+                (provenance.get("retrieval") or {}).get(
+                    "candidate_provenance_completeness"
+                )
+            ),
+            "kinetic_score_shadow": kinetic_score_shadow,
+            **ir_metrics,
             **scores,
         }
 
@@ -625,6 +661,9 @@ class RAGASEvaluator:
         lexical_fusion_weight: float = settings.FUSION_LEXICAL_WEIGHT,
         enable_adaptive_routing: bool = settings.ADAPTIVE_ROUTING_ENABLED,
         enable_conservative_routing: bool = settings.CONSERVATIVE_ROUTING_ENABLED,
+        enable_retrieval_orchestration: bool = settings.RETRIEVAL_ORCHESTRATION_ENABLED,
+        enable_cross_encoder_reranking: bool = settings.CROSS_ENCODER_RERANK_ENABLED,
+        enable_verification_framework: bool = settings.VERIFICATION_FRAMEWORK_ENABLED,
         allow_mode_downgrade: bool = True,
         allow_vectorless_auto_route: bool = True,
         profile: Optional[Mapping[str, Any]] = None,
@@ -670,6 +709,9 @@ class RAGASEvaluator:
                         lexical_fusion_weight=lexical_fusion_weight,
                         enable_adaptive_routing=enable_adaptive_routing,
                         enable_conservative_routing=enable_conservative_routing,
+                        enable_retrieval_orchestration=enable_retrieval_orchestration,
+                        enable_cross_encoder_reranking=enable_cross_encoder_reranking,
+                        enable_verification_framework=enable_verification_framework,
                         allow_mode_downgrade=allow_mode_downgrade,
                         allow_vectorless_auto_route=allow_vectorless_auto_route,
                         attachment_content=sample.get("attachment_content"),
@@ -715,13 +757,29 @@ class RAGASEvaluator:
                 judge_model=getattr(self, "model", None),
                 embedding_model=getattr(self, "embedding_model", None),
             )
-            
+            reference_contexts = list(sample.get("reference_contexts") or [])
+            ir_metrics = score_retrieval(
+                retrieved_contexts=contexts,
+                reference_contexts=reference_contexts,
+                k=min(5, max(1, max_results)),
+            )
+            path_audit = ((provenance.get("retrieval") or {}).get("graph_path_audit") or {})
+            complete = float(path_audit.get("complete_path_count") or 0)
+            total_paths = float(path_audit.get("traversal_candidate_count") or 0)
+            path_completeness = (complete / total_paths) if total_paths else None
+            kinetic_score_shadow = compute_kinetic_score_shadow(
+                ragas_scores=scores,
+                ir_metrics=ir_metrics,
+                path_completeness=path_completeness,
+            )
+
             return {
                 "question": question,
                 "answer": answer,
                 "n_contexts": len(contexts),
                 "has_ground_truth": bool(ground_truth),
                 "ground_truth": ground_truth,
+                "reference_contexts": reference_contexts,
                 "workflow_latency_ms": run_latency_ms,
                 "eval_latency_ms": eval_latency_ms,
                 "workflow_error": workflow_error,
@@ -739,6 +797,16 @@ class RAGASEvaluator:
                 "vector_fusion_weight": vector_fusion_weight,
                 "graph_fusion_weight": graph_fusion_weight,
                 "lexical_fusion_weight": lexical_fusion_weight,
+                "enable_retrieval_orchestration": enable_retrieval_orchestration,
+                "enable_cross_encoder_reranking": enable_cross_encoder_reranking,
+                "enable_verification_framework": enable_verification_framework,
+                "candidate_provenance_completeness": (
+                    (provenance.get("retrieval") or {}).get(
+                        "candidate_provenance_completeness"
+                    )
+                ),
+                "kinetic_score_shadow": kinetic_score_shadow,
+                **ir_metrics,
                 **scores,
             }
             
@@ -802,6 +870,11 @@ class RAGASEvaluator:
                         metric: round(float(subset[metric].mean()), 4)
                         for metric in metric_cols
                     },
+                    "retrieval_metrics": {
+                        metric: round(float(subset[metric].mean()), 4)
+                        for metric in ("precision_at_5", "recall_at_5", "ndcg_at_5")
+                        if metric in subset.columns
+                    },
                     "mean_workflow_latency_ms": (
                         round(float(subset["workflow_latency_ms"].mean()), 2)
                         if "workflow_latency_ms" in subset.columns else None
@@ -816,6 +889,7 @@ class RAGASEvaluator:
         path_audits = []
         graph_diagnostics = []
         lifecycle = []
+        provenance_completeness = []
         for record in provenance_records:
             latency = record.get("latency_ms", {}).get("stages", {})
             graph_latency = latency.get("graph_retrieval_ms", latency.get("graph_agent_ms"))
@@ -826,6 +900,9 @@ class RAGASEvaluator:
             path_audits.append(path_audit)
             graph_diagnostics.append(path_audit.get("retriever_diagnostics") or {})
             lifecycle.extend(retrieval.get("candidate_lifecycle") or [])
+            completeness = retrieval.get("candidate_provenance_completeness")
+            if isinstance(completeness, (int, float)):
+                provenance_completeness.append(float(completeness))
 
         def _percentile(values: List[float], quantile: float) -> Optional[float]:
             if not values:
@@ -839,6 +916,16 @@ class RAGASEvaluator:
             int(audit.get("complete_path_count", 0)) for audit in path_audits
         )
         retrieval_diagnostics = {
+            "p95_latency_ms": (
+                _percentile(results["workflow_latency_ms"].dropna().astype(float).tolist(), 95)
+                if "workflow_latency_ms" in results.columns
+                else None
+            ),
+            "candidate_provenance_completeness": (
+                round(sum(provenance_completeness) / len(provenance_completeness), 4)
+                if provenance_completeness
+                else None
+            ),
             "graph_stage_latency_ms": {
                 "samples": len(graph_latencies),
                 "p50": _percentile(graph_latencies, 50),
@@ -856,9 +943,22 @@ class RAGASEvaluator:
             "candidate_survival": {
                 "observed_candidates": len(lifecycle),
                 "sent_to_generation": sum(bool(item.get("sent_to_generation")) for item in lifecycle),
-                "dropped_pre_fusion": sum(item.get("dropped_at") == "pre_fusion" for item in lifecycle),
-                "dropped_reranking": sum(item.get("dropped_at") == "reranking" for item in lifecycle),
-                "dropped_final_truncation": sum(item.get("dropped_at") == "final_truncation" for item in lifecycle),
+                "dropped_pre_fusion": sum(
+                    item.get("dropped_at") in {"pre_fusion", "fusion"}
+                    for item in lifecycle
+                ),
+                "dropped_deduplication": sum(
+                    item.get("dropped_at") == "identity_deduplication"
+                    for item in lifecycle
+                ),
+                "dropped_reranking": sum(
+                    item.get("dropped_at") in {"reranking", "semantic_reranking"}
+                    for item in lifecycle
+                ),
+                "dropped_final_truncation": sum(
+                    item.get("dropped_at") in {"final_truncation", "context_optimization"}
+                    for item in lifecycle
+                ),
             },
         }
 
@@ -897,6 +997,16 @@ class RAGASEvaluator:
             metric_values_valid = False
             ragas_accepted = False
 
+        ir_rows = results.to_dict(orient="records")
+        ir_summary = aggregate_ir_metrics(ir_rows, k=5)
+        kinetic_calibration = calibrate_shadow_scores(ir_rows)
+        cost_summary = {
+            "estimated_cost_usd": None,
+            "total_tokens": None,
+            "cost_complete": False,
+            "note": "per-request token cost is reported when UsageTracker is populated",
+        }
+
         return {
             "summary": {
                 "total_samples": len(results),
@@ -917,6 +1027,9 @@ class RAGASEvaluator:
             },
             "per_metric": per_metric,
             "per_category": per_category,
+            "ir_metrics": ir_summary,
+            "kinetic_score_shadow": kinetic_calibration,
+            "cost": cost_summary,
             "retrieval_diagnostics": retrieval_diagnostics,
             "worst_samples": results.nsmallest(5, "composite_score")[
                 ["question", "composite_score"] + metric_cols
@@ -1018,6 +1131,21 @@ if __name__ == "__main__":
         "--enable-conservative-routing",
         action="store_true",
         help="Deprecated alias for --enable-adaptive-routing",
+    )
+    parser.add_argument(
+        "--enable-retrieval-orchestration",
+        action="store_true",
+        help="Experimental ADR-003 provenance ledger and context optimization",
+    )
+    parser.add_argument(
+        "--enable-cross-encoder-reranking",
+        action="store_true",
+        help="Controlled cross-encoder experiment; compare against an identical baseline",
+    )
+    parser.add_argument(
+        "--enable-verification-framework",
+        action="store_true",
+        help="Experimental ADR-004 partial/refusal policy and shadow Kinetic Score",
     )
     parser.add_argument(
         "--enable-lexical-fusion",
@@ -1169,6 +1297,9 @@ if __name__ == "__main__":
             lexical_fusion_weight=args.lexical_weight,
             enable_adaptive_routing=args.enable_adaptive_routing,
             enable_conservative_routing=args.enable_conservative_routing,
+            enable_retrieval_orchestration=args.enable_retrieval_orchestration,
+            enable_cross_encoder_reranking=args.enable_cross_encoder_reranking,
+            enable_verification_framework=args.enable_verification_framework,
             allow_mode_downgrade=profile.allow_mode_downgrade,
             allow_vectorless_auto_route=profile.allow_vectorless_auto_route,
             profile=profile.to_dict(),
@@ -1253,6 +1384,7 @@ if __name__ == "__main__":
             "max_hops": args.max_hops,
             "candidate_pool_size": args.candidate_pool_size,
             "enable_lexical_fusion": profile.enable_lexical_fusion,
+            "enable_retrieval_orchestration": args.enable_retrieval_orchestration,
             "vector_fusion_weight": args.vector_weight,
             "graph_fusion_weight": args.graph_weight,
             "lexical_fusion_weight": args.lexical_weight,
@@ -1264,6 +1396,7 @@ if __name__ == "__main__":
         },
         "reranking": {
             "enabled": True,
+            "enable_cross_encoder_reranking": args.enable_cross_encoder_reranking,
             "model": settings.RERANKER_MODEL,
             "minimum_relevance": settings.RERANKER_MIN_RELEVANCE,
             "dedup_threshold": settings.RETRIEVAL_DEDUP_THRESHOLD,
@@ -1276,6 +1409,7 @@ if __name__ == "__main__":
             "temperature": settings.GENERATION_TEMPERATURE,
             "grounding_critique": True,
             "grounding_critic_temperature": settings.FAITHFULNESS_CRITIC_TEMPERATURE,
+            "enable_verification_framework": args.enable_verification_framework,
         },
         "evaluation": readiness,
     }
