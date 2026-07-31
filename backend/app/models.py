@@ -46,6 +46,28 @@ class QueryRequest(BaseModel):
         default=True,
         description="Verify structured citations and filter unsupported claims before returning the answer",
     )
+    enable_verification_framework: bool = Field(
+        default=settings.VERIFICATION_FRAMEWORK_ENABLED,
+        description="Experimental ADR-004 partial-answer/refusal policy and shadow Kinetic Score",
+    )
+    enable_retrieval_orchestration: bool = Field(
+        default=settings.RETRIEVAL_ORCHESTRATION_ENABLED,
+        description="Experimental ADR-003 provenance ledger and context optimization",
+    )
+    enable_cross_encoder_reranking: bool = Field(
+        default=settings.CROSS_ENCODER_RERANK_ENABLED,
+        description="Controlled cross-encoder experiment; keyword reranking remains default",
+    )
+    context_max_per_source: int = Field(
+        default=settings.CONTEXT_OPTIMIZATION_MAX_PER_SOURCE,
+        ge=0,
+        le=100,
+    )
+    context_max_per_community: int = Field(
+        default=settings.CONTEXT_OPTIMIZATION_MAX_PER_COMMUNITY,
+        ge=0,
+        le=100,
+    )
     enable_lexical_fusion: bool = Field(default=False, description="Opt-in BM25 channel for hybrid fusion")
     enable_adaptive_routing: bool = Field(
         default=settings.ADAPTIVE_ROUTING_ENABLED,
@@ -116,6 +138,9 @@ class QueryResponse(BaseModel):
     grounding_critique: Optional[Dict[str, Any]] = None
     answer_relevancy: Optional[Dict[str, Any]] = None
     routing_details: Optional[Dict[str, Any]] = None
+    retrieval_orchestration: Optional[Dict[str, Any]] = None
+    verification_outcome: Optional[Dict[str, Any]] = None
+    kinetic_score: Optional[Dict[str, Any]] = None
 
 
 class IngestRequest(BaseModel):

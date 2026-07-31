@@ -1,0 +1,9 @@
+user_input,reference_contexts,reference,persona_name,query_style,query_length,synthesizer_name
+What does the first retrieved source chunk describe?,['# API Documentation'],# API Documentation,Offline Spike Reviewer,SYNTHETIC,SHORT,single_hop_specific_query_synthesizer
+How do the first two source chunks relate in the corpus?,"['# API Documentation', '## Base URL\n\n```\nhttp://localhost:8000\n```\n\n---']","# API Documentation ... ## Base URL
+
+```
+http://localhost:8000
+```
+
+---",Offline Spike Reviewer,SYNTHETIC,MEDIUM,multi_hop_specific_query_synthesizer

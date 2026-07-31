@@ -233,15 +233,6 @@ class MultiHopGraphRetriever:
                     else work.pop()
                 )
 
-                # Skip nodes with no query relevance at deeper levels (optimization)
-                if depth > 1:
-                    node_name = str(current.get("node_id", "")) or current["properties"].get("name", "")
-                    node_desc = current["properties"].get("description", "")
-                    relevance = self._compute_query_relevance(query, node_name, node_desc)
-                    
-                    if relevance < 0.15:  # Threshold for filtering irrelevant nodes at depth > 1
-                        continue
-
                 if depth > 0:
                     # IMPROVEMENT 2: Enhanced scoring formula
                     # path_weight * relationship_evidence_avg + 0.3*centrality - 0.2*depth_penalty
@@ -285,10 +276,12 @@ class MultiHopGraphRetriever:
                 
                 # Filter neighbors by query relevance before adding to work queue
                 relevant_neighbors = []
+                undiscovered_neighbors = []
                 for neighbor in neighbors:
                     if neighbor["element_id"] in discovered:
                         trace["cycle_prevention_count"] += 1
                         continue
+                    undiscovered_neighbors.append(neighbor)
                     
                     node_name = str(neighbor.get("node_id", "")) or neighbor["properties"].get("name", "")
                     node_desc = neighbor["properties"].get("description", "")
@@ -299,7 +292,7 @@ class MultiHopGraphRetriever:
                 
                 # If no neighbors pass relevance check, add all to avoid dead ends
                 if not relevant_neighbors:
-                    relevant_neighbors = neighbors
+                    relevant_neighbors = undiscovered_neighbors
                 
                 iterable = relevant_neighbors if selected_strategy != TraversalStrategy.DFS else reversed(relevant_neighbors)
                 

@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from backend.core.context_ranker import ContextRanker
+from backend.core.config import settings
 from backend.core.langgraph_workflow import HybridRAGWorkflow
 from backend.core.rrf import reciprocal_rank_fusion
 
@@ -80,9 +81,10 @@ def test_rrf_and_original_scores_survive_graph_aware_reranking():
         assert "semantic_score" in result
 
 
-def test_normal_workflow_enables_cross_encoder_by_default():
+def test_normal_workflow_keeps_cross_encoder_as_controlled_experiment():
     default = inspect.signature(HybridRAGWorkflow.__init__).parameters["use_cross_encoder"].default
-    assert default is True
+    assert default is None
+    assert settings.CROSS_ENCODER_RERANK_ENABLED is False
 
 
 def test_cross_encoder_logits_use_query_independent_sigmoid_scores():

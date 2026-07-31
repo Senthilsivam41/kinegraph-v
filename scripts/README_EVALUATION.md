@@ -50,10 +50,55 @@ python scripts/run_ragas_evaluation.py \
 The smoke test must produce all five finite RAGAS metrics or it exits with
 status `2` and prints the underlying judge error.
 
+## Synthetic testset generation (RAGAS TestsetGenerator)
+
+Generate versioned **draft** benchmarks from ADR-002 chunks (never overwrites the
+frozen accepted CSV by default):
+
+```bash
+PYTHONPATH=. python scripts/generate_testset.py \
+  --docs-dir docs \
+  --size 12 \
+  --output-version v1.2.0-draft \
+  --recursive-chunking
+```
+
+Use `--adaptive-chunking` for structural-first chunks, or
+`scripts/generate_chunk_policy_ab.py` for paired recursive/adaptive drafts.
+Graph-seeded drafts (Neo4j MENTIONS or offline entity fallback):
+
+```bash
+PYTHONPATH=. python scripts/generate_graph_testset.py --docs-dir docs --max-rows 20
+```
+
+Accept a reviewed audit:
+
+```bash
+PYTHONPATH=. python scripts/audit_benchmark_references.py \
+  --dataset eval/kinegraph_benchmark_v1.csv \
+  --audit eval/kinegraph_benchmark_v1.audit.json \
+  --accept \
+  --reviewer-name "Your Name"
+```
+
+Compare two manifests (Hybrid vs Graph/Vector/etc.):
+
+```bash
+PYTHONPATH=. python scripts/compare_benchmark_manifests.py \
+  --baseline reports/…/manifest.json \
+  --candidate reports/…/manifest.json \
+  --skip-ratchet
+```
+
+Live reports now include IR metrics (`precision_at_5`, `recall_at_5`, `ndcg_at_5`),
+shadow Kinetic Score calibration, and a cost placeholder until usage capture is complete.
+
 ## Accepted live benchmark
 
-First complete and approve `eval/kinegraph_benchmark_v1.audit.json` with a named
-human reviewer. Then start the services and run one fixed profile:
+Approve `eval/kinegraph_benchmark_v1.audit.json` with a named human reviewer
+(`scripts/audit_benchmark_references.py --accept`). Then start the services and
+run one fixed profile (`hybrid`, `hybrid_lexical`, `vectorless`, `adaptive_hybrid`,
+`vector`, or `graph`):
 
 ```bash
 cd infra

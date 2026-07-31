@@ -44,6 +44,11 @@ async def query_system(query_request: QueryRequest, request: Request):
             enable_conditional_recovery=query_request.enable_conditional_recovery,
             enable_hyde_fallback=query_request.enable_hyde_fallback,
             enable_grounding_critique=query_request.enable_grounding_critique,
+            enable_verification_framework=query_request.enable_verification_framework,
+            enable_retrieval_orchestration=query_request.enable_retrieval_orchestration,
+            enable_cross_encoder_reranking=query_request.enable_cross_encoder_reranking,
+            context_max_per_source=query_request.context_max_per_source,
+            context_max_per_community=query_request.context_max_per_community,
             enable_lexical_fusion=query_request.enable_lexical_fusion,
             enable_adaptive_routing=query_request.enable_adaptive_routing,
             enable_conservative_routing=query_request.enable_conservative_routing,
@@ -79,6 +84,9 @@ async def query_system(query_request: QueryRequest, request: Request):
             grounding_critique=result["grounding_critique"],
             answer_relevancy=result["answer_relevancy"],
             routing_details=result["routing"],
+            retrieval_orchestration=result["retrieval_orchestration"],
+            verification_outcome=result["verification_outcome"],
+            kinetic_score=result["kinetic_score"],
         )
 
     except Exception as e:

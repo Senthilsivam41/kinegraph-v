@@ -1,0 +1,82 @@
+{
+  "accepted_for_evaluation": false,
+  "audit_content_sha256": "0ee03f71d122928adef11bf9b5e9aa4b8ca023ecacc88bf68d00b4a68fbf788c",
+  "dataset_version": "spike-phase0-draft",
+  "rows": [
+    {
+      "audited_reference": "# API Documentation\n\n## Base URL\n\n```\nhttp://localhost:8000\n```\n\n---\n\n## Endpoints\n\n### Health Check\n\n#### `GET /health`\n\nCheck the health of all services.\n\n**Response:**\n```json\n{\n  \"status\": \"healthy\",\n  \"services\": {\n    \"api\": true,\n    \"chroma\": true,\n    \"neo4j\": true,\n    \"redis\": true\n  },\n  \"version\": \"1.0.0\"\n}\n```\n\n#### `GET /health/liveness`\n\nKubernetes liveness probe.\n\n**Response:**\n```json\n{\n  \"status\": \"alive\"\n}\n```\n\n#### `GET /health/readiness`\n\nKubernetes readiness probe.\n\n**Resp",
+      "benchmark_id": "KGSYN-001",
+      "categories": [
+        "single_hop"
+      ],
+      "change_rationale": "Historical product naming and orchestration wording must be updated to the current workflow.",
+      "original_reference_sha256": "384ab7d85a61a46aa7aed55c9e31c7b10e5d6efa55489509189be94c92e3d19c",
+      "question_sha256": "5b4cc421acfee693917804f49934c70c734dd3e0c473b87b542d7ae715dde99c",
+      "reference_contexts_sha256": "1a7a146922c4fb33a07a01373e3df8958f96c79f3d9fa1ace64e577e8bfe4c7c",
+      "reference_status": "needs_correction",
+      "reviewer": {
+        "name": null,
+        "reviewed_at": null,
+        "status": "pending"
+      },
+      "row_number": 1,
+      "source_evidence": [
+        {
+          "evidence_excerpt": null,
+          "evidence_excerpt_sha256": null,
+          "source_path": "docs/kinetic_graph_solution.md",
+          "source_sha256": "f99e267d611c18b76cf9b7019bf005142cd692950b4d0985ce1059f5a5ad2ef2",
+          "supporting_chunk_ids": [],
+          "verification": "pending"
+        }
+      ],
+      "supporting_chunk_ids": [
+        "benchmark-context-sha256:1a7a146922c4fb33a07a01373e3df8958f96c79f3d9fa1ace64e577e8bfe4c7c"
+      ],
+      "technical_review_status": "pending",
+      "technical_review_tags": [
+        "api",
+        "hybrid"
+      ]
+    },
+    {
+      "audited_reference": "# API Documentation\n\n## Base URL\n\n```\nhttp://localhost:8000\n```\n\n---\n\n## Endpoints\n\n### Health Check\n\n#### `GET /health`\n\nCheck the health of all services.\n\n**Response:**\n```json\n{\n  \"status\": \"healthy\",\n  \"services\": {\n    \"api\": true,\n    \"chroma\": ... **Parameters:**\n- `file` (required): PDF file\n- `metadata` (optional): JSON string with document metadata\n\n**Response:**\n```json\n{\n  \"task_id\": \"abc123-def456\",\n  \"status\": \"PENDING\",\n  \"message\": \"Document 'document.pdf' queued for processing\"\n}\n```",
+      "benchmark_id": "KGSYN-002",
+      "categories": [
+        "multi_hop"
+      ],
+      "change_rationale": "Historical product naming must be updated; each workflow-stage claim needs current code evidence.",
+      "original_reference_sha256": "6fe69575678f441089980b9de0c92679e49538d7591b99638bf57617a48eabb3",
+      "question_sha256": "c7cec900e4da6a39b2ad150aeb972e50cd3658ac46fc9283d3b66d8d4db6afdb",
+      "reference_contexts_sha256": "bb31d556ecab834661314054c0165cef39144c975dea3d5dc8a1a7f46f495834",
+      "reference_status": "needs_correction",
+      "reviewer": {
+        "name": null,
+        "reviewed_at": null,
+        "status": "pending"
+      },
+      "row_number": 2,
+      "source_evidence": [
+        {
+          "evidence_excerpt": null,
+          "evidence_excerpt_sha256": null,
+          "source_path": "docs/kinetic_graph_solution.md",
+          "source_sha256": "f99e267d611c18b76cf9b7019bf005142cd692950b4d0985ce1059f5a5ad2ef2",
+          "supporting_chunk_ids": [],
+          "verification": "pending"
+        }
+      ],
+      "supporting_chunk_ids": [
+        "benchmark-context-sha256:bb31d556ecab834661314054c0165cef39144c975dea3d5dc8a1a7f46f495834"
+      ],
+      "technical_review_status": "pending",
+      "technical_review_tags": [
+        "api",
+        "hybrid"
+      ]
+    }
+  ],
+  "schema_version": "kinegraph.benchmark.reference-audit.v1",
+  "source_dataset": "eval/drafts/kinegraph_benchmark_spike-phase0-draft.csv",
+  "source_dataset_sha256": "b77a22f24574c1327e8c990615843365b3c3124f368024908d6630da5665439c"
+}

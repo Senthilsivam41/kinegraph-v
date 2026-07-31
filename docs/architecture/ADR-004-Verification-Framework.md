@@ -1,6 +1,6 @@
 # ADR-004: Verification Framework
 
-- **Status:** Proposed
+- **Status:** Implemented in shadow mode behind an experimental flag; calibration pending
 - **Date:** 2026-07-23
 - **Decision:** Return only citation-validated claims and expose evidence confidence through a Kinetic Score.
 
@@ -29,6 +29,25 @@ Answers may be shorter when evidence is incomplete, intentionally. Responses
 gain citations, gaps, score components, and a provenance contract. Thresholds
 must be calibrated and never suppress a refusal.
 
+## Implementation
+
+- Existing structured generation emits atomic cited claims, and deterministic
+  validation rejects missing or unknown context IDs before a claim can return.
+- The critic remains filter-only: it cannot rewrite a claim, add a fact, or add
+  a citation.
+- `backend/core/verification.py` owns the versioned
+  `kinegraph.verification.v1` response policy and
+  `kinegraph.kinetic-score.v1` shadow score.
+- Explicit outcomes are `verified`, `partial`, or `refused`. Missing facets and
+  explicit retrieval conflict markers are returned as evidence gaps.
+- The 0–100 score uses observable coverage, citation, critic, relevance,
+  reranking, diversity, and link-consistency signals. It is labeled evidence
+  confidence and never changes a refusal into an answer.
+- Calibration requires labeled samples and produces a separate versioned
+  artifact; it cannot promote the score automatically.
+- `VERIFICATION_FRAMEWORK_ENABLED=false` keeps the policy and score out of the
+  default response pending benchmark calibration.
+
 ## Alternatives rejected
 
 - Unconstrained self-rated confidence: uncalibrated and unauditable.
@@ -40,3 +59,6 @@ must be calibrated and never suppress a refusal.
 Measure citation validity, unsupported-claim rate, refusal precision,
 faithfulness, answer relevancy, and score calibration by route and query type.
 No score policy becomes user-facing by default without these results.
+
+The calibration hook is implemented. No calibrated post-v3 score or promotion
+decision is claimed by this ADR.

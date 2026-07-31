@@ -1,0 +1,191 @@
+user_input,reference_contexts,reference,persona_name,query_style,query_length,synthesizer_name
+What does the knowledge graph evidence say about API Documentation?,"['# API Documentation\n\n## Base URL\n\n```\nhttp://localhost:8000\n```\n\n---\n\n## Endpoints\n\n### Health Check\n\n#### `GET /health`\n\nCheck the health of all services.\n\n**Response:**\n```json\n{\n  ""status"": ""healthy"",\n  ""services"": {\n    ""api"": true,\n    ""chroma"": true,\n    ""neo4j"": true,\n    ""redis"": true\n  },\n  ""version"": ""1.0.0""\n}\n```\n\n#### `GET /health/liveness`\n\nKubernetes liveness probe.\n\n**Response:**\n```json\n{\n  ""status"": ""alive""\n}\n```\n\n#### `GET /health/readiness`\n\nKubernetes readiness probe.\n\n**Response:**\n```json\n{\n  ""status"": ""ready""\n}\n```\n\n---\n\n### Document Ingestion\n\n#### `POST /api/v1/ingest/document`\n\nUpload and process a PDF document.\n\n**Request:**\n```bash\ncurl -X POST ""http://localhost:8000/api/v1/ingest/document"" \\\n  -H ""Content-Type: multipart/form-data"" \\\n  -F ""file=@document.pdf"" \\\n  -F \'metadata={""author"":""John Doe"",""category"":""research""}\'\n```\n\n**Parameters:**\n- `file` (required): PDF file\n- `metadata` (optional): JSON string with document metadata']","According to verified source chunks linked to API Documentation, the supporting context states: # API Documentation
+
+## Base URL
+
+```
+http://localhost:8000
+```
+
+---
+
+## Endpoints
+
+### Health Check
+
+#### `GET /health`
+
+Check the health of all services.
+
+**Response:**
+```json
+{
+  ""status"": ""healthy"",
+  ""services"": {
+    ""api"": true,
+    ""chroma"": true,
+    ""neo4j"": true,
+    ""redis"": true
+  },
+  ""version"": ""1.0.0""
+}
+```
+
+#### `GET /health/liveness`
+
+Kubernetes liveness probe.
+
+**Response:**
+``",Graph Analyst,GRAPH_SEEDED,MEDIUM,graph_mentions_seed_v1
+What does the knowledge graph evidence say about Base URL?,"['# API Documentation\n\n## Base URL\n\n```\nhttp://localhost:8000\n```\n\n---\n\n## Endpoints\n\n### Health Check\n\n#### `GET /health`\n\nCheck the health of all services.\n\n**Response:**\n```json\n{\n  ""status"": ""healthy"",\n  ""services"": {\n    ""api"": true,\n    ""chroma"": true,\n    ""neo4j"": true,\n    ""redis"": true\n  },\n  ""version"": ""1.0.0""\n}\n```\n\n#### `GET /health/liveness`\n\nKubernetes liveness probe.\n\n**Response:**\n```json\n{\n  ""status"": ""alive""\n}\n```\n\n#### `GET /health/readiness`\n\nKubernetes readiness probe.\n\n**Response:**\n```json\n{\n  ""status"": ""ready""\n}\n```\n\n---\n\n### Document Ingestion\n\n#### `POST /api/v1/ingest/document`\n\nUpload and process a PDF document.\n\n**Request:**\n```bash\ncurl -X POST ""http://localhost:8000/api/v1/ingest/document"" \\\n  -H ""Content-Type: multipart/form-data"" \\\n  -F ""file=@document.pdf"" \\\n  -F \'metadata={""author"":""John Doe"",""category"":""research""}\'\n```\n\n**Parameters:**\n- `file` (required): PDF file\n- `metadata` (optional): JSON string with document metadata']","According to verified source chunks linked to Base URL, the supporting context states: # API Documentation
+
+## Base URL
+
+```
+http://localhost:8000
+```
+
+---
+
+## Endpoints
+
+### Health Check
+
+#### `GET /health`
+
+Check the health of all services.
+
+**Response:**
+```json
+{
+  ""status"": ""healthy"",
+  ""services"": {
+    ""api"": true,
+    ""chroma"": true,
+    ""neo4j"": true,
+    ""redis"": true
+  },
+  ""version"": ""1.0.0""
+}
+```
+
+#### `GET /health/liveness`
+
+Kubernetes liveness probe.
+
+**Response:**
+``",Graph Analyst,GRAPH_SEEDED,MEDIUM,graph_mentions_seed_v1
+What does the knowledge graph evidence say about Endpoints?,"['# API Documentation\n\n## Base URL\n\n```\nhttp://localhost:8000\n```\n\n---\n\n## Endpoints\n\n### Health Check\n\n#### `GET /health`\n\nCheck the health of all services.\n\n**Response:**\n```json\n{\n  ""status"": ""healthy"",\n  ""services"": {\n    ""api"": true,\n    ""chroma"": true,\n    ""neo4j"": true,\n    ""redis"": true\n  },\n  ""version"": ""1.0.0""\n}\n```\n\n#### `GET /health/liveness`\n\nKubernetes liveness probe.\n\n**Response:**\n```json\n{\n  ""status"": ""alive""\n}\n```\n\n#### `GET /health/readiness`\n\nKubernetes readiness probe.\n\n**Response:**\n```json\n{\n  ""status"": ""ready""\n}\n```\n\n---\n\n### Document Ingestion\n\n#### `POST /api/v1/ingest/document`\n\nUpload and process a PDF document.\n\n**Request:**\n```bash\ncurl -X POST ""http://localhost:8000/api/v1/ingest/document"" \\\n  -H ""Content-Type: multipart/form-data"" \\\n  -F ""file=@document.pdf"" \\\n  -F \'metadata={""author"":""John Doe"",""category"":""research""}\'\n```\n\n**Parameters:**\n- `file` (required): PDF file\n- `metadata` (optional): JSON string with document metadata']","According to verified source chunks linked to Endpoints, the supporting context states: # API Documentation
+
+## Base URL
+
+```
+http://localhost:8000
+```
+
+---
+
+## Endpoints
+
+### Health Check
+
+#### `GET /health`
+
+Check the health of all services.
+
+**Response:**
+```json
+{
+  ""status"": ""healthy"",
+  ""services"": {
+    ""api"": true,
+    ""chroma"": true,
+    ""neo4j"": true,
+    ""redis"": true
+  },
+  ""version"": ""1.0.0""
+}
+```
+
+#### `GET /health/liveness`
+
+Kubernetes liveness probe.
+
+**Response:**
+``",Graph Analyst,GRAPH_SEEDED,MEDIUM,graph_mentions_seed_v1
+What does the knowledge graph evidence say about Health Check?,"['# API Documentation\n\n## Base URL\n\n```\nhttp://localhost:8000\n```\n\n---\n\n## Endpoints\n\n### Health Check\n\n#### `GET /health`\n\nCheck the health of all services.\n\n**Response:**\n```json\n{\n  ""status"": ""healthy"",\n  ""services"": {\n    ""api"": true,\n    ""chroma"": true,\n    ""neo4j"": true,\n    ""redis"": true\n  },\n  ""version"": ""1.0.0""\n}\n```\n\n#### `GET /health/liveness`\n\nKubernetes liveness probe.\n\n**Response:**\n```json\n{\n  ""status"": ""alive""\n}\n```\n\n#### `GET /health/readiness`\n\nKubernetes readiness probe.\n\n**Response:**\n```json\n{\n  ""status"": ""ready""\n}\n```\n\n---\n\n### Document Ingestion\n\n#### `POST /api/v1/ingest/document`\n\nUpload and process a PDF document.\n\n**Request:**\n```bash\ncurl -X POST ""http://localhost:8000/api/v1/ingest/document"" \\\n  -H ""Content-Type: multipart/form-data"" \\\n  -F ""file=@document.pdf"" \\\n  -F \'metadata={""author"":""John Doe"",""category"":""research""}\'\n```\n\n**Parameters:**\n- `file` (required): PDF file\n- `metadata` (optional): JSON string with document metadata']","According to verified source chunks linked to Health Check, the supporting context states: # API Documentation
+
+## Base URL
+
+```
+http://localhost:8000
+```
+
+---
+
+## Endpoints
+
+### Health Check
+
+#### `GET /health`
+
+Check the health of all services.
+
+**Response:**
+```json
+{
+  ""status"": ""healthy"",
+  ""services"": {
+    ""api"": true,
+    ""chroma"": true,
+    ""neo4j"": true,
+    ""redis"": true
+  },
+  ""version"": ""1.0.0""
+}
+```
+
+#### `GET /health/liveness`
+
+Kubernetes liveness probe.
+
+**Response:**
+``",Graph Analyst,GRAPH_SEEDED,MEDIUM,graph_mentions_seed_v1
+What does the knowledge graph evidence say about GET?,"['# API Documentation\n\n## Base URL\n\n```\nhttp://localhost:8000\n```\n\n---\n\n## Endpoints\n\n### Health Check\n\n#### `GET /health`\n\nCheck the health of all services.\n\n**Response:**\n```json\n{\n  ""status"": ""healthy"",\n  ""services"": {\n    ""api"": true,\n    ""chroma"": true,\n    ""neo4j"": true,\n    ""redis"": true\n  },\n  ""version"": ""1.0.0""\n}\n```\n\n#### `GET /health/liveness`\n\nKubernetes liveness probe.\n\n**Response:**\n```json\n{\n  ""status"": ""alive""\n}\n```\n\n#### `GET /health/readiness`\n\nKubernetes readiness probe.\n\n**Response:**\n```json\n{\n  ""status"": ""ready""\n}\n```\n\n---\n\n### Document Ingestion\n\n#### `POST /api/v1/ingest/document`\n\nUpload and process a PDF document.\n\n**Request:**\n```bash\ncurl -X POST ""http://localhost:8000/api/v1/ingest/document"" \\\n  -H ""Content-Type: multipart/form-data"" \\\n  -F ""file=@document.pdf"" \\\n  -F \'metadata={""author"":""John Doe"",""category"":""research""}\'\n```\n\n**Parameters:**\n- `file` (required): PDF file\n- `metadata` (optional): JSON string with document metadata']","According to verified source chunks linked to GET, the supporting context states: # API Documentation
+
+## Base URL
+
+```
+http://localhost:8000
+```
+
+---
+
+## Endpoints
+
+### Health Check
+
+#### `GET /health`
+
+Check the health of all services.
+
+**Response:**
+```json
+{
+  ""status"": ""healthy"",
+  ""services"": {
+    ""api"": true,
+    ""chroma"": true,
+    ""neo4j"": true,
+    ""redis"": true
+  },
+  ""version"": ""1.0.0""
+}
+```
+
+#### `GET /health/liveness`
+
+Kubernetes liveness probe.
+
+**Response:**
+``",Graph Analyst,GRAPH_SEEDED,MEDIUM,graph_mentions_seed_v1

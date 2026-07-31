@@ -1,0 +1,82 @@
+{
+  "accepted_for_evaluation": false,
+  "audit_content_sha256": "adac8e5ddfcb061e9e572789f0efce154a55dc178cea4d016a21ce03ac3e47b7",
+  "dataset_version": "chunk-ab-adaptive-draft",
+  "rows": [
+    {
+      "audited_reference": "# API Documentation",
+      "benchmark_id": "KGSYN-001",
+      "categories": [
+        "single_hop"
+      ],
+      "change_rationale": "Historical product naming and orchestration wording must be updated to the current workflow.",
+      "original_reference_sha256": "b5e5a849a3e7db6ba75dfd659075d5c6af0120dc2dc1846ea61347122b998f2c",
+      "question_sha256": "5b4cc421acfee693917804f49934c70c734dd3e0c473b87b542d7ae715dde99c",
+      "reference_contexts_sha256": "5e4f2b17e7b3239f6becc1e1c306d362de88391b9cb07999b48084366f0486f2",
+      "reference_status": "needs_correction",
+      "reviewer": {
+        "name": null,
+        "reviewed_at": null,
+        "status": "pending"
+      },
+      "row_number": 1,
+      "source_evidence": [
+        {
+          "evidence_excerpt": null,
+          "evidence_excerpt_sha256": null,
+          "source_path": "docs/kinetic_graph_solution.md",
+          "source_sha256": "f99e267d611c18b76cf9b7019bf005142cd692950b4d0985ce1059f5a5ad2ef2",
+          "supporting_chunk_ids": [],
+          "verification": "pending"
+        }
+      ],
+      "supporting_chunk_ids": [
+        "benchmark-context-sha256:5e4f2b17e7b3239f6becc1e1c306d362de88391b9cb07999b48084366f0486f2"
+      ],
+      "technical_review_status": "pending",
+      "technical_review_tags": [
+        "api",
+        "hybrid"
+      ]
+    },
+    {
+      "audited_reference": "# API Documentation ... ## Base URL\n\n```\nhttp://localhost:8000\n```\n\n---",
+      "benchmark_id": "KGSYN-002",
+      "categories": [
+        "multi_hop"
+      ],
+      "change_rationale": "Historical product naming must be updated; each workflow-stage claim needs current code evidence.",
+      "original_reference_sha256": "c4b493eaa5e98a60e5866dd81a504ff21544d261bf5a17fbf6f57ee49cfd1ac4",
+      "question_sha256": "c7cec900e4da6a39b2ad150aeb972e50cd3658ac46fc9283d3b66d8d4db6afdb",
+      "reference_contexts_sha256": "cd3daebc7b5a427ea4a499b8d258d3baed6b9f1222d618cf10369bcf97f9c0c4",
+      "reference_status": "needs_correction",
+      "reviewer": {
+        "name": null,
+        "reviewed_at": null,
+        "status": "pending"
+      },
+      "row_number": 2,
+      "source_evidence": [
+        {
+          "evidence_excerpt": null,
+          "evidence_excerpt_sha256": null,
+          "source_path": "docs/kinetic_graph_solution.md",
+          "source_sha256": "f99e267d611c18b76cf9b7019bf005142cd692950b4d0985ce1059f5a5ad2ef2",
+          "supporting_chunk_ids": [],
+          "verification": "pending"
+        }
+      ],
+      "supporting_chunk_ids": [
+        "benchmark-context-sha256:cd3daebc7b5a427ea4a499b8d258d3baed6b9f1222d618cf10369bcf97f9c0c4"
+      ],
+      "technical_review_status": "pending",
+      "technical_review_tags": [
+        "api",
+        "hybrid"
+      ]
+    }
+  ],
+  "schema_version": "kinegraph.benchmark.reference-audit.v1",
+  "source_dataset": "eval/drafts/kinegraph_benchmark_chunk-ab-adaptive-draft.csv",
+  "source_dataset_sha256": "899c68f9f49054d7ef717fd09094f6d5c19eb3974c15ce214d249059de1f2b4e"
+}

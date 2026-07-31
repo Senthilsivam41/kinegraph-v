@@ -1,0 +1,85 @@
+user_input,reference_contexts,reference,persona_name,query_style,query_length,synthesizer_name
+What does the first retrieved source chunk describe?,"['# API Documentation\n\n## Base URL\n\n```\nhttp://localhost:8000\n```\n\n---\n\n## Endpoints\n\n### Health Check\n\n#### `GET /health`\n\nCheck the health of all services.\n\n**Response:**\n```json\n{\n  ""status"": ""healthy"",\n  ""services"": {\n    ""api"": true,\n    ""chroma"": true,\n    ""neo4j"": true,\n    ""redis"": true\n  },\n  ""version"": ""1.0.0""\n}\n```\n\n#### `GET /health/liveness`\n\nKubernetes liveness probe.\n\n**Response:**\n```json\n{\n  ""status"": ""alive""\n}\n```\n\n#### `GET /health/readiness`\n\nKubernetes readiness probe.\n\n**Response:**\n```json\n{\n  ""status"": ""ready""\n}\n```\n\n---\n\n### Document Ingestion\n\n#### `POST /api/v1/ingest/document`\n\nUpload and process a PDF document.\n\n**Request:**\n```bash\ncurl -X POST ""http://localhost:8000/api/v1/ingest/document"" \\\n  -H ""Content-Type: multipart/form-data"" \\\n  -F ""file=@document.pdf"" \\\n  -F \'metadata={""author"":""John Doe"",""category"":""research""}\'\n```\n\n**Parameters:**\n- `file` (required): PDF file\n- `metadata` (optional): JSON string with document metadata']","# API Documentation
+
+## Base URL
+
+```
+http://localhost:8000
+```
+
+---
+
+## Endpoints
+
+### Health Check
+
+#### `GET /health`
+
+Check the health of all services.
+
+**Response:**
+```json
+{
+  ""status"": ""healthy"",
+  ""services"": {
+    ""api"": true,
+    ""chroma"": true,
+    ""neo4j"": true,
+    ""redis"": true
+  },
+  ""version"": ""1.0.0""
+}
+```
+
+#### `GET /health/liveness`
+
+Kubernetes liveness probe.
+
+**Response:**
+```json
+{
+  ""status"": ""alive""
+}
+```
+
+#### `GET /health/readiness`
+
+Kubernetes readiness probe.
+
+**Resp",Offline Spike Reviewer,SYNTHETIC,SHORT,single_hop_specific_query_synthesizer
+How do the first two source chunks relate in the corpus?,"['# API Documentation\n\n## Base URL\n\n```\nhttp://localhost:8000\n```\n\n---\n\n## Endpoints\n\n### Health Check\n\n#### `GET /health`\n\nCheck the health of all services.\n\n**Response:**\n```json\n{\n  ""status"": ""healthy"",\n  ""services"": {\n    ""api"": true,\n    ""chroma"": true,\n    ""neo4j"": true,\n    ""redis"": true\n  },\n  ""version"": ""1.0.0""\n}\n```\n\n#### `GET /health/liveness`\n\nKubernetes liveness probe.\n\n**Response:**\n```json\n{\n  ""status"": ""alive""\n}\n```\n\n#### `GET /health/readiness`\n\nKubernetes readiness probe.\n\n**Response:**\n```json\n{\n  ""status"": ""ready""\n}\n```\n\n---\n\n### Document Ingestion\n\n#### `POST /api/v1/ingest/document`\n\nUpload and process a PDF document.\n\n**Request:**\n```bash\ncurl -X POST ""http://localhost:8000/api/v1/ingest/document"" \\\n  -H ""Content-Type: multipart/form-data"" \\\n  -F ""file=@document.pdf"" \\\n  -F \'metadata={""author"":""John Doe"",""category"":""research""}\'\n```\n\n**Parameters:**\n- `file` (required): PDF file\n- `metadata` (optional): JSON string with document metadata', '**Parameters:**\n- `file` (required): PDF file\n- `metadata` (optional): JSON string with document metadata\n\n**Response:**\n```json\n{\n  ""task_id"": ""abc123-def456"",\n  ""status"": ""PENDING"",\n  ""message"": ""Document \'document.pdf\' queued for processing""\n}\n```\n\n**Status Codes:**\n- `200`: Success\n- `400`: Invalid file type or metadata\n- `500`: Server error\n\n---\n\n#### `GET /api/v1/ingest/task/{task_id}`\n\nCheck the status of a document processing task.\n\n**Request:**\n```bash\ncurl http://localhost:8000/api/v1/ingest/task/abc123-def456\n```\n\n**Response (Processing):**\n```json\n{\n  ""task_id"": ""abc123-def456"",\n  ""status"": ""PROGRESS"",\n  ""result"": null,\n  ""error"": null\n}\n```\n\n**Response (Success):**\n```json\n{\n  ""task_id"": ""abc123-def456"",\n  ""status"": ""SUCCESS"",\n  ""result"": {\n    ""document_id"": ""doc_xyz789"",\n    ""file_name"": ""document.pdf"",\n    ""total_chunks"": 42,\n    ""entities_count"": 15,\n    ""relationships_count"": 8,\n    ""status"": ""success""\n  },\n  ""error"": null\n}\n```']","# API Documentation
+
+## Base URL
+
+```
+http://localhost:8000
+```
+
+---
+
+## Endpoints
+
+### Health Check
+
+#### `GET /health`
+
+Check the health of all services.
+
+**Response:**
+```json
+{
+  ""status"": ""healthy"",
+  ""services"": {
+    ""api"": true,
+    ""chroma"": ... **Parameters:**
+- `file` (required): PDF file
+- `metadata` (optional): JSON string with document metadata
+
+**Response:**
+```json
+{
+  ""task_id"": ""abc123-def456"",
+  ""status"": ""PENDING"",
+  ""message"": ""Document 'document.pdf' queued for processing""
+}
+```",Offline Spike Reviewer,SYNTHETIC,MEDIUM,multi_hop_specific_query_synthesizer

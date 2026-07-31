@@ -31,6 +31,7 @@ def assign_citation_ids(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         metadata = chunk.get("metadata") or {}
         raw_id = (
             chunk.get("citation_id")
+            or chunk.get("candidate_id")
             or chunk.get("id")
             or metadata.get("chunk_id")
             or metadata.get("id")
