@@ -37,6 +37,7 @@ def main() -> None:
     parser.add_argument("--max-hops", type=int, default=2)
     parser.add_argument("--max-results", type=int, default=6)
     parser.add_argument("--candidate-pool-size", type=int, default=25)
+    parser.add_argument("--concurrency", type=int, default=3)
     parser.add_argument(
         "--profile",
         choices=["hybrid", "hybrid_lexical", "vectorless", "adaptive_hybrid"],
@@ -45,7 +46,7 @@ def main() -> None:
     parser.add_argument("--run-label", default="latest")
     parser.add_argument(
         "--judge-provider",
-        choices=["openrouter", "openai"],
+        choices=["openrouter", "openai", "nvidia"],
         default=os.getenv("RAGAS_JUDGE_PROVIDER", "openrouter"),
     )
     parser.add_argument("--judge-base-url", default=os.getenv("RAGAS_JUDGE_BASE_URL"))
@@ -74,6 +75,8 @@ def main() -> None:
         str(args.max_results),
         "--candidate-pool-size",
         str(args.candidate_pool_size),
+        "--concurrency",
+        str(max(1, args.concurrency)),
         "--profile",
         args.profile,
         "--run-label",
