@@ -46,7 +46,7 @@ def main() -> None:
     parser.add_argument("--run-label", default="latest")
     parser.add_argument(
         "--judge-provider",
-        choices=["openrouter", "openai", "nvidia"],
+        choices=["openrouter", "openai", "nvidia", "fireworks"],
         default=os.getenv("RAGAS_JUDGE_PROVIDER", "openrouter"),
     )
     parser.add_argument("--judge-base-url", default=os.getenv("RAGAS_JUDGE_BASE_URL"))

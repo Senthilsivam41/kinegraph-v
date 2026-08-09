@@ -25,6 +25,28 @@ Judge output is bounded to 4,096 tokens by default to avoid reserving an
 unaffordable provider context budget. Override with `RAGAS_JUDGE_MAX_TOKENS`
 only when the judge account has sufficient credits.
 
+To judge with NVIDIA Nemotron through OpenRouter, keep the provider as
+`openrouter` and change only the judge model:
+
+```bash
+python scripts/run_ragas_evaluation.py \
+  --model nvidia/nemotron-3-super-120b-a12b \
+  --judge-provider openrouter \
+  --judge-base-url https://openrouter.ai/api/v1 \
+  --preflight-only
+```
+
+Fireworks is also supported as a separate OpenAI-compatible judge endpoint:
+
+```bash
+export FIREWORKS_API_KEY=fw_...
+python scripts/run_ragas_evaluation.py \
+  --model accounts/fireworks/models/nvidia-nemotron-3-super-120b-a12b-fp8 \
+  --judge-provider fireworks \
+  --judge-base-url https://api.fireworks.ai/inference/v1 \
+  --preflight-only
+```
+
 `OPENAI_API_KEY` remains a backward-compatible fallback. Semantic RAGAS metrics
 use the locally cached `sentence-transformers/all-MiniLM-L6-v2` model so the
 judge does not try to call an OpenRouter embedding endpoint.
