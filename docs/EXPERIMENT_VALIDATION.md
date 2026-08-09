@@ -53,6 +53,14 @@ self-enhancement bias.
 
 ## Running a controlled cycle
 
+An accepted baseline must complete all 20 rows with `ragas_failed=False`. If
+the judge endpoint returns a connection, authentication, or credit error,
+retain the diagnostic artifact only and do not run promotion comparisons. The
+evaluator retries only transient transport/rate-limit/server failures; HTTP
+402 credit exhaustion is recorded and fails closed. The current Qwen/OpenRouter
+retry reached live retrieval but was rejected after the provider reported that
+the requested context window exceeded the remaining account credits.
+
 Create the accepted baseline:
 
 ```bash
@@ -64,6 +72,7 @@ PYTHONPATH=. venv/bin/python eval/ragas_evaluator.py \
   --generation-model qwen/qwen3.6-27b \
   --judge-model qwen/qwen3.6-27b \
   --judge-provider openrouter \
+  --concurrency 1 \
   --run-label baseline
 ```
 
@@ -78,6 +87,7 @@ PYTHONPATH=. venv/bin/python eval/ragas_evaluator.py \
   --generation-model qwen/qwen3.6-27b \
   --judge-model qwen/qwen3.6-27b \
   --judge-provider openrouter \
+  --concurrency 1 \
   --baseline-manifest reports/ragas_baseline_manifest.json \
   --run-label hop3
 ```

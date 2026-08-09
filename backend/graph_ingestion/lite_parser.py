@@ -29,24 +29,25 @@ class LiteParseClient:
         base_url: Optional[str] = None,
         timeout: Optional[int] = None,
     ) -> None:
-        self.base_url = base_url or settings.PARSER_URL
+        self.base_url = (base_url or settings.PARSER_URL).rstrip("/")
         self.timeout = timeout if timeout is not None else settings.PARSER_TIMEOUT_SECONDS
-        self.parse_endpoint = f"{self.base_url}/parse"
+        self.parse_endpoint = f"{self.base_url}/api/v1/parse"
+        self.legacy_parse_endpoint = f"{self.base_url}/parse"
 
     def is_available(self) -> bool:
         """Perform a lightweight liveness probe.
 
-        POST /parse with an empty body returns HTTP 400 (Bad Request) when the
-        server is up — the image has no dedicated /health endpoint.
+        The versioned API endpoint is probed with GET.  A legacy ``/parse``
+        fallback keeps older pinned LiteParse images usable.
 
         Returns:
-            True if the server is reachable and returns 400, False otherwise.
+            True only when the service reports HTTP 200, False otherwise.
         """
         try:
-            requests.post(self.parse_endpoint, data={}, timeout=5)
-            return True  # unexpected 2xx — still counts as alive
-        except requests.exceptions.HTTPError as exc:
-            return exc.response is not None and exc.response.status_code == 400
+            response = requests.get(self.parse_endpoint, timeout=5)
+            if response.status_code == 404:
+                response = requests.get(self.legacy_parse_endpoint, timeout=5)
+            return response.status_code == 200
         except requests.exceptions.RequestException:
             return False
 
@@ -97,6 +98,15 @@ class LiteParseClient:
                     data=data,
                     timeout=self.timeout,
                 )
+                if response.status_code == 404:
+                    doc_file.seek(0)
+                    files["file"] = (os.path.basename(file_path), doc_file, "application/pdf")
+                    response = requests.post(
+                        self.legacy_parse_endpoint,
+                        files=files,
+                        data=data,
+                        timeout=self.timeout,
+                    )
                 response.raise_for_status()
                 return response.json().get("markdown", "")
 

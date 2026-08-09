@@ -63,7 +63,27 @@ def test_openrouter_qwen_preflight_uses_explicit_endpoint_and_local_embeddings(
     }
     assert captured["judge"]["base_url"] == "https://openrouter.ai/api/v1"
     assert captured["judge"]["temperature"] == 0
+    assert captured["judge"]["max_tokens"] == 4096
     assert captured["embeddings"]["model_kwargs"] == {"local_files_only": True}
+
+
+def test_judge_exception_details_include_type_status_and_request_id():
+    response = SimpleNamespace(status_code=503, headers={"x-request-id": "req-123"})
+    error = RuntimeError()
+    error.response = response
+
+    details = RAGASEvaluator._judge_exception_details(error)
+
+    assert "RuntimeError" in details
+    assert "status_code=503" in details
+    assert "request_id=req-123" in details
+    assert RAGASEvaluator._is_transient_judge_error(error) is True
+
+
+def test_judge_validation_errors_are_not_retryable():
+    error = ValueError("malformed judge output")
+
+    assert RAGASEvaluator._is_transient_judge_error(error) is False
 
 
 def test_preflight_fails_closed_and_preserves_embedding_bootstrap_error(monkeypatch):
@@ -135,6 +155,32 @@ def test_openrouter_environment_key_is_supported(monkeypatch):
 
     assert evaluator.readiness()["provider"] == "openrouter"
     assert captured["openai_api_key"] == "sk-or-from-environment"
+
+
+def test_nvidia_nemotron_provider_uses_nvidia_endpoint_and_key(monkeypatch):
+    captured = {}
+
+    class FakeChatOpenAI:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    class FakeEmbeddings:
+        def __init__(self, **kwargs):
+            pass
+
+    monkeypatch.setenv("NVIDIA_API_KEY", "nvapi-test")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.setattr(ragas_module, "ChatOpenAI", FakeChatOpenAI)
+    monkeypatch.setattr(ragas_module, "HuggingFaceEmbeddings", FakeEmbeddings)
+
+    evaluator = RAGASEvaluator(
+        model="nvidia/llama-3.3-nemotron-super-49b-v1",
+        provider="nvidia",
+    )
+
+    assert evaluator.readiness()["provider"] == "nvidia"
+    assert captured["base_url"] == "https://integrate.api.nvidia.com/v1"
+    assert captured["openai_api_key"] == "nvapi-test"
 
 
 def test_successful_ragas_rows_are_accepted():

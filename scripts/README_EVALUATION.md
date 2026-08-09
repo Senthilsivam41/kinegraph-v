@@ -21,6 +21,10 @@ RAGAS_JUDGE_BASE_URL=https://openrouter.ai/api/v1
 LLM_MODEL=qwen/qwen3.6-27b
 ```
 
+Judge output is bounded to 4,096 tokens by default to avoid reserving an
+unaffordable provider context budget. Override with `RAGAS_JUDGE_MAX_TOKENS`
+only when the judge account has sufficient credits.
+
 `OPENAI_API_KEY` remains a backward-compatible fallback. Semantic RAGAS metrics
 use the locally cached `sentence-transformers/all-MiniLM-L6-v2` model so the
 judge does not try to call an OpenRouter embedding endpoint.

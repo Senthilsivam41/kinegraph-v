@@ -72,6 +72,9 @@ except ImportError:
 
 DEFAULT_METRICS = ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]
 ALL_METRICS = DEFAULT_METRICS + ["answer_correctness"]
+JUDGE_MAX_RETRIES = 2
+JUDGE_RETRY_BACKOFF_SECONDS = 1.0
+JUDGE_MAX_TOKENS = 4096
 
 METRIC_DESCRIPTIONS = {
     "faithfulness": "Fraction of answer claims supported by retrieved context",
@@ -206,9 +209,13 @@ class RAGASEvaluator:
         base_url: Optional[str] = None,
         local_embeddings_only: bool = True,
         allow_heuristic_fallback: bool = False,
+        judge_max_retries: int = JUDGE_MAX_RETRIES,
+        judge_retry_backoff_seconds: float = JUDGE_RETRY_BACKOFF_SECONDS,
     ) -> None:
+        self.provider = (provider or os.getenv("RAGAS_JUDGE_PROVIDER") or "").strip().lower()
         self.openai_api_key = (
             openai_api_key
+            or (os.getenv("NVIDIA_API_KEY") if self.provider == "nvidia" else None)
             or os.getenv("OPENROUTER_API_KEY")
             or os.getenv("OPENAI_AI_KEY")
             or os.getenv("OPENAI_API_KEY")
@@ -220,10 +227,13 @@ class RAGASEvaluator:
         self.critic_model = critic_model
         self.critic_api_key = critic_api_key
         self.critic_base_url = critic_base_url
-        self.provider = (provider or os.getenv("RAGAS_JUDGE_PROVIDER") or "").strip().lower()
         self.base_url = base_url or os.getenv("RAGAS_JUDGE_BASE_URL")
+        if not self.base_url and self.provider == "nvidia":
+            self.base_url = "https://integrate.api.nvidia.com/v1"
         self.local_embeddings_only = local_embeddings_only
         self.allow_heuristic_fallback = allow_heuristic_fallback
+        self.judge_max_retries = max(0, int(judge_max_retries))
+        self.judge_retry_backoff_seconds = max(0.0, float(judge_retry_backoff_seconds))
         self._llm = None
         self._critic_llm = None
         self._embeddings = None
@@ -245,8 +255,8 @@ class RAGASEvaluator:
         try:
             if not self.openai_api_key:
                 raise ValueError(
-                    "No judge API key configured. Set OPENROUTER_API_KEY or "
-                    "OPENAI_API_KEY, or pass openai_api_key explicitly."
+                    "No judge API key configured. Set NVIDIA_API_KEY for the "
+                    "NVIDIA provider, OPENROUTER_API_KEY, or OPENAI_API_KEY."
                 )
 
             is_openrouter = (
@@ -254,10 +264,10 @@ class RAGASEvaluator:
                 or bool(self.base_url and "openrouter.ai" in self.base_url)
                 or self.openai_api_key.startswith("sk-or-")
             )
-            if self.provider and self.provider not in {"openai", "openrouter"}:
+            if self.provider and self.provider not in {"openai", "openrouter", "nvidia"}:
                 raise ValueError(
                     f"Unsupported RAGAS judge provider '{self.provider}'. "
-                    "Use 'openai' or 'openrouter'."
+                    "Use 'openai', 'openrouter', or 'nvidia'."
                 )
 
             judge_base_url = self.base_url
@@ -266,6 +276,12 @@ class RAGASEvaluator:
             kw: Dict[str, Any] = {
                 "model": self.model,
                 "temperature": 0,
+                # Bound judge output so OpenRouter cannot reserve an
+                # unnecessarily large context budget for each metric call.
+                "max_tokens": max(
+                    256,
+                    int(os.getenv("RAGAS_JUDGE_MAX_TOKENS", str(JUDGE_MAX_TOKENS))),
+                ),
                 "openai_api_key": self.openai_api_key,
             }
             if judge_base_url:
@@ -338,6 +354,9 @@ class RAGASEvaluator:
         return {
             "ready": self._setup_error is None and bool(self._ragas_metrics),
             "provider": (
+                "nvidia"
+                if self.provider == "nvidia"
+                else (
                 "openrouter"
                 if (
                     self.provider == "openrouter"
@@ -348,6 +367,7 @@ class RAGASEvaluator:
                     )
                 )
                 else (self.provider or "openai")
+                )
             ),
             "judge_model": self.critic_model or self.model,
             "embedding_model": self.embedding_model,
@@ -368,6 +388,42 @@ class RAGASEvaluator:
     # ------------------------------------------------------------------
     # Core evaluation
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _judge_exception_details(exc: BaseException) -> str:
+        """Return actionable, secret-free details for a failed judge call."""
+        details = [f"{type(exc).__module__}.{type(exc).__name__}", repr(exc)]
+        status = getattr(exc, "status_code", None)
+        response = getattr(exc, "response", None)
+        if status is None and response is not None:
+            status = getattr(response, "status_code", None)
+        if status is not None:
+            details.append(f"status_code={status}")
+        request_id = getattr(exc, "request_id", None)
+        if request_id is None and response is not None:
+            headers = getattr(response, "headers", {}) or {}
+            request_id = headers.get("x-request-id") or headers.get("request-id")
+        if request_id:
+            details.append(f"request_id={request_id}")
+        return "; ".join(details)
+
+    @staticmethod
+    def _is_transient_judge_error(exc: BaseException) -> bool:
+        """Retry transport, timeout, rate-limit, and server-side failures only."""
+        status = getattr(exc, "status_code", None)
+        response = getattr(exc, "response", None)
+        if status is None and response is not None:
+            status = getattr(response, "status_code", None)
+        if status is not None:
+            try:
+                return int(status) == 408 or int(status) == 429 or int(status) >= 500
+            except (TypeError, ValueError):
+                pass
+        name = type(exc).__name__.lower()
+        return any(token in name for token in (
+            "timeout", "timeouterror", "connecterror", "connectionerror",
+            "rate", "temporar", "serviceunavailable", "internalserver",
+        ))
 
     def evaluate_single(
         self,
@@ -410,13 +466,39 @@ class RAGASEvaluator:
             active = [m for m in active if m not in (answer_correctness, context_recall)]
 
         try:
-            result = ragas_evaluate(
-                dataset=dataset,
-                metrics=active,
-                llm=self._critic_llm or self._llm,
-                embeddings=self._embeddings,
-                raise_exceptions=True,
-            )
+            result = None
+            last_error: Optional[BaseException] = None
+            for attempt in range(self.judge_max_retries + 1):
+                try:
+                    # Keep this strict: a retry may recover a transient judge
+                    # failure, but no exception is converted into a score.
+                    result = ragas_evaluate(
+                        dataset=dataset,
+                        metrics=active,
+                        llm=self._critic_llm or self._llm,
+                        embeddings=self._embeddings,
+                        raise_exceptions=True,
+                    )
+                    break
+                except Exception as exc:
+                    last_error = exc
+                    if (
+                        attempt >= self.judge_max_retries
+                        or not self._is_transient_judge_error(exc)
+                    ):
+                        raise
+                    delay = self.judge_retry_backoff_seconds * (2 ** attempt)
+                    logger.warning(
+                        "Transient RAGAS judge failure (attempt %d/%d): %s; retrying in %.1fs",
+                        attempt + 1,
+                        self.judge_max_retries + 1,
+                        self._judge_exception_details(exc),
+                        delay,
+                    )
+                    if delay:
+                        time.sleep(delay)
+            if result is None and last_error is not None:
+                raise last_error
             scores_dict = {}
             nan_metrics = []
             import math
@@ -451,12 +533,13 @@ class RAGASEvaluator:
                 
             return scores_dict
         except Exception as exc:
-            logger.error("RAGAS evaluate_single error: %s", exc)
+            details = self._judge_exception_details(exc)
+            logger.error("RAGAS evaluate_single error: %s", details)
             scores = _fallback_evaluate(question, answer, contexts, ground_truth)
             return {
                 **scores,
                 "ragas_failed": True,
-                "ragas_error": f"Exception: {str(exc)}"
+                "ragas_error": f"Exception: {details}"
             }
 
     def evaluate_batch(
@@ -1080,6 +1163,12 @@ if __name__ == "__main__":
     )
     parser.add_argument("--run-label", default="latest", help="Safe label used for persisted result files")
     parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=3,
+        help="Maximum concurrent workflow/judge samples (use 1 for deterministic sequential runs)",
+    )
+    parser.add_argument(
         "--benchmark-audit",
         default="eval/kinegraph_benchmark_v1.audit.json",
         help="Versioned reference audit; unaccepted or stale audits fail closed",
@@ -1094,7 +1183,7 @@ if __name__ == "__main__":
     parser.add_argument("--judge-model", default=settings.LLM_MODEL)
     parser.add_argument(
         "--judge-provider",
-        choices=["openrouter", "openai"],
+        choices=["openrouter", "openai", "nvidia"],
         default=os.getenv("RAGAS_JUDGE_PROVIDER", "openrouter"),
         help="OpenAI-compatible provider used only by the RAGAS judge",
     )
@@ -1303,7 +1392,7 @@ if __name__ == "__main__":
             allow_mode_downgrade=profile.allow_mode_downgrade,
             allow_vectorless_auto_route=profile.allow_vectorless_auto_route,
             profile=profile.to_dict(),
-            concurrency_limit=3,
+            concurrency_limit=max(1, args.concurrency),
         ))
     finally:
         try:
