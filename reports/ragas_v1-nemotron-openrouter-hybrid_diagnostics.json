@@ -1,0 +1,20 @@
+{
+  "category_counts": {
+    "compound": 13,
+    "exact_token": 5,
+    "misspelled": 3,
+    "multi_hop": 12,
+    "single_hop": 8,
+    "two_reference_facets": 6
+  },
+  "effective_mode_counts": {
+    "hybrid": 20
+  },
+  "first_failure_stage_counts": {
+    "ragas_judge": 20
+  },
+  "profile_valid": true,
+  "ragas_failed_count": 20,
+  "schema_version": "kinegraph.eval.provenance.v1",
+  "total_records": 20
+}

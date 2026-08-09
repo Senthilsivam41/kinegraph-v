@@ -215,6 +215,7 @@ class RAGASEvaluator:
         self.provider = (provider or os.getenv("RAGAS_JUDGE_PROVIDER") or "").strip().lower()
         self.openai_api_key = (
             openai_api_key
+            or (os.getenv("FIREWORKS_API_KEY") if self.provider == "fireworks" else None)
             or (os.getenv("NVIDIA_API_KEY") if self.provider == "nvidia" else None)
             or os.getenv("OPENROUTER_API_KEY")
             or os.getenv("OPENAI_AI_KEY")
@@ -230,6 +231,8 @@ class RAGASEvaluator:
         self.base_url = base_url or os.getenv("RAGAS_JUDGE_BASE_URL")
         if not self.base_url and self.provider == "nvidia":
             self.base_url = "https://integrate.api.nvidia.com/v1"
+        if not self.base_url and self.provider == "fireworks":
+            self.base_url = "https://api.fireworks.ai/inference/v1"
         self.local_embeddings_only = local_embeddings_only
         self.allow_heuristic_fallback = allow_heuristic_fallback
         self.judge_max_retries = max(0, int(judge_max_retries))
@@ -255,7 +258,8 @@ class RAGASEvaluator:
         try:
             if not self.openai_api_key:
                 raise ValueError(
-                    "No judge API key configured. Set NVIDIA_API_KEY for the "
+                    "No judge API key configured. Set FIREWORKS_API_KEY for the "
+                    "Fireworks provider, NVIDIA_API_KEY for NVIDIA, "
                     "NVIDIA provider, OPENROUTER_API_KEY, or OPENAI_API_KEY."
                 )
 
@@ -264,10 +268,10 @@ class RAGASEvaluator:
                 or bool(self.base_url and "openrouter.ai" in self.base_url)
                 or self.openai_api_key.startswith("sk-or-")
             )
-            if self.provider and self.provider not in {"openai", "openrouter", "nvidia"}:
+            if self.provider and self.provider not in {"openai", "openrouter", "nvidia", "fireworks"}:
                 raise ValueError(
                     f"Unsupported RAGAS judge provider '{self.provider}'. "
-                    "Use 'openai', 'openrouter', or 'nvidia'."
+                    "Use 'openai', 'openrouter', 'nvidia', or 'fireworks'."
                 )
 
             judge_base_url = self.base_url
@@ -351,24 +355,19 @@ class RAGASEvaluator:
 
     def readiness(self) -> Dict[str, Any]:
         """Return a secret-free, persistable description of judge readiness."""
+        if self.provider in {"nvidia", "fireworks"}:
+            provider_name = self.provider
+        elif (
+            self.provider == "openrouter"
+            or bool(self.base_url and "openrouter.ai" in self.base_url)
+            or bool(self.openai_api_key and self.openai_api_key.startswith("sk-or-"))
+        ):
+            provider_name = "openrouter"
+        else:
+            provider_name = self.provider or "openai"
         return {
             "ready": self._setup_error is None and bool(self._ragas_metrics),
-            "provider": (
-                "nvidia"
-                if self.provider == "nvidia"
-                else (
-                "openrouter"
-                if (
-                    self.provider == "openrouter"
-                    or bool(self.base_url and "openrouter.ai" in self.base_url)
-                    or bool(
-                        self.openai_api_key
-                        and self.openai_api_key.startswith("sk-or-")
-                    )
-                )
-                else (self.provider or "openai")
-                )
-            ),
+            "provider": provider_name,
             "judge_model": self.critic_model or self.model,
             "embedding_model": self.embedding_model,
             "local_embeddings_only": self.local_embeddings_only,
@@ -1183,7 +1182,7 @@ if __name__ == "__main__":
     parser.add_argument("--judge-model", default=settings.LLM_MODEL)
     parser.add_argument(
         "--judge-provider",
-        choices=["openrouter", "openai", "nvidia"],
+        choices=["openrouter", "openai", "nvidia", "fireworks"],
         default=os.getenv("RAGAS_JUDGE_PROVIDER", "openrouter"),
         help="OpenAI-compatible provider used only by the RAGAS judge",
     )
