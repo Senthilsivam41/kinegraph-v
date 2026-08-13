@@ -56,6 +56,11 @@ def main() -> None:
     )
     parser.add_argument("--preflight-only", action="store_true")
     parser.add_argument("--judge-smoke-test", action="store_true")
+    parser.add_argument(
+        "--regression-run-output",
+        default=os.getenv("KINEGRAPH_RUN_OUTPUT", "reports/run_output.json"),
+        help="Accepted RAGAS output path consumed by regression_gate.py",
+    )
     parser.add_argument("--enable-adaptive-routing", action="store_true")
     args = parser.parse_args()
 
@@ -81,6 +86,8 @@ def main() -> None:
         args.profile,
         "--run-label",
         args.run_label,
+        "--regression-run-output",
+        args.regression_run_output,
     ]
     if args.judge_base_url:
         forwarded.extend(["--judge-base-url", args.judge_base_url])
