@@ -333,9 +333,15 @@ nano .env
 ### 2. Start Services
 
 ```bash
-# Build and start all services via Docker Compose (resides in infra/)
-cd infra
-docker compose --env-file ../.env up --build -d
+# Build and start all services with the repository .env loaded explicitly
+./scripts/start_services.sh
+```
+
+The launcher can be called from any directory and fails early if
+`NEO4J_PASSWORD` is not set in `.env`. The equivalent direct command is:
+
+```bash
+docker compose --env-file .env -f infra/docker-compose.yml up --build -d
 ```
 
 ### 3. Verify Health
