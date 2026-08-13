@@ -38,6 +38,7 @@ from eval.provenance import (
     write_diagnostic_summary,
     write_provenance_jsonl,
 )
+from eval.regression_gate import write_run_output
 from eval.ir_metrics import aggregate_ir_metrics, score_retrieval
 from eval.kinetic_score import calibrate_shadow_scores, compute_kinetic_score_shadow
 import numpy as np
@@ -858,6 +859,7 @@ class RAGASEvaluator:
             return {
                 "question": question,
                 "answer": answer,
+                "contexts": contexts,
                 "n_contexts": len(contexts),
                 "has_ground_truth": bool(ground_truth),
                 "ground_truth": ground_truth,
@@ -1211,6 +1213,14 @@ if __name__ == "__main__":
         help="Optional accepted manifest to compare using the one-lever ratchet gate",
     )
     parser.add_argument(
+        "--regression-run-output",
+        default=os.getenv("KINEGRAPH_RUN_OUTPUT", "reports/run_output.json"),
+        help=(
+            "Path for the accepted RAGAS output consumed by regression_gate.py; "
+            "written only after all rows pass the fail-closed RAGAS gate"
+        ),
+    )
+    parser.add_argument(
         "--enable-adaptive-routing",
         action="store_true",
         help="Experimental ADR-001 execution-plan policy; use with --profile adaptive_hybrid",
@@ -1432,6 +1442,21 @@ if __name__ == "__main__":
     serializable_results.to_csv(results_path, index=False)
     with open(report_path, "w", encoding="utf-8") as report_file:
         json.dump(report, report_file, indent=2)
+
+    regression_output_path = args.regression_run_output
+    if not os.path.isabs(regression_output_path):
+        regression_output_path = os.path.join(repo_root, regression_output_path)
+    regression_policy = ValidationPolicy()
+    regression_results = results_df.copy()
+    regression_results["composite_score"] = regression_results.apply(
+        lambda row: weighted_composite(row.to_dict(), regression_policy),
+        axis=1,
+    )
+    write_run_output(
+        regression_output_path,
+        regression_results.to_dict(orient="records"),
+        report["summary"]["overall_composite_score"],
+    )
     
     print("\n=== PER-METRIC AVERAGE SCORES ===")
     for metric, stats in report['per_metric'].items():
@@ -1520,6 +1545,7 @@ if __name__ == "__main__":
             "provenance_jsonl": provenance_path,
             "diagnostics_json": diagnostics_path,
             "reference_audit": audit_path,
+            "regression_run_output": regression_output_path,
         },
         policy=policy,
         git_revision=run_git_revision,

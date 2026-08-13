@@ -48,6 +48,9 @@ pytest-asyncio==0.23.3
 # RAGAS evaluation framework. Pin the accepted-baseline stack so judge API
 # changes cannot silently alter scores between architecture releases.
 ragas==0.4.3
+# Optional CI assertion layer; it consumes persisted RAGAS output and only
+# judge-scores citation adherence (never recomputes RAGAS metrics).
+deepeval>=1.0.0,<3.0.0
 datasets==5.0.0
 langchain-huggingface>=0.0.1,<0.1.0
 rapidfuzz

@@ -25,7 +25,7 @@ else
     echo -e "${YELLOW}⚠️  Backend API not detected at http://localhost:8000${NC}"
     echo -e "${YELLOW}Please start the backend first:${NC}"
     echo "   cd ${ROOT_DIR}"
-    echo "   docker compose -f infra/docker-compose.yml up -d"
+    echo "   ${ROOT_DIR}/scripts/start_services.sh"
     echo "   # OR"
     echo "   uvicorn backend.app.main:app --reload"
     echo ""

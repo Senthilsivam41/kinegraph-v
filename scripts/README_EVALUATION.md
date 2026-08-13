@@ -166,6 +166,22 @@ Accepted artifacts are written under `reports/` using the run label and profile.
 If any gate fails, diagnostic provenance is retained but no accepted report,
 manifest, or spider graph is updated.
 
+### Thin DeepEval regression gate
+
+An accepted run also writes `reports/run_output.json`. This is the input to the
+zero-duplicate-judge ratchet gate:
+
+```bash
+deepeval test run regression_gate.py
+```
+
+`RagasCompositeGate` reads the persisted aggregate score and fails when it is
+below either the last accepted `baseline_ref.json` score or the absolute
+floor. DeepEval only judge-scores citation-to-context adherence, which is not
+part of the RAGAS composite. The baseline is promoted only after both checks
+pass. Set `KINEGRAPH_RUN_OUTPUT` and `KINEGRAPH_BASELINE_REF` to override the
+default paths.
+
 ## Troubleshooting
 
 - `RAGAS PREFLIGHT FAILED ... local cache`: cache the configured sentence
