@@ -1,0 +1,42 @@
+{
+  "accepted_as_full_benchmark": false,
+  "judge_model": "poolside/laguna-s-2.1:free",
+  "judge_provider": "openrouter",
+  "metrics": {
+    "answer_correctness": {
+      "finite": true,
+      "ragas_error": "Exception: builtins.TimeoutError; TimeoutError()",
+      "ragas_failed": true,
+      "value": 0.037
+    },
+    "answer_relevancy": {
+      "finite": true,
+      "ragas_error": null,
+      "ragas_failed": false,
+      "value": 0.0
+    },
+    "context_precision": {
+      "finite": true,
+      "ragas_error": null,
+      "ragas_failed": false,
+      "value": 0.0
+    },
+    "context_recall": {
+      "finite": true,
+      "ragas_error": null,
+      "ragas_failed": false,
+      "value": 0.6667
+    },
+    "faithfulness": {
+      "finite": true,
+      "ragas_error": null,
+      "ragas_failed": false,
+      "value": 0.0
+    }
+  },
+  "sample_id": "KGV1-011",
+  "schema_version": "kinegraph.eval.serial-metric-retry.v1",
+  "scope": "frozen_single_row_serial_metric_retry",
+  "serial_retry_passed": false,
+  "source_results": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-laguna-s-2-1-free-diagnostic-20260819-hybrid-kgv1-011-retry_results.csv"
+}

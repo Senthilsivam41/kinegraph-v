@@ -1,0 +1,533 @@
+{
+  "schema_version": 1,
+  "run_label": "openrouter-laguna-s-2-1-free-four-metric-resumed-baseline-20260829-hybrid",
+  "created_at": "2026-08-29T03:05:21.567235+00:00",
+  "provenance": {
+    "git_revision": "0b71c00427b1b75aa7e8bc757e35a55e3d918940",
+    "working_tree_clean": false,
+    "dataset_path": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/eval/kinegraph_benchmark_v1.csv",
+    "dataset_sha256": "6ef8dc66281fa49211dd7295cac713167c32c5778921e59a7a367935dc1c1802",
+    "source_dataset_sha256": "d874acd6beb529ba8e9114b094f2102962bf79b8ba30b22632c9624fc5ad6ab4",
+    "dataset_version": "1.1.0",
+    "reference_audit_sha256": "c6d51adc5379c09322a6bb00de4a9052308d908cbcb3f13cef008f9dfe076353",
+    "reference_audit_path": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/eval/kinegraph_benchmark_v1.audit.json"
+  },
+  "pipeline_config": {
+    "retrieval": {
+      "profile": {
+        "name": "hybrid",
+        "requested_mode": "hybrid",
+        "enable_lexical_fusion": false,
+        "declared_effective_modes": [
+          "hybrid"
+        ],
+        "allow_mode_downgrade": false,
+        "allow_vectorless_auto_route": false,
+        "use_reference_context_as_attachment": false
+      },
+      "mode": "hybrid",
+      "enable_adaptive_routing": false,
+      "enable_conservative_routing": false,
+      "max_results": 6,
+      "max_hops": 2,
+      "candidate_pool_size": 25,
+      "enable_lexical_fusion": false,
+      "enable_retrieval_orchestration": false,
+      "vector_fusion_weight": 1.0,
+      "graph_fusion_weight": 1.0,
+      "lexical_fusion_weight": 0.7,
+      "rrf_k": 60
+    },
+    "benchmark": {
+      "dataset_version": "1.1.0",
+      "reference_audit_sha256": "c6d51adc5379c09322a6bb00de4a9052308d908cbcb3f13cef008f9dfe076353"
+    },
+    "reranking": {
+      "enabled": true,
+      "enable_cross_encoder_reranking": false,
+      "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+      "minimum_relevance": 0.2,
+      "dedup_threshold": 0.95
+    },
+    "recovery": {
+      "conditional_recovery": true,
+      "hyde_fallback": false
+    },
+    "generation": {
+      "temperature": 0.0,
+      "grounding_critique": true,
+      "grounding_critic_temperature": 0.0,
+      "enable_verification_framework": false
+    },
+    "evaluation": {
+      "ready": true,
+      "provider": "openrouter",
+      "judge_model": "poolside/laguna-s-2.1:free",
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "local_embeddings_only": true,
+      "metrics": [
+        "faithfulness",
+        "answer_relevancy",
+        "context_precision",
+        "context_recall",
+        "answer_correctness"
+      ],
+      "acceptance_metrics": [
+        "faithfulness",
+        "answer_relevancy",
+        "context_precision",
+        "context_recall"
+      ],
+      "diagnostic_metrics": [
+        "answer_correctness"
+      ],
+      "setup_error": null
+    },
+    "resumption": {
+      "kind": "targeted_row_replacement",
+      "canonical_rows": 18,
+      "retried_rows": [
+        "KGV1-011",
+        "KGV1-012"
+      ],
+      "contexts_representation": "redacted provenance excerpts for canonical rows"
+    }
+  },
+  "models": {
+    "generation": "qwen/qwen3.6-27b",
+    "grounding_critic": "qwen/qwen3.6-27b",
+    "judge": "poolside/laguna-s-2.1:free",
+    "embedding": "sentence-transformers/all-MiniLM-L6-v2"
+  },
+  "evaluation_risk_flags": [
+    "targeted_row_retry_composite",
+    "answer_correctness_diagnostic_only",
+    "canonical_context_payloads_available_as_redacted_excerpts_only",
+    "working_tree_dirty_at_publication"
+  ],
+  "validation_policy": {
+    "metric_weights": {
+      "faithfulness": 0.35,
+      "context_precision": 0.3,
+      "context_recall": 0.2,
+      "answer_relevancy": 0.15
+    },
+    "tie_tolerance": 0.01,
+    "max_metric_regression": 0.05,
+    "require_single_lever": true,
+    "bootstrap_samples": 2000,
+    "bootstrap_seed": 42
+  },
+  "report": {
+    "best_samples": [
+      {
+        "answer_correctness": 0.5692,
+        "answer_relevancy": 0.7765,
+        "composite_score": 0.806485,
+        "context_precision": 0.4667,
+        "context_recall": 1.0,
+        "faithfulness": 1.0,
+        "question": "What is the process for uploading a document using the API at http://localhost:8000/api/v1/ingest/document?"
+      },
+      {
+        "answer_correctness": 0.4118,
+        "answer_relevancy": 0.6761,
+        "composite_score": 0.801415,
+        "context_precision": 0.5,
+        "context_recall": 1.0,
+        "faithfulness": 1.0,
+        "question": "What are the advantages of using Vector Search in the KineticGraph-Vectra system?"
+      },
+      {
+        "answer_correctness": 0.4383,
+        "answer_relevancy": 0.8863,
+        "composite_score": 0.532955,
+        "context_precision": 0.1667,
+        "context_recall": 0.0,
+        "faithfulness": 1.0,
+        "question": "How Neo4j help with the problem of vector search and graph search in hybrid solutions?"
+      },
+      {
+        "answer_correctness": 0.2176,
+        "answer_relevancy": 0.3774,
+        "composite_score": 0.50661,
+        "context_precision": 0.0,
+        "context_recall": 0.5,
+        "faithfulness": 1.0,
+        "question": "What is the kinegraph-v and how can I try different modes to compare results?"
+      },
+      {
+        "answer_correctness": 0.0003,
+        "answer_relevancy": 0.0,
+        "composite_score": 0.5,
+        "context_precision": 1.0,
+        "context_recall": 1.0,
+        "faithfulness": 0.0,
+        "question": "How to opne the Neo4j Browser at http://localhost:7474?"
+      }
+    ],
+    "cost": {
+      "cost_complete": false,
+      "estimated_cost_usd": null,
+      "note": "per-request token cost is reported when UsageTracker is populated",
+      "total_tokens": null
+    },
+    "ir_metrics": {
+      "map_at_5": {
+        "mean": null,
+        "samples": 0
+      },
+      "ndcg_at_5": {
+        "mean": null,
+        "samples": 0
+      },
+      "precision_at_5": {
+        "mean": null,
+        "samples": 0
+      },
+      "recall_at_5": {
+        "mean": null,
+        "samples": 0
+      }
+    },
+    "kinetic_score_shadow": {
+      "max": null,
+      "mean": null,
+      "min": null,
+      "policy_version": "kinegraph.kinetic-score.shadow.v1",
+      "samples": 0
+    },
+    "per_category": {
+      "compound": {
+        "mean_workflow_latency_ms": 71815.32,
+        "metrics": {
+          "answer_correctness": 0.0661,
+          "answer_relevancy": 0.1298,
+          "context_precision": 0.3825,
+          "context_recall": 0.3819,
+          "faithfulness": 0.1538
+        },
+        "retrieval_metrics": {},
+        "sample_ids": [
+          "KGV1-001",
+          "KGV1-003",
+          "KGV1-004",
+          "KGV1-005",
+          "KGV1-009",
+          "KGV1-010",
+          "KGV1-011",
+          "KGV1-012",
+          "KGV1-014",
+          "KGV1-016",
+          "KGV1-017",
+          "KGV1-018",
+          "KGV1-019"
+        ],
+        "samples": 13
+      },
+      "exact_token": {
+        "mean_workflow_latency_ms": 67874.84,
+        "metrics": {
+          "answer_correctness": 0.1339,
+          "answer_relevancy": 0.2012,
+          "context_precision": 0.5,
+          "context_recall": 0.6,
+          "faithfulness": 0.2
+        },
+        "retrieval_metrics": {},
+        "sample_ids": [
+          "KGV1-010",
+          "KGV1-011",
+          "KGV1-013",
+          "KGV1-014",
+          "KGV1-015"
+        ],
+        "samples": 5
+      },
+      "misspelled": {
+        "mean_workflow_latency_ms": 40106.97,
+        "metrics": {
+          "answer_correctness": 0.01,
+          "answer_relevancy": 0.0764,
+          "context_precision": 0.7333,
+          "context_recall": 0.3333,
+          "faithfulness": 0.0
+        },
+        "retrieval_metrics": {},
+        "sample_ids": [
+          "KGV1-001",
+          "KGV1-010",
+          "KGV1-015"
+        ],
+        "samples": 3
+      },
+      "multi_hop": {
+        "mean_workflow_latency_ms": 64740.28,
+        "metrics": {
+          "answer_correctness": 0.0815,
+          "answer_relevancy": 0.1271,
+          "context_precision": 0.4365,
+          "context_recall": 0.497,
+          "faithfulness": 0.1667
+        },
+        "retrieval_metrics": {},
+        "sample_ids": [
+          "KGV1-009",
+          "KGV1-010",
+          "KGV1-011",
+          "KGV1-012",
+          "KGV1-013",
+          "KGV1-014",
+          "KGV1-015",
+          "KGV1-016",
+          "KGV1-017",
+          "KGV1-018",
+          "KGV1-019",
+          "KGV1-020"
+        ],
+        "samples": 12
+      },
+      "single_hop": {
+        "mean_workflow_latency_ms": 86516.71,
+        "metrics": {
+          "answer_correctness": 0.1116,
+          "answer_relevancy": 0.2213,
+          "context_precision": 0.4111,
+          "context_recall": 0.5,
+          "faithfulness": 0.3125
+        },
+        "retrieval_metrics": {},
+        "sample_ids": [
+          "KGV1-001",
+          "KGV1-002",
+          "KGV1-003",
+          "KGV1-004",
+          "KGV1-005",
+          "KGV1-006",
+          "KGV1-007",
+          "KGV1-008"
+        ],
+        "samples": 8
+      },
+      "two_reference_facets": {
+        "mean_workflow_latency_ms": 52909.33,
+        "metrics": {
+          "answer_correctness": 0.0202,
+          "answer_relevancy": 0.0237,
+          "context_precision": 0.4285,
+          "context_recall": 0.3472,
+          "faithfulness": 0.0
+        },
+        "retrieval_metrics": {},
+        "sample_ids": [
+          "KGV1-009",
+          "KGV1-014",
+          "KGV1-017",
+          "KGV1-018",
+          "KGV1-019",
+          "KGV1-020"
+        ],
+        "samples": 6
+      }
+    },
+    "per_metric": {
+      "answer_correctness": {
+        "description": "Answer accuracy vs reference ground truth",
+        "max": 0.5692,
+        "mean": 0.0936,
+        "median": 0.0271,
+        "min": -0.0128,
+        "std": 0.1726
+      },
+      "answer_relevancy": {
+        "description": "How well the answer addresses the question",
+        "max": 0.8863,
+        "mean": 0.1648,
+        "median": 0.0,
+        "min": 0.0,
+        "std": 0.2843
+      },
+      "context_precision": {
+        "description": "Signal-to-noise: most relevant chunks ranked first",
+        "max": 1.0,
+        "mean": 0.4263,
+        "median": 0.3334,
+        "min": 0.0,
+        "std": 0.4121
+      },
+      "context_recall": {
+        "description": "Fraction of ground-truth info present in context",
+        "max": 1.0,
+        "mean": 0.4982,
+        "median": 0.5834,
+        "min": 0.0,
+        "std": 0.4539
+      },
+      "faithfulness": {
+        "description": "Fraction of answer claims supported by retrieved context",
+        "max": 1.0,
+        "mean": 0.225,
+        "median": 0.0,
+        "min": 0.0,
+        "std": 0.4128
+      }
+    },
+    "recommendations": [
+      "Low faithfulness: LLM hallucinating. Tighten system prompt with 'only use provided context'.",
+      "Low answer relevancy: Answers drift off-topic. Add query intent classification.",
+      "Low context precision: Noise chunks ranked too high. Tune RRF k-constant or add a reranker.",
+      "Low context recall: Missing relevant chunks. Increase chunk overlap or add BM25 fallback.",
+      "Low answer correctness: Verify knowledge-base freshness and consider fine-tuning."
+    ],
+    "retrieval_diagnostics": {
+      "candidate_provenance_completeness": 1.0,
+      "candidate_survival": {
+        "dropped_deduplication": 3,
+        "dropped_final_truncation": 0,
+        "dropped_pre_fusion": 0,
+        "dropped_reranking": 253,
+        "observed_candidates": 376,
+        "sent_to_generation": 120
+      },
+      "graph_paths": {
+        "all_complete": false,
+        "complete_path_count": 0,
+        "cycle_prevention_count": 2758,
+        "empty_seed_count": 0,
+        "missing_evidence_edge_count": 1480,
+        "traversal_candidate_count": 244,
+        "traversal_failure_count": 0
+      },
+      "graph_stage_latency_ms": {
+        "p50": 3015.8,
+        "p95": 4495.32,
+        "samples": 20
+      },
+      "p95_latency_ms": 134514.34
+    },
+    "summary": {
+      "acceptance_metrics": [
+        "faithfulness",
+        "answer_relevancy",
+        "context_precision",
+        "context_recall"
+      ],
+      "accepted_as_ragas": true,
+      "answer_correctness_acceptance_role": "diagnostic_only",
+      "baseline_kind": "four_metric_resumed_composite",
+      "canonical_rows": 18,
+      "composite_confidence_interval_95": [
+        0.2312,
+        0.4365
+      ],
+      "composite_metric_weights": {
+        "answer_relevancy": 0.15,
+        "context_precision": 0.3,
+        "context_recall": 0.2,
+        "faithfulness": 0.35
+      },
+      "context_payload_fidelity": "full for retried rows; redacted provenance excerpts for 18 canonical rows",
+      "diagnostic_metrics": [
+        "answer_correctness"
+      ],
+      "eval_mode": "ragas",
+      "metric_values_valid": true,
+      "metrics_evaluated": [
+        "faithfulness",
+        "answer_relevancy",
+        "context_precision",
+        "context_recall",
+        "answer_correctness"
+      ],
+      "overall_composite_score": 0.331,
+      "profile": "hybrid",
+      "profile_preference": "not established; compare separate accepted manifests",
+      "quality_distribution": {
+        "excellent": 2,
+        "fair": 7,
+        "poor": 11
+      },
+      "resumed_rows": [
+        "KGV1-011",
+        "KGV1-012"
+      ],
+      "total_samples": 20
+    },
+    "worst_samples": [
+      {
+        "answer_correctness": 0.0402,
+        "answer_relevancy": 0.0,
+        "composite_score": 0.0,
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "faithfulness": 0.0,
+        "question": "What verification and test strategies are employed to ensure data security while processing complex data queries, and how do these strategies contribute to maintaining the integrity of the data during ingestion?"
+      },
+      {
+        "answer_correctness": 0.0096,
+        "answer_relevancy": 0.0,
+        "composite_score": 0.0,
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "faithfulness": 0.0,
+        "question": "What resource limits for Vector DB and what alternatives exist for it?"
+      },
+      {
+        "answer_correctness": -0.0128,
+        "answer_relevancy": 0.0372,
+        "composite_score": 0.005579999999999999,
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "faithfulness": 0.0,
+        "question": "How ChromaDB help with fast data retrieval when you got multiple databases to query at the same time?"
+      },
+      {
+        "answer_correctness": 0.0065,
+        "answer_relevancy": 0.1421,
+        "composite_score": 0.021315,
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "faithfulness": 0.0,
+        "question": "How does PDFium contribute to the isolation of tables and rectification of column serialization in the proposed architecture?"
+      },
+      {
+        "answer_correctness": 0.0372,
+        "answer_relevancy": 0.2293,
+        "composite_score": 0.094395,
+        "context_precision": 0.2,
+        "context_recall": 0.0,
+        "faithfulness": 0.0,
+        "question": "How to ingest documnt.pdf and query for main findings?"
+      }
+    ]
+  },
+  "artifacts": {
+    "results": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-laguna-s-2-1-free-four-metric-resumed-baseline-20260829-hybrid_results.csv",
+    "report": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-laguna-s-2-1-free-four-metric-resumed-baseline-20260829-hybrid_report.json",
+    "provenance": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-laguna-s-2-1-free-four-metric-resumed-baseline-20260829-hybrid_provenance.jsonl",
+    "diagnostics": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-laguna-s-2-1-free-four-metric-resumed-baseline-20260829-hybrid_diagnostics.json",
+    "labeled_run_output": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/openrouter_laguna_s_2_1_free_four_metric_resumed_baseline_run_output.json",
+    "default_run_output": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/run_output.json",
+    "baseline_ref": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/baseline_ref.json"
+  },
+  "baseline_kind": "four_metric_resumed_composite",
+  "metric_roles": {
+    "acceptance_and_composite": [
+      "faithfulness",
+      "answer_relevancy",
+      "context_precision",
+      "context_recall"
+    ],
+    "diagnostic_only": [
+      "answer_correctness"
+    ]
+  },
+  "resumption_lineage": {
+    "canonical_source": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-laguna-s-2-1-free-diagnostic-20260819-hybrid_provenance.jsonl",
+    "canonical_rows": 18,
+    "replacement_rows": {
+      "KGV1-011": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-laguna-s-2-1-free-diagnostic-20260819-hybrid-kgv1-011-retry_provenance.jsonl",
+      "KGV1-012": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-laguna-s-2-1-free-targeted-invalid-metric-repair-20260820-hybrid_provenance.jsonl"
+    }
+  }
+}

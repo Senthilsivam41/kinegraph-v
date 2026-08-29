@@ -1,0 +1,39 @@
+{
+  "accepted_as_full_benchmark": false,
+  "diagnostic_passed": true,
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "generation_model": "qwen/qwen3.6-27b",
+  "judge_model": "poolside/laguna-s-2.1:free",
+  "judge_provider": "openrouter",
+  "rows": [
+    {
+      "all_metrics_finite": true,
+      "metrics": {
+        "answer_correctness": 0.1389,
+        "answer_relevancy": 0.5083,
+        "context_precision": 0.0,
+        "context_recall": 0.0,
+        "faithfulness": 0.5
+      },
+      "ragas_error": null,
+      "ragas_failed": false,
+      "sample_id": "KGV1-010"
+    },
+    {
+      "all_metrics_finite": true,
+      "metrics": {
+        "answer_correctness": 0.6933,
+        "answer_relevancy": 0.6768,
+        "context_precision": 0.8542,
+        "context_recall": 0.5,
+        "faithfulness": 1.0
+      },
+      "ragas_error": null,
+      "ragas_failed": false,
+      "sample_id": "KGV1-018"
+    }
+  ],
+  "schema_version": "kinegraph.eval.alternate-judge.v1",
+  "scope": "frozen_two_row_alternate_judge_diagnostic",
+  "source_results": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-nemotron3-super-free-judge-retry-20260819-hybrid_results.csv"
+}

@@ -1,0 +1,36 @@
+{
+  "accepted_as_full_benchmark": false,
+  "generation_model": "qwen/qwen3.6-27b",
+  "judge_model": "nvidia/nemotron-3-super-120b-a12b:free",
+  "judge_provider": "openrouter",
+  "profile": "hybrid",
+  "retry_error": "Rejected 2/2 rows because RAGAS failed and heuristic fallback scores are not benchmark evidence. Errors: RAGAS returned NaN for metric(s): context_recall; RAGAS returned NaN for metric(s): faithfulness",
+  "retry_passed": false,
+  "rows": [
+    {
+      "answer_correctness": 0.1389,
+      "answer_relevancy": 0.6924,
+      "context_precision": 0.0,
+      "context_recall": 0.0,
+      "faithfulness": null,
+      "ragas_error": "RAGAS returned NaN for metric(s): faithfulness",
+      "ragas_failed": true,
+      "sample_id": "KGV1-010"
+    },
+    {
+      "answer_correctness": 0.6133,
+      "answer_relevancy": 0.5541,
+      "context_precision": 0.9667,
+      "context_recall": null,
+      "faithfulness": 1.0,
+      "ragas_error": "RAGAS returned NaN for metric(s): context_recall",
+      "ragas_failed": true,
+      "sample_id": "KGV1-018"
+    }
+  ],
+  "sample_ids": [
+    "KGV1-010",
+    "KGV1-018"
+  ],
+  "scope": "retry_only"
+}

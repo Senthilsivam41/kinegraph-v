@@ -1,11 +1,11 @@
 {
     "schema_version": 2,
-    "commit": "46e1e29f4149cf0aecf78e5af9b3b1f0d7bb6797",
-    "indexed_at": "2026-08-09T08:17:28Z",
+    "commit": "0b71c00427b1b75aa7e8bc757e35a55e3d918940",
+    "indexed_at": "2026-08-19T18:41:05Z",
     "project": "Users-sendils-work-repo-kinetic-v-kinegraph-v",
-    "nodes": 52849,
-    "edges": 204796,
-    "original_size": 216072192,
-    "compressed_size": 34845819,
+    "nodes": 53099,
+    "edges": 280104,
+    "original_size": 308346880,
+    "compressed_size": 40286537,
     "compression_level": 3
 }

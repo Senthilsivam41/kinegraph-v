@@ -1,0 +1,48 @@
+{
+  "accepted_as_full_benchmark": false,
+  "all_targeted_metrics_passed": false,
+  "judge_model": "nvidia/nemotron-3-super-120b-a12b:free",
+  "judge_provider": "openrouter",
+  "results": [
+    {
+      "attempts": [
+        {
+          "attempt": 1,
+          "finite": false,
+          "metric": "faithfulness",
+          "ragas_error": "RAGAS returned NaN for metric(s): faithfulness",
+          "ragas_failed": true,
+          "value": null
+        },
+        {
+          "attempt": 2,
+          "finite": false,
+          "metric": "faithfulness",
+          "ragas_error": "RAGAS returned NaN for metric(s): faithfulness",
+          "ragas_failed": true,
+          "value": null
+        }
+      ],
+      "metric": "faithfulness",
+      "passed": false,
+      "sample_id": "KGV1-010"
+    },
+    {
+      "attempts": [
+        {
+          "attempt": 1,
+          "finite": true,
+          "metric": "context_recall",
+          "ragas_error": null,
+          "ragas_failed": false,
+          "value": 0.5
+        }
+      ],
+      "metric": "context_recall",
+      "passed": true,
+      "sample_id": "KGV1-018"
+    }
+  ],
+  "scope": "targeted_missing_metric_retry",
+  "source_results": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-nemotron3-super-free-judge-retry-20260819-hybrid_results.csv"
+}

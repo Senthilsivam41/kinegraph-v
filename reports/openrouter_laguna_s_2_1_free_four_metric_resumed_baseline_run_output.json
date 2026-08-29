@@ -1,0 +1,276 @@
+{
+  "answer": "No fully supported claims could be generated from the retrieved context.",
+  "cases": [
+    {
+      "answer": "No fully supported claims could be generated from the retrieved context.",
+      "query": "What are the advantages of using LangGraph in the KineticGraph-Vectra architecture compared to vector-only or graph-only pipelines?",
+      "ragas_composite_score": 0.3,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nKineticgraph-vectra -> Uses -> Langgraph\nKineticgraph-vectra -> Compares to -> Pipeline\nKineticgraph-vectra -> Running on -> ",
+        "Here are some facts extracted from the provided text:\n\nLanggraph -> Includes -> Create entity nodes\nLanggraph -> Includes -> Entity relationships\nMode -> Include -> Langgraph\nMode ",
+        "Here are some facts extracted from the provided text:\n\nQuery -> Routed to -> Langgraph\n\n```bash\n# Create virtual environment\npython -m venv venv\nsource venv/bin/activate  # On Wind",
+        "Traversal path (depth 1): Query -[Includes]-> Chromaservice\n\nChromaservice is a entity. Evidence: # Watch the startup process docker-compose logs -f ```  Wait until you see: - `kin",
+        "Traversal path (depth 1): Query -[Includes]-> Result\n\nResult is a entity. Evidence: ### Issue: Port Already in Use  ```bash # Check what's using the port lsof -i :8000  # Stop the ",
+        "Traversal path (depth 1): Query -[Orchestrates]<- Kineticgraph-vectra\n\nKineticgraph-vectra is a entity. Evidence: # Watch the startup process docker-compose logs -f ```  Wait until"
+      ]
+    },
+    {
+      "answer": "No fully supported claims could be generated from the retrieved context.",
+      "query": "How does KineticGraph-Vectra enhance data retrieval through its workflow?",
+      "ragas_composite_score": 0.462755,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nKineticgraph-vectra -> Uses -> Langgraph\nKineticgraph-vectra -> Compares to -> Pipeline\nKineticgraph-vectra -> Running on -> ",
+        "Traversal path (depth 1): Strengths of two database paradigms -[Is]-> Query\n\nQuery is a entity. Evidence: # Kinetic Graph Solution: Hybrid RAG System  This document explains the ar",
+        "Traversal path (depth 2): Strengths of two database paradigms -[Is]-> Query -[Has]<- Neo4j healthcheck\n\nNeo4j healthcheck is a entity. Evidence: # Kinetic Graph Solution: Hybrid RA",
+        "Traversal path (depth 1): Hybrid retrieval-augmented generation pattern -[Implements]<- Kineticgraph-vectra\n\nKineticgraph-vectra is a entity. Evidence: # Watch the startup process ",
+        "Traversal path (depth 1): Context reranker -[Filters out]-> Noise\n\nNoise is a entity. Evidence: ---  ## \ud83c\udfd7\ufe0f Architectural Overview  KineticGraph-Vectra orchestrates queries through ",
+        "Traversal path (depth 1): Grounded generation -[Produces]-> Factually supported response\n\nFactually supported response is a entity. Evidence: ---  ## \ud83c\udfd7\ufe0f Architectural Overview  Kin"
+      ]
+    },
+    {
+      "answer": "No fully supported claims could be generated from the retrieved context.",
+      "query": "How does KineticGraph-Vectra compare to other data processing methods in terms of performance?",
+      "ragas_composite_score": 0.39167,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nKineticgraph-vectra -> Uses -> Langgraph\nKineticgraph-vectra -> Compares to -> Pipeline\nKineticgraph-vectra -> Running on -> ",
+        "Traversal path (depth 1): Processing time -[Compares]<- Query\n\nQuery is a entity. Evidence: # Kinetic Graph Solution: Hybrid RAG System  This document explains the architecture and",
+        "Traversal path (depth 2): Processing time -[Compares]<- Query -[Has]<- Neo4j healthcheck\n\nNeo4j healthcheck is a entity. Evidence: # Kinetic Graph Solution: Hybrid RAG System  This",
+        "Traversal path (depth 1): Complete set of source facts -[Is]<- Strengths of two database paradigms\n\nStrengths of two database paradigms is a entity. Evidence: # Architecture Deep D",
+        "Traversal path (depth 1): Context recall -[Is]-> Increase\n\nIncrease is a entity. Evidence: ### Issue: Port Already in Use  ```bash # Check what's using the port lsof -i :8000  # St",
+        "Traversal path (depth 1): Processing time -[Show]<- Logger\n\nLogger is a entity. Evidence: # Run with coverage pytest tests/ -v --cov=app --cov=core --cov=services ```  ### 7. Test "
+      ]
+    },
+    {
+      "answer": "Neo4j provides the graph search component by exploring entity relationships using Cypher queries. [5cdd5e25-7e4f-44b0-b680-cc346eefb65e]\nIn hybrid mode, this graph search is combined with vector search using Reciprocal Rank Fusion (RRF) to deliver the best overall results. [5cdd5e25-7e4f-44b0-b680-cc346eefb65e]",
+      "query": "How Neo4j help with the problem of vector search and graph search in hybrid solutions?",
+      "ragas_composite_score": 0.532955,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nDeprecated neo4j environment variables -> Is -> Dbms.*\nOriginal healthcheck -> Used -> Neo4j healthcheck\n\n# Docker Compose Fi",
+        "Here are some facts extracted from the provided text:\n\nNeo4j healthcheck -> User -> Neo4j healthcheck\nNeo4j healthcheck -> Reset -> Docker\nNeo4j healthcheck -> Authentication -> Re",
+        "Here are some facts extracted from the provided text:\n\nQuery -> Services -> Neo4j healthcheck\nQuery -> Includes -> Neo4j healthcheck\n\n```bash\n# Create virtual environment\npython -m",
+        "Here are some facts extracted from the provided text:\n\nEntity relationships -> Store in -> Neo4j healthcheck\n\n**Note:** This is a backend API service. There is no frontend UI - all",
+        "Here are some facts extracted from the provided text:\n\nFunctionality -> Includes -> Neo4j healthcheck\nSystem -> Retrieves data from -> Neo4j healthcheck\n\n# Run with coverage\npytest",
+        "Here are some facts extracted from the provided text:\n\nGraph traversals -> Is -> Neo4j healthcheck\n\n### 2. Using the API Directly\n\n**Upload a document:**\n```bash\ncurl -X POST \"http"
+      ]
+    },
+    {
+      "answer": "No fully supported claims could be generated from the retrieved context.",
+      "query": "How does ChromaDB address the challenge of distance score comparison with Neo4j in the context of normalized ranking and hybrid retrieval systems?",
+      "ragas_composite_score": 0.25788500000000003,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nChromadb memory -> Is -> Normal\nChromadb memory -> Is -> Bottleneck\nEmbeddings -> Store in -> Chromaservice\n\n# Watch worker l",
+        "Here are some facts extracted from the provided text:\n\nDatabase & cache population -> Includes -> Chromadb memory\n\n// Relationships\n(Document)-[:MENTIONS]->(Entity)\n(Entity)-[:RELA",
+        "Here are some facts extracted from the provided text:\n\nHybrid mode -> Fuses -> Chromadb memory\nSystem -> Retrieves data from -> Chromaservice\nFunctionality -> Includes -> Chromaser",
+        "Here are some facts extracted from the provided text:\n\nChromaservice -> Tracks -> Latency\nChromaservice -> Requires -> Backup persistent volume\nChromaservice -> Increase memory for",
+        "Here are some facts extracted from the provided text:\n\nCommand line tool -> Queries -> Chromaservice\n\n# Quick Start Testing Guide\n\nThis guide provides step-by-step instructions for",
+        "Traversal path (depth 1): Target database modality -[Match]<- Query\n\nQuery is a entity. Evidence: # Kinetic Graph Solution: Hybrid RAG System  This document explains the architectu"
+      ]
+    },
+    {
+      "answer": "No fully supported claims could be generated from the retrieved context.",
+      "query": "How ChromaDB help with fast data retrieval when you got multiple databases to query at the same time?",
+      "ragas_composite_score": 0.005579999999999999,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nChromadb memory -> Is -> Normal\nChromadb memory -> Is -> Bottleneck\nEmbeddings -> Store in -> Chromaservice\n\n# Watch worker l",
+        "Here are some facts extracted from the provided text:\n\nHybrid mode -> Fuses -> Chromadb memory\nSystem -> Retrieves data from -> Chromaservice\nFunctionality -> Includes -> Chromaser",
+        "Here are some facts extracted from the provided text:\n\nHybrid retrieval-augmented generation pattern -> Combines -> Strengths of two database paradigms\nStrengths of two database pa",
+        "Here are some facts extracted from the provided text:\n\nQuery -> Includes -> Chromaservice\nQuery -> Services -> Chromaservice\n\n```bash\n# Create virtual environment\npython -m venv ve",
+        "Here are some facts extracted from the provided text:\n\nChromaservice -> Tracks -> Latency\nChromaservice -> Requires -> Backup persistent volume\nChromaservice -> Increase memory for",
+        "Here are some facts extracted from the provided text:\n\nCommand line tool -> Queries -> Chromaservice\n\n# Quick Start Testing Guide\n\nThis guide provides step-by-step instructions for"
+      ]
+    },
+    {
+      "answer": "Vector search excels at general semantic context. [57a49df9-2b95-4090-864e-4ef6f1e5d0fd]\nVector search finds conceptually related content. [57a49df9-2b95-4090-864e-4ef6f1e5d0fd]\nVector search excels at fast keyword lookup. [57a49df9-2b95-4090-864e-4ef6f1e5d0fd]",
+      "query": "What are the advantages of using Vector Search in the KineticGraph-Vectra system?",
+      "ragas_composite_score": 0.801415,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nKineticgraph-vectra -> Uses -> Langgraph\nKineticgraph-vectra -> Compares to -> Pipeline\nKineticgraph-vectra -> Running on -> ",
+        "Here are some facts extracted from the provided text:\n\nVector search -> Performs -> Similarity search\nVector search -> Excels at -> General semantic context\nVector search -> Is -> ",
+        "Here are some facts extracted from the provided text:\n\nChromaservice -> Increase memory for -> Vector search\n\n# Restart a service\ndocker-compose restart app\n\n# Rebuild after code c",
+        "Traversal path (depth 1): Query -[Includes]-> Chromaservice\n\nChromaservice is a entity. Evidence: # Watch the startup process docker-compose logs -f ```  Wait until you see: - `kin",
+        "Traversal path (depth 1): Query -[Includes]-> Result\n\nResult is a entity. Evidence: ### Issue: Port Already in Use  ```bash # Check what's using the port lsof -i :8000  # Stop the ",
+        "Traversal path (depth 1): Query -[Orchestrates]<- Kineticgraph-vectra\n\nKineticgraph-vectra is a entity. Evidence: # Watch the startup process docker-compose logs -f ```  Wait until"
+      ]
+    },
+    {
+      "answer": "No fully supported claims could be generated from the retrieved context.",
+      "query": "What role does LangGraph play in the orchestration layer of a FastAPI application?",
+      "ragas_composite_score": 0.175,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nFastapi -> Features -> Pydantic models\nFastapi -> Has -> Entry point\nFastapi -> Features -> Cors middleware\nFastapi -> Host -",
+        "Here are some facts extracted from the provided text:\n\nEntity relationships -> Are via -> Api docs\n\n**Note:** This is a backend API service. There is no frontend UI - all interacti",
+        "Here are some facts extracted from the provided text:\n\nNeo4j healthcheck -> Has -> Langgraph\n\n# Restart a service\ndocker-compose restart app\n\n# Rebuild after code changes\ndocker-co",
+        "Traversal path (depth 1): Query -[Routes]<- Pipeline\n\nPipeline is a entity. Evidence: # Restart a service docker-compose restart app  # Rebuild after code changes docker-compose up",
+        "Traversal path (depth 1): Query -[Includes]-> Chromaservice\n\nChromaservice is a entity. Evidence: # Watch the startup process docker-compose logs -f ```  Wait until you see: - `kin",
+        "Traversal path (depth 1): Query -[Includes]-> Result\n\nResult is a entity. Evidence: ### Issue: Port Already in Use  ```bash # Check what's using the port lsof -i :8000  # Stop the "
+      ]
+    },
+    {
+      "answer": "No fully supported claims could be generated from the retrieved context.",
+      "query": "How does PDFium contribute to the isolation of tables and rectification of column serialization in the proposed architecture?",
+      "ragas_composite_score": 0.021315,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nGet /api/v1/ingest/task/{task_id} -> Checks -> Status of document processing task\nGet /api/v1/ingest/task/{task_id} -> Upload",
+        "Here are some facts extracted from the provided text:\n\nHybrid retrieval-augmented generation pattern -> Combines -> Strengths of two database paradigms\nStrengths of two database pa",
+        "Here are some facts extracted from the provided text:\n\nDocument processor -> Includes -> Pdf text extraction\nDocument processor -> Includes -> Chunk text\n\n### 2. Using the API Dire",
+        "Traversal path (depth 1): Query -[Includes]-> Chromaservice\n\nChromaservice is a entity. Evidence: # Watch the startup process docker-compose logs -f ```  Wait until you see: - `kin",
+        "Traversal path (depth 1): Query -[Orchestrates]<- Kineticgraph-vectra\n\nKineticgraph-vectra is a entity. Evidence: # Watch the startup process docker-compose logs -f ```  Wait until",
+        "Here are some facts extracted from the provided text:\n\nData flow -> Includes -> Document ingestion works\nData flow -> Includes -> Document ingestion works\n\n**Processing Pipeline:**"
+      ]
+    },
+    {
+      "answer": "No fully supported claims could be generated from the retrieved context.",
+      "query": "How to ingest documnt.pdf and query for main findings?",
+      "ragas_composite_score": 0.094395,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nGraph mode -> Converts -> Natural language query string\n\n### 2. Using the API Directly\n\n**Upload a document:**\n```bash\ncurl -",
+        "Here are some facts extracted from the provided text:\n\nKineticgraph-vectra -> Implements -> Hybrid retrieval-augmented generation pattern\nKineticgraph-vectra -> Helps -> Check if r",
+        "Here are some facts extracted from the provided text:\n\nQuery -> Is -> Natural language query string\n\n```bash\n# Create virtual environment\npython -m venv venv\nsource venv/bin/activa",
+        "Traversal path (depth 1): Vector search -[Includes]<- Functionality\n\nFunctionality is a entity. Evidence: # Run with coverage pytest tests/ -v --cov=app --cov=core --cov=services `",
+        "Traversal path (depth 1): Vector search -[Combines]<- Kineticgraph-vectra\n\nKineticgraph-vectra is a entity. Evidence: # Watch the startup process docker-compose logs -f ```  Wait u",
+        "Traversal path (depth 1): Vector search -[Is]-> Chromaservice\n\nChromaservice is a entity. Evidence: # Watch the startup process docker-compose logs -f ```  Wait until you see: - `k"
+      ]
+    },
+    {
+      "answer": "No fully supported claims could be generated from the retrieved context.",
+      "query": "What are the correct formatting practices for the OPENAI_API_KEY in a .env file, and what security best practices should be followed regarding API keys?",
+      "ragas_composite_score": 0.13334,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nNot openai api key -> Starts with -> Sk-proj-... or sk-...\nNot openai api key -> Has -> Not openai api key\nCommon issues -> Includes -> Not openai api key\nNot openai api key -> Is -> Not openai api key\nNot openai api key -> Needs -> Increase\nNot openai api key -> Is -> Initialized\nNot openai api key -> Is -> Bottleneck\nNot openai api key -> Not starts with -> Aizasy\nNot openai api key -> Preventing -> Embeddings\nNot openai api key -> Check -> Result\nNot openai api key -> Is -> Sk-proj-... or sk-...\nNot openai api key -> Has model -> Embeddings\nNot openai api key -> Generates -> Embeddings\nNot openai api key -> Is required for -> Document processor\nCommon issues -> Was -> Not openai api key\nNot openai api key -> Persists -> Result\n\n### Scenario 3: Query Performance\n1. Test different query modes (vector, graph, hybrid)\n2. Compare response times\n3. Validate result quality and relevance\n\n### Scenario 4: Error Handling\n1. Test with invalid file formats\n2. Test with missing parameters\n3. Test service failures\n\n## \ud83d\udc1b Troubleshooting\n\n### Common Issues\n\n1. **Services not starting**\n   ```bash\n   # Check logs\n   docker-compose logs -f\n   \n   # Check port conflicts\n   lsof -i :8000\n   ```\n\n2. **OpenAI API errors**\n   - Verify API key in `.env` file\n   - Check API quota and billing\n\n3. **Memory issues**\n   - Ensure at least 8GB RAM available\n   - Monitor container resource usage: `docker stats`\n\n4. **Test failures**\n   ```bash\n   # Check test dependencies\n   pip install -r requirements.txt\n   \n   # Verify test environment\n   pytest --version\n   ```\n\n## \ud83d\udcca Expected Performance Metrics",
+        "Here are some facts extracted from the provided text:\n\nAccount -> Creates -> Not openai api key\nAccount -> Visit -> Not openai api key\nAccount -> Goes to -> Not openai api key\n\n# Restart a service\ndocker-compose restart app\n\n# Rebuild after code changes\ndocker-compose up --build app\n\n# Scale workers\ndocker-compose up -d --scale worker=5\n```\n\n### Service Ports\n\n| Service | Internal Port | External Port |\n|---------|---------------|---------------|\n| FastAPI | 8000 | 8000 |\n| ChromaDB | 8000 | 8001 |\n| Neo4j HTTP | 7474 | 7474 |\n| Neo4j Bolt | 7687 | 7687 |\n| Redis | 6379 | 6379 |\n\n## \ud83d\udd0d Common Test Scenarios\n\n### Scenario 1: Basic Health Check\n1. Start services\n2. Verify health endpoint returns 200 OK\n3. Check all individual services are accessible\n\n### Scenario 2: Document Processing Pipeline\n1. Upload a PDF document\n2. Monitor task status\n3. Verify document is processed and indexed\n4. Query the uploaded content\n\n### Scenario 3: Query Performance\n1. Test different query modes (vector, graph, hybrid)\n2. Compare response times\n3. Validate result quality and relevance",
+        "Here are some facts extracted from the provided text:\n\nCurrent state -> Shows -> Not openai api key\n\n3. **Query the system:**\n   - Ask questions via the chat UI\n   - Or use the API endpoints\n\n## Summary\n\n\u2705 Removed obsolete `version` attribute  \n\u2705 Fixed Neo4j healthcheck to use HTTP endpoint  \n\u2705 Updated Neo4j environment variables to current naming  \n\u2705 All services starting successfully  \n\u2705 All health checks passing  \n\nThe system is now ready for use!",
+        "Here are some facts extracted from the provided text:\n\n.env file -> Requires -> Not openai api key\n.env file -> Contains -> Not openai api key\nCheck status -> Current key -> Not openai api key\n\n# Quick Start Guide\n\n## Getting Started in 5 Minutes\n\nThis guide will help you get KineticGraph-Vectra up and running quickly.\n\n### Step 1: Prerequisites Check\n\n```bash\n# Check Docker installation\ndocker --version\ndocker-compose --version\n\n# Ensure you have at least 8GB RAM available\ndocker system info | grep \"Total Memory\"\n```\n\n### Step 2: Environment Setup\n\n```bash\n# Navigate to project directory\ncd /Users/sendils/work/repo/kinetic-v/kinegraph-v\n\n# Create environment file\ncp .env.example .env\n\n# Edit .env file - IMPORTANT: Add your OpenAI API key\n# Use nano, vim, or any editor\nnano .env\n```\n\n**Required Change in .env:**\n```bash\nOPENAI_API_KEY=sk-your-actual-key-here\n```\n\n### Step 3: Start Services\n\n```bash\n# Build and start all containers (this may take 5-10 minutes the first time)\ndocker-compose up --build -d\n\n# Watch the startup process\ndocker-compose logs -f\n```\n\nWait until you see:\n- `kinetic-api    | Uvicorn running on http://0.0.0.0:8000`\n- `kinetic-worker | celery@... ready`",
+        "Here are some facts extracted from the provided text:\n\nNew key -> Should be deleted from -> Not openai api key\n\n# Watch worker logs\ndocker-compose logs worker -f\n\n# Test upload via UI\nopen http://localhost:8080\n```\n\n---\n\n## \ud83d\udcde Still Having Issues?\n\nIf problems persist after updating the key:\n\n1. **Verify key is active**: https://platform.openai.com/api-keys\n2. **Check account has credit**: https://platform.openai.com/usage\n3. **Try a new key**: Create fresh key to rule out issues\n4. **Check logs**: `docker-compose logs worker --tail=100`\n\n---\n\n**Remember**: The ChromaDB log message \"Collection kinetic_vectors is not created\" is **normal** - it just means the collection will be created on first use. The real issue was the invalid API key preventing document embedding.",
+        "Here are some facts extracted from the provided text:\n\nCollections -> Cannot be processed without -> Not openai api key\n\nExpected Response:\n```json\n{\n  \"task_id\": \"abc123\",\n  \"status\": \"PENDING\",\n  \"message\": \"Document 'test.pdf' queued for processing\"\n}\n```\n\n### 5. Test Query Endpoints\n\n#### 5.1 Hybrid Search (Vector + Graph)\n```bash\ncurl -X POST \"http://localhost:8000/api/v1/query\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"query\": \"What are the main findings about climate change?\",\n    \"mode\": \"hybrid\",\n    \"max_results\": 10\n  }'\n```\n\n#### 5.2 Vector-Only Search\n```bash\ncurl -X POST \"http://localhost:8000/api/v1/query\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"query\": \"climate change impact\",\n    \"mode\": \"vector\",\n    \"max_results\": 5\n  }'\n```\n\n#### 5.3 Graph-Only Search\n```bash\ncurl -X POST \"http://localhost:8000/api/v1/query\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"query\": \"Show relationships between climate and weather\",\n    \"mode\": \"graph\",\n    \"max_results\": 5\n  }'\n```"
+      ]
+    },
+    {
+      "answer": "KineticGraph-Vectra implements a Hybrid Retrieval-Augmented Generation (RAG) pattern that combines vector search, graph search, vectorless search, and Reciprocal Rank Fusion. [a5b63dcb-2473-497a-a928-4ab54a0cf36d]\nYou can try different modes by sending POST requests to the query endpoint with the mode parameter set to vector, graph, or hybrid. [c30fb930-1094-41d5-98e3-041716259dfe]\nTo compare results, test the different query modes, compare their response times, and validate the quality and relevance of the outputs. [a173b919-515f-4061-adc8-a8e82a6e739f]",
+      "query": "What is the kinegraph-v and how can I try different modes to compare results?",
+      "ragas_composite_score": 0.50661,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nGraph mode -> Executes -> Graph traversals\nGraph mode -> Traverses -> Entity relationships\nGraph mode -> Explores -> Entity relationships\nGraph mode -> Misses -> General semantic context\nGraph mode -> Excels at -> Entity relationships\nGraph mode -> Converts -> Natural language query string\nGraph mode -> Gets blocked by -> Misspelled terms\nGraph mode -> Returns -> Entity relationships\nGraph mode -> Is -> Fast keyword lookup\nGraph mode -> Is -> Overkill\n\n### 2. Using the API Directly\n\n**Upload a document:**\n```bash\ncurl -X POST \"http://localhost:8000/api/v1/ingest/document\" \\\n  -F \"file=@/path/to/document.pdf\"\n```\n\n**Query the system:**\n```bash\ncurl -X POST \"http://localhost:8000/api/v1/query/\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"query\": \"What are the main findings?\",\n    \"mode\": \"hybrid\",\n    \"max_results\": 10\n  }'\n```\n\n## Query Modes Explained\n\n### \ud83c\udfaf Hybrid Mode (Recommended)\n- Combines vector and graph search\n- Uses Reciprocal Rank Fusion (RRF)\n- Best overall results\n- Slightly slower (~400-1000ms)\n\n### \u26a1 Vector Mode\n- Fast semantic similarity search\n- Uses ChromaDB embeddings\n- Good for general questions\n- Very fast (~200-500ms)\n\n### \ud83d\udd17 Graph Mode\n- Explores entity relationships\n- Uses Cypher queries on Neo4j\n- Best for \"how are X and Y related?\" questions\n- Moderate speed (~300-800ms)\n\n## Managing Services\n\n### Stop All Services\n```bash\ndocker-compose down\n```",
+        "Here are some facts extracted from the provided text:\n\nNeo4j healthcheck -> Increase memory for -> Graph mode\nAccount -> Tries -> Hybrid mode\n\n# Restart a service\ndocker-compose restart app\n\n# Rebuild after code changes\ndocker-compose up --build app\n\n# Scale workers\ndocker-compose up -d --scale worker=5\n```\n\n### Service Ports\n\n| Service | Internal Port | External Port |\n|---------|---------------|---------------|\n| FastAPI | 8000 | 8000 |\n| ChromaDB | 8000 | 8001 |\n| Neo4j HTTP | 7474 | 7474 |\n| Neo4j Bolt | 7687 | 7687 |\n| Redis | 6379 | 6379 |\n\n## \ud83d\udd0d Common Test Scenarios\n\n### Scenario 1: Basic Health Check\n1. Start services\n2. Verify health endpoint returns 200 OK\n3. Check all individual services are accessible\n\n### Scenario 2: Document Processing Pipeline\n1. Upload a PDF document\n2. Monitor task status\n3. Verify document is processed and indexed\n4. Query the uploaded content\n\n### Scenario 3: Query Performance\n1. Test different query modes (vector, graph, hybrid)\n2. Compare response times\n3. Validate result quality and relevance",
+        "Here are some facts extracted from the provided text:\n\nHybrid retrieval-augmented generation pattern -> Combines -> Strengths of two database paradigms\nStrengths of two database paradigms -> Is -> Query\nStrengths of two database paradigms -> Is -> Fuzzy conceptual queries\nStrengths of two database paradigms -> Is -> Complete set of source facts\n\n# Architecture Deep Dive\n\n## System Overview\n\nKineticGraph-Vectra implements a **Hybrid Retrieval-Augmented Generation (RAG)** pattern that combines the strengths of two complementary database paradigms:\n\n### Design Philosophy\n\n1. **Vector Search (ChromaDB):** Excels at semantic similarity and finding conceptually related content\n2. **Graph Search (Neo4j):** Excels at understanding relationships and traversing connected entities\n3. **Vectorless Search (BM25 Local Lexical Cache):** Excels at fast, direct keyword lookup and attachment processing without vector DB dependencies\n4. **Reciprocal Rank Fusion:** Intelligently merges results from all retrieval sources\n\n---\n\n## Component Architecture\n\n### 1. API Layer (FastAPI)\n\n**Location:** `/app`\n\n```\nFastAPI Application\n\u251c\u2500\u2500 Entry Point (main.py)\n\u251c\u2500\u2500 Pydantic Models (models.py)\n\u2514\u2500\u2500 Route Handlers\n    \u251c\u2500\u2500 Health Check\n    \u251c\u2500\u2500 Document Ingestion\n    \u2514\u2500\u2500 Query Processing\n```",
+        "Here are some facts extracted from the provided text:\n\nMode -> Can be -> Hybrid mode\nMode -> Include -> Hybrid mode\nMode -> Is set to -> Hybrid mode\n\nExpected Response:\n```json\n{\n  \"task_id\": \"abc123\",\n  \"status\": \"PENDING\",\n  \"message\": \"Document 'test.pdf' queued for processing\"\n}\n```\n\n### 5. Test Query Endpoints\n\n#### 5.1 Hybrid Search (Vector + Graph)\n```bash\ncurl -X POST \"http://localhost:8000/api/v1/query\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"query\": \"What are the main findings about climate change?\",\n    \"mode\": \"hybrid\",\n    \"max_results\": 10\n  }'\n```\n\n#### 5.2 Vector-Only Search\n```bash\ncurl -X POST \"http://localhost:8000/api/v1/query\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"query\": \"climate change impact\",\n    \"mode\": \"vector\",\n    \"max_results\": 5\n  }'\n```\n\n#### 5.3 Graph-Only Search\n```bash\ncurl -X POST \"http://localhost:8000/api/v1/query\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"query\": \"Show relationships between climate and weather\",\n    \"mode\": \"graph\",\n    \"max_results\": 5\n  }'\n```",
+        "Here are some facts extracted from the provided text:\n\nIntent classification -> Chooses -> Hybrid mode\n\n---\n\n## \ud83c\udfd7\ufe0f Architectural Overview\n\nKineticGraph-Vectra orchestrates queries through a multi-stage LangGraph workflow:\n\n1. **Intent Classification**: Analyzes query characteristics to choose the best mode (Vector, Graph, or Hybrid).\n2. **Parallel Fetch**: Concurrently executes semantic lookup (ChromaDB) and relational traversal (Neo4j) using `asyncio.gather`.\n3. **Reciprocal Rank Fusion (RRF)**: Merges the ranked lists from both databases using a rank-based smoothing formula.\n4. **Context Reranker**: Filters out noise and orders the most relevant chunks using a semantic cross-encoder or lexical relevance filter.\n5. **Grounded Generation**: Produces a factually supported response based strictly on the fused and reranked context.\n\n---\n\n## \ud83d\udcca Performance Comparison: Hybrid vs. Individual Baselines",
+        "Here are some facts extracted from the provided text:\n\nHybrid mode -> Guarantees -> Entity relationships\nHybrid mode -> Uses -> Merged rrf ranking + reranking\nHybrid mode -> Is -> Fast\nHybrid mode -> Is -> Query\nHybrid mode -> Is -> Best quality\nHybrid mode -> Fuses -> Chromadb memory\nHybrid mode -> Guarantees -> General semantic context\n\n# Run with coverage\npytest tests/ -v --cov=app --cov=core --cov=services\n```\n\n### 7. Test Performance and Scaling\n\n```bash\n# Scale workers for testing\ndocker-compose up -d --scale worker=5\n\n# Test load with multiple concurrent requests\nfor i in {1..10}; do\n  curl -X POST \"http://localhost:8000/api/v1/query\" \\\n    -H \"Content-Type: application/json\" \\\n    -d '{\"query\": \"test query\", \"mode\": \"hybrid\", \"max_results\": 5}' &\ndone\nwait\n```\n\n## \ud83d\udee0\ufe0f Service Management\n\n### Docker Compose Commands\n\n```bash\n# Start services\ndocker-compose up -d\n\n# Stop services\ndocker-compose down\n\n# View logs\ndocker-compose logs -f [service_name]\n\n# Restart a service\ndocker-compose restart app\n\n# Rebuild after code changes\ndocker-compose up --build app\n\n# Scale workers\ndocker-compose up -d --scale worker=5\n```\n\n### Service Ports"
+      ]
+    },
+    {
+      "answer": "To upload a document, send a POST request to http://localhost:8000/api/v1/ingest/document. [a5d779d7-5d6f-453c-95e8-4104bfa0fc7f] [4ba08a05-ca47-47cd-85d6-4889c1afe88e]\nThe request should include the file as a form field, such as -F \"file=@/path/to/document.pdf\". [4ba08a05-ca47-47cd-85d6-4889c1afe88e]\nThe request header should specify the content type as multipart/form-data. [a5d779d7-5d6f-453c-95e8-4104bfa0fc7f]\nYou can optionally include metadata in the request using a form field like -F 'metadata={\"author\":\"Test User\",\"category\":\"test\"}'. [a5d779d7-5d6f-453c-95e8-4104bfa0fc7f]",
+      "query": "What is the process for uploading a document using the API at http://localhost:8000/api/v1/ingest/document?",
+      "ragas_composite_score": 0.806485,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nPipeline -> Is -> Document ingestion works\nNeo4j healthcheck -> Is accessed at -> Http://0.0.0.0:8000\nHealth of services -> P",
+        "Here are some facts extracted from the provided text:\n\nDocument ingestion works -> Appends -> Str(metadata\nDocument ingestion works -> Takes -> Filepath\nDocument ingestion works ->",
+        "Here are some facts extracted from the provided text:\n\nFunctionality -> Includes -> Document ingestion works\nCurl -> Tests -> Http://0.0.0.0:8000\nCurl -> Post -> Http://0.0.0.0:800",
+        "Here are some facts extracted from the provided text:\n\nMulti-stage workflow -> Allows -> Document ingestion works\nRedoc -> Is available at -> Http://0.0.0.0:8000\n\n```bash\ncurl -X P",
+        "Here are some facts extracted from the provided text:\n\nApi docs -> Is available at -> Http://0.0.0.0:8000\n\n# Liveness probe\ncurl http://localhost:8000/health/liveness\n\n# Readiness ",
+        "Here are some facts extracted from the provided text:\n\nChat ui -> Is -> Http://0.0.0.0:8000\n\n## Quick Access\n\n### \ud83c\udf10 Open the Chat UI\n```bash\nopen http://localhost:8080\n```\nOr manua"
+      ]
+    },
+    {
+      "answer": "No fully supported claims could be generated from the retrieved context.",
+      "query": "How can the test document 'test.pdf' be ingested into the system, and what is the expected response regarding its processing status?",
+      "ragas_composite_score": 0.31665,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nGet /api/v1/ingest/task/{task_id} -> Checks -> Status of document processing task\n\n**Note:** This is a backend API service. T",
+        "Here are some facts extracted from the provided text:\n\nQuery -> Is -> Status of document processing task\nQuery -> Processed successfully -> Upload pdf\nQuery -> Is -> Large document",
+        "Here are some facts extracted from the provided text:\n\nPipeline -> Is -> Document ingestion works\nAccount -> Clicks -> Upload pdf\nPipeline -> Includes -> Upload pdf\nChromaservice -",
+        "Here are some facts extracted from the provided text:\n\nDocument ingestion works -> Appends -> Str(metadata\nDocument ingestion works -> Takes -> Filepath\nDocument ingestion works ->",
+        "Here are some facts extracted from the provided text:\n\nMulti-stage workflow -> Allows -> Document ingestion works\n\n```bash\ncurl -X POST \"http://localhost:8000/api/v1/query\" \\\n  -H ",
+        "Here are some facts extracted from the provided text:\n\nChat ui -> Has -> Upload pdf\n\n## Quick Access\n\n### \ud83c\udf10 Open the Chat UI\n```bash\nopen http://localhost:8080\n```\nOr manually navi"
+      ]
+    },
+    {
+      "answer": "No fully supported claims could be generated from the retrieved context.",
+      "query": "How to opne the Neo4j Browser at http://localhost:7474?",
+      "ragas_composite_score": 0.5,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nDeprecated neo4j environment variables -> Is -> Dbms.*\nOriginal healthcheck -> Used -> Neo4j healthcheck\n\n# Docker Compose Fi",
+        "Here are some facts extracted from the provided text:\n\nNeo4j healthcheck -> User -> Neo4j healthcheck\nNeo4j healthcheck -> Reset -> Docker\nNeo4j healthcheck -> Authentication -> Re",
+        "Here are some facts extracted from the provided text:\n\nEntity relationships -> Store in -> Neo4j healthcheck\n\n**Note:** This is a backend API service. There is no frontend UI - all",
+        "Here are some facts extracted from the provided text:\n\nDatabase -> Includes -> Use k8s secrets for credentials\nDatabase -> Connection errors -> Stopping the system\nDatabase -> Defi",
+        "Here are some facts extracted from the provided text:\n\nGraph traversals -> Is -> Neo4j healthcheck\n\n### 2. Using the API Directly\n\n**Upload a document:**\n```bash\ncurl -X POST \"http",
+        "Traversal path (depth 1): Api docs -[Is uploaded via]<- Query\n\nQuery is a entity. Evidence: # Kinetic Graph Solution: Hybrid RAG System  This document explains the architecture and"
+      ]
+    },
+    {
+      "answer": "No fully supported claims could be generated from the retrieved context.",
+      "query": "What are the necessary steps to set up the KineticGraph-Vectra environment, and how does the inclusion of the OpenAI API key play a crucial role in this process?",
+      "ragas_composite_score": 0.44286000000000003,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nKineticgraph-vectra -> Uses -> Langgraph\nKineticgraph-vectra -> Compares to -> Pipeline\nKineticgraph-vectra -> Running on -> ",
+        "Here are some facts extracted from the provided text:\n\nGraph mode -> Misses -> General semantic context\n\n### 2. Using the API Directly\n\n**Upload a document:**\n```bash\ncurl -X POST ",
+        "Here are some facts extracted from the provided text:\n\nVector search -> Excels at -> General semantic context\n\n// Example usage\n(async () => {\n  const task = await ingestDocument('",
+        "Here are some facts extracted from the provided text:\n\nHybrid mode -> Guarantees -> General semantic context\nSystem -> Can scale without -> Architectural changes\n\n# Run with covera",
+        "Here are some facts extracted from the provided text:\n\nArchitectural changes -> Is -> Architectural changes\n\n## Next Steps\n\n- \u2705 Upload your first document\n- \u2705 Try all three query m",
+        "Here are some facts extracted from the provided text:\n\nNeo4j healthcheck -> Has -> Langgraph\n\n# Restart a service\ndocker-compose restart app\n\n# Rebuild after code changes\ndocker-co"
+      ]
+    },
+    {
+      "answer": "No fully supported claims could be generated from the retrieved context.",
+      "query": "What verification and test strategies are employed to ensure data security while processing complex data queries, and how do these strategies contribute to maintaining the integrity of the data during ingestion?",
+      "ragas_composite_score": 0.0,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nPipeline -> Is -> Document ingestion works\nNeo4j healthcheck -> User -> Neo4j healthcheck\nNeo4j healthcheck -> Reset -> Docke",
+        "Here are some facts extracted from the provided text:\n\nStrengths of two database paradigms -> Is -> Fuzzy conceptual queries\nStrengths of two database paradigms -> Is -> Complete s",
+        "Here are some facts extracted from the provided text:\n\nFunctionality -> Includes -> Document ingestion works\n\n# Run with coverage\npytest tests/ -v --cov=app --cov=core --cov=servic",
+        "Here are some facts extracted from the provided text:\n\nData flow -> Includes -> Document ingestion works\n\n**Processing Pipeline:**\n\n```\nPDF Upload\n    \u2193\nExtract Text (PyMuPDF)\n    ",
+        "Here are some facts extracted from the provided text:\n\nGraph mode -> Converts -> Natural language query string\n\n### 2. Using the API Directly\n\n**Upload a document:**\n```bash\ncurl -",
+        "Here are some facts extracted from the provided text:\n\nKineticgraph-vectra -> Implements -> Hybrid retrieval-augmented generation pattern\n\n# Quick Start Testing Guide\n\nThis guide p"
+      ]
+    },
+    {
+      "answer": "No fully supported claims could be generated from the retrieved context.",
+      "query": "How does the hybrid search approach utilizing Reciprocal Rank Fusion (RRF) enhance the retrieval of entity relationships and improve context recall compared to traditional methods?",
+      "ragas_composite_score": 0.44001,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nHybrid retrieval-augmented generation pattern -> Combines -> Strengths of two database paradigms\nHybrid retrieval-augmented g",
+        "Here are some facts extracted from the provided text:\n\nHybrid mode -> Uses -> Merged rrf ranking + reranking\nHybrid mode -> Uses -> Merged rrf ranking + reranking\nHybrid mode -> Gu",
+        "Here are some facts extracted from the provided text:\n\nFusion node -> Implements -> Merged rrf ranking + reranking\n\n### Query Flow\n\n```\n1. User sends query \u2192 FastAPI endpoint\n2. Qu",
+        "Here are some facts extracted from the provided text:\n\nMerged rrf ranking + reranking -> Merges -> Ranked lists\nMerged rrf ranking + reranking -> Merges -> All data\n\n### 2. Using t",
+        "Here are some facts extracted from the provided text:\n\nVector search -> Is -> Merged rrf ranking + reranking\n\n// Example usage\n(async () => {\n  const task = await ingestDocument('d",
+        "Here are some facts extracted from the provided text:\n\nContext reranker -> Filters out -> Noise\nContext reranker -> Orders -> Chunk text\nGrounded generation -> Based on -> Context "
+      ]
+    },
+    {
+      "answer": "No fully supported claims could be generated from the retrieved context.",
+      "query": "What resource limits for Vector DB and what alternatives exist for it?",
+      "ragas_composite_score": 0.0,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nVector search -> Processes -> Attachment without vector db dependencies\n\n// Example usage\n(async () => {\n  const task = await",
+        "Here are some facts extracted from the provided text:\n\nKineticgraph-vectra -> Implements -> Hybrid retrieval-augmented generation pattern\nKineticgraph-vectra -> Uses -> Langgraph\nK",
+        "Traversal path (depth 1): Strengths of two database paradigms -[Is]-> Query\n\nQuery is a entity. Evidence: # Kinetic Graph Solution: Hybrid RAG System  This document explains the ar",
+        "Traversal path (depth 1): General semantic context -[Excels at]<- Vector search\n\nVector search is a entity. Evidence: // Example usage (async () => {   const task = await ingestDoc",
+        "Traversal path (depth 1): Hybrid retrieval-augmented generation pattern -[Implements]<- Kineticgraph-vectra\n\nKineticgraph-vectra is a entity. Evidence: # Watch the startup process ",
+        "Traversal path (depth 2): Strengths of two database paradigms -[Is]-> Query -[Has]<- Neo4j healthcheck\n\nNeo4j healthcheck is a entity. Evidence: # Kinetic Graph Solution: Hybrid RA"
+      ]
+    },
+    {
+      "answer": "No fully supported claims could be generated from the retrieved context.",
+      "query": "How does the use of Reciprocal Rank Fusion enhance the query system in hybrid mode?",
+      "ragas_composite_score": 0.43124,
+      "retrieved_chunks": [
+        "Here are some facts extracted from the provided text:\n\nHybrid retrieval-augmented generation pattern -> Combines -> Strengths of two database paradigms\nHybrid retrieval-augmented g",
+        "Here are some facts extracted from the provided text:\n\nKineticgraph-vectra -> Implements -> Hybrid retrieval-augmented generation pattern\n\n# Quick Start Testing Guide\n\nThis guide p",
+        "Here are some facts extracted from the provided text:\n\nMerged rrf ranking + reranking -> Merges -> Ranked lists\nMerged rrf ranking + reranking -> Merges -> All data\n\n### 2. Using t",
+        "Here are some facts extracted from the provided text:\n\nHybrid mode -> Uses -> Merged rrf ranking + reranking\nHybrid mode -> Uses -> Merged rrf ranking + reranking\nHybrid mode -> Gu",
+        "Here are some facts extracted from the provided text:\n\nMode -> Can be -> Hybrid mode\nMode -> Include -> Hybrid mode\nMode -> Is set to -> Hybrid mode\nMode -> Is -> Hybrid mode\n\nExpe",
+        "Here are some facts extracted from the provided text:\n\nIntent classification -> Chooses -> Hybrid mode\n\n---\n\n## \ud83c\udfd7\ufe0f Architectural Overview\n\nKineticGraph-Vectra orchestrates queries "
+      ]
+    }
+  ],
+  "query": "What are the advantages of using LangGraph in the KineticGraph-Vectra architecture compared to vector-only or graph-only pipelines?",
+  "ragas_composite_score": 0.331,
+  "retrieved_chunks": [
+    "Here are some facts extracted from the provided text:\n\nKineticgraph-vectra -> Uses -> Langgraph\nKineticgraph-vectra -> Compares to -> Pipeline\nKineticgraph-vectra -> Running on -> ",
+    "Here are some facts extracted from the provided text:\n\nLanggraph -> Includes -> Create entity nodes\nLanggraph -> Includes -> Entity relationships\nMode -> Include -> Langgraph\nMode ",
+    "Here are some facts extracted from the provided text:\n\nQuery -> Routed to -> Langgraph\n\n```bash\n# Create virtual environment\npython -m venv venv\nsource venv/bin/activate  # On Wind",
+    "Traversal path (depth 1): Query -[Includes]-> Chromaservice\n\nChromaservice is a entity. Evidence: # Watch the startup process docker-compose logs -f ```  Wait until you see: - `kin",
+    "Traversal path (depth 1): Query -[Includes]-> Result\n\nResult is a entity. Evidence: ### Issue: Port Already in Use  ```bash # Check what's using the port lsof -i :8000  # Stop the ",
+    "Traversal path (depth 1): Query -[Orchestrates]<- Kineticgraph-vectra\n\nKineticgraph-vectra is a entity. Evidence: # Watch the startup process docker-compose logs -f ```  Wait until"
+  ],
+  "schema_version": "kinegraph.regression-gate.v1"
+}
