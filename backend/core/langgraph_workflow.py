@@ -116,6 +116,9 @@ _HUMAN_PROMPT = """## [INPUT CONTEXTUAL DATA]
 
 ## [USER QUESTION]
 {question}
+
+## [ALLOWED CITATION IDS]
+{citation_guidance}
 """
 
 GENERATION_PROMPT = ChatPromptTemplate.from_messages([
@@ -1241,13 +1244,49 @@ class HybridRAGWorkflow:
         state["citation_context"] = context_map
 
         try:
-            response = await self._invoke_prompt(GENERATION_PROMPT, self.llm, {
-                "context":  context_str,
+            valid_ids = set(context_map)
+            payload = {
+                "context": context_str,
                 "question": state["query"],
-            })
+                "citation_guidance": (
+                    "Use chunk_ids only from this exact JSON list: "
+                    + json.dumps(sorted(valid_ids), ensure_ascii=False)
+                ),
+            }
+            response = await self._invoke_prompt(GENERATION_PROMPT, self.llm, payload)
             claims, confidence, validation = validate_grounded_response(
-                str(response.content), set(context_map)
+                str(response.content), valid_ids
             )
+            rejected = validation.get("rejected_claims", [])
+            repair_reason = None
+            if not validation.get("structured_output_valid", False):
+                repair_reason = "invalid_structured_output"
+            elif (
+                validation.get("total_claims", 0) > 0
+                and validation.get("accepted_claims", 0) == 0
+                and rejected
+                and all(item.get("reason") == "invalid_citation" for item in rejected)
+            ):
+                repair_reason = "all_citations_invalid"
+
+            if repair_reason:
+                initial_validation = validation
+                payload["citation_guidance"] = (
+                    f"The previous response failed validation ({repair_reason}). "
+                    "Return exactly one JSON object with a claims array and use chunk_ids "
+                    "only from this exact JSON list: "
+                    + json.dumps(sorted(valid_ids), ensure_ascii=False)
+                )
+                response = await self._invoke_prompt(GENERATION_PROMPT, self.llm, payload)
+                claims, confidence, validation = validate_grounded_response(
+                    str(response.content), valid_ids
+                )
+                validation["repair_attempted"] = True
+                validation["repair_reason"] = repair_reason
+                validation["initial_validation"] = initial_validation
+            else:
+                validation["repair_attempted"] = False
+
             state["grounded_claims"] = claims
             state["citation_validation"] = validation
             state["generated_answer"] = (

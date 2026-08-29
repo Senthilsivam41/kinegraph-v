@@ -102,6 +102,80 @@ async def test_generate_node_exposes_verified_citations_only():
 
 
 @pytest.mark.asyncio
+async def test_generate_node_repairs_malformed_structured_output_once():
+    workflow = HybridRAGWorkflow.__new__(HybridRAGWorkflow)
+    workflow.llm = object()
+    workflow._invoke_prompt = AsyncMock(side_effect=[
+        SimpleNamespace(content="not json"),
+        SimpleNamespace(content=json.dumps({
+            "claims": [{"text": "Grounded answer", "chunk_ids": ["stored-1"]}],
+            "confidence": 0.9,
+        })),
+    ])
+    state = {
+        "query": "question",
+        "reranked_results": [{"id": "stored-1", "content": "Grounded answer"}],
+        "latency_breakdown": {},
+    }
+
+    result = await workflow._generate_node(state)
+
+    assert result["generated_answer"] == "Grounded answer [stored-1]"
+    assert result["citation_validation"]["repair_attempted"] is True
+    assert result["citation_validation"]["initial_validation"]["structured_output_valid"] is False
+    assert workflow._invoke_prompt.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_generate_node_repairs_all_invalid_citations_without_accepting_them():
+    workflow = HybridRAGWorkflow.__new__(HybridRAGWorkflow)
+    workflow.llm = object()
+    workflow._invoke_prompt = AsyncMock(side_effect=[
+        SimpleNamespace(content=json.dumps({
+            "claims": [{"text": "Grounded answer", "chunk_ids": ["invented-id"]}],
+            "confidence": 0.9,
+        })),
+        SimpleNamespace(content=json.dumps({
+            "claims": [{"text": "Grounded answer", "chunk_ids": ["stored-1"]}],
+            "confidence": 0.9,
+        })),
+    ])
+    state = {
+        "query": "question",
+        "reranked_results": [{"id": "stored-1", "content": "Grounded answer"}],
+        "latency_breakdown": {},
+    }
+
+    result = await workflow._generate_node(state)
+
+    assert result["generated_answer"] == "Grounded answer [stored-1]"
+    initial = result["citation_validation"]["initial_validation"]
+    assert initial["rejected_claims"][0]["invalid_chunk_ids"] == ["invented-id"]
+    assert workflow._invoke_prompt.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_generate_node_does_not_retry_a_valid_empty_claim_set():
+    workflow = HybridRAGWorkflow.__new__(HybridRAGWorkflow)
+    workflow.llm = object()
+    workflow._invoke_prompt = AsyncMock(return_value=SimpleNamespace(
+        content='{"claims": [], "confidence": 0}'
+    ))
+    state = {
+        "query": "question",
+        "reranked_results": [{"id": "stored-1", "content": "Unrelated context"}],
+        "latency_breakdown": {},
+    }
+
+    result = await workflow._generate_node(state)
+
+    assert result["generated_answer"] == (
+        "No fully supported claims could be generated from the retrieved context."
+    )
+    assert workflow._invoke_prompt.await_count == 1
+
+
+@pytest.mark.asyncio
 async def test_critique_removes_unsupported_claim_without_rewriting():
     workflow = HybridRAGWorkflow.__new__(HybridRAGWorkflow)
     workflow.critic_llm = object()
