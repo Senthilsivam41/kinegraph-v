@@ -1,0 +1,22 @@
+{
+  "accepted_as_full_benchmark": false,
+  "generation_model": "qwen/qwen3.6-27b",
+  "judge_model": "poolside/laguna-s-2.1:free",
+  "judge_provider": "openrouter",
+  "metrics": {
+    "answer_correctness": 0.037,
+    "answer_relevancy": 0.0667,
+    "context_precision": 1.0,
+    "context_recall": 0.3902,
+    "faithfulness": 0.25
+  },
+  "profile": "hybrid",
+  "ragas_error": "Exception: builtins.TimeoutError; TimeoutError()",
+  "ragas_failed": true,
+  "retry_error": "Rejected 1/1 rows because RAGAS failed and heuristic fallback scores are not benchmark evidence. Errors: Exception: builtins.TimeoutError; TimeoutError()",
+  "retry_passed": false,
+  "sample_id": "KGV1-011",
+  "schema_version": "kinegraph.eval.retry.v1",
+  "scope": "single_failed_row_retry",
+  "source_full_run": "reports/ragas_openrouter-laguna-s-2-1-free-diagnostic-20260819-hybrid_provenance.jsonl"
+}

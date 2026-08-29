@@ -1,0 +1,76 @@
+{
+  "accepted_as_ragas": true,
+  "artifact_sha256": {
+    "baseline_ref": "1297ba1266c6624858ad1dde6358261214c8e26f8c2fef8782b28d4706c83709",
+    "default_run_output": "d2f2bcffaeb16e48c12e0c6eb16d71e1643dbec1cb9a4a95d2452ad7f42708dd",
+    "diagnostics": "40a9ae166a522ba2ce8d480e55bec3a167f12e7a912db95b85ff437eae7e0509",
+    "labeled_run_output": "d2f2bcffaeb16e48c12e0c6eb16d71e1643dbec1cb9a4a95d2452ad7f42708dd",
+    "manifest": "9d0d5a541263f8e9a4bde440e4a60e2ee996ad8f608413063b5fac1e76b7d324",
+    "provenance": "5612b89f588d85abfdc141af2725ac627926b7fdfa69bb4f5d4491c6311d6bb1",
+    "report": "5edf9b6203b1b78894caffa9452cf70a6e89aa9a123a25ae100e9229ad43fdb6",
+    "results": "99dcda0abc5f8fda1c24c8a6f9b55b102134e222a253105cfb9cfbede82a8c19"
+  },
+  "artifacts": {
+    "baseline_ref": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/baseline_ref.json",
+    "default_run_output": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/run_output.json",
+    "diagnostics": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-laguna-s-2-1-free-four-metric-resumed-baseline-20260829-hybrid_diagnostics.json",
+    "labeled_run_output": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/openrouter_laguna_s_2_1_free_four_metric_resumed_baseline_run_output.json",
+    "manifest": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-laguna-s-2-1-free-four-metric-resumed-baseline-20260829-hybrid_manifest.json",
+    "provenance": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-laguna-s-2-1-free-four-metric-resumed-baseline-20260829-hybrid_provenance.jsonl",
+    "receipt": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-laguna-s-2-1-free-four-metric-resumed-baseline-20260829-hybrid_resume_receipt.json",
+    "report": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-laguna-s-2-1-free-four-metric-resumed-baseline-20260829-hybrid_report.json",
+    "results": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-laguna-s-2-1-free-four-metric-resumed-baseline-20260829-hybrid_results.csv"
+  },
+  "context_fidelity": {
+    "canonical_rows": "redacted provenance excerpts; original full payload was not persisted after rejected run",
+    "retried_rows": "full retry results payload"
+  },
+  "lineage": {
+    "canonical_rows": 18,
+    "retried_rows": [
+      "KGV1-011",
+      "KGV1-012"
+    ]
+  },
+  "metric_means": {
+    "answer_correctness": 0.0936,
+    "answer_relevancy": 0.1648,
+    "context_precision": 0.4263,
+    "context_recall": 0.4982,
+    "faithfulness": 0.225
+  },
+  "overall_composite_score": 0.331,
+  "published": true,
+  "run_label": "openrouter-laguna-s-2-1-free-four-metric-resumed-baseline-20260829-hybrid",
+  "schema_version": "kinegraph.eval.resumed-baseline-receipt.v1",
+  "source_sha256": {
+    "audit": "a765aeeb07eeeecb3fa4de68e7377ce91041978b0f210f1d7c1c2a3e3dc3be7f",
+    "canonical_provenance": "760c3c94742e5c5a991f48593ff20d56d305a9b8680a545260547513e5b73fba",
+    "dataset": "d874acd6beb529ba8e9114b094f2102962bf79b8ba30b22632c9624fc5ad6ab4",
+    "kgv011_correctness": "75d50f8f1c012c218e965ba30a0ea67a63081af966f81fdec08ba3faa7f19a87",
+    "kgv011_provenance": "6acfd468e43993db0e8795edda535fe6598c9098edd3edc141ca7e040fb79733",
+    "kgv011_results": "2e1e43d4f082efb5895bd7a73d6fe42e7492d00db639efd3419aedb5c995e8a9",
+    "kgv011_serial": "40a3acdf434d7e4e8a7aeccdf9d549658f950e7340d7c62ef14cecc439579eec",
+    "repair_provenance": "5fd33103836da36995c271e0421894780299c64b43cb390713455adb448fdc8c",
+    "repair_results": "3f0416a783ea6ebb41418f978b4f75758b71a7abd08aa2ec4832e56107ef0bc4"
+  },
+  "spider_graph": {
+    "published": false,
+    "reason": "optional Matplotlib renderer aborted; baseline evidence is unaffected"
+  },
+  "strict_validation": {
+    "acceptance_metrics": [
+      "faithfulness",
+      "answer_relevancy",
+      "context_precision",
+      "context_recall"
+    ],
+    "actual_rows": 20,
+    "diagnostic_metrics": [
+      "answer_correctness"
+    ],
+    "expected_rows": 20,
+    "passed": true
+  },
+  "working_tree_clean": false
+}

@@ -1,0 +1,12 @@
+{
+  "errors": "Rejected invalid metric output. row 0: metrics must be finite values between 0 and 1: answer_correctness; row 1: metrics must be finite values between 0 and 1: answer_correctness; row 2: metrics must be finite values between 0 and 1: answer_correctness; row 4: metrics must be finite values between 0 and 1: answer_correctness",
+  "rows": 5,
+  "sample_ids": [
+    "KGV1-001",
+    "KGV1-005",
+    "KGV1-006",
+    "KGV1-012",
+    "KGV1-016"
+  ],
+  "strict_passed": false
+}

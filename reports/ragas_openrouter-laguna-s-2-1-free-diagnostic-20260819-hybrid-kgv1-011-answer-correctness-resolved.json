@@ -1,0 +1,21 @@
+{
+  "accepted_as_full_benchmark": false,
+  "elapsed_seconds": 193.801,
+  "judge_model": "poolside/laguna-s-2.1:free",
+  "judge_provider": "openrouter",
+  "metric": "answer_correctness",
+  "ragas_error": null,
+  "ragas_failed": false,
+  "resolved": true,
+  "run_config": {
+    "max_retries": 2,
+    "max_wait_seconds": 30,
+    "max_workers": 1,
+    "seed": 42,
+    "timeout_seconds": 600
+  },
+  "sample_id": "KGV1-011",
+  "schema_version": "kinegraph.eval.targeted-metric-resolution.v1",
+  "score": 0.0327,
+  "source_results": "/Users/sendils/work/repo/kinetic-v/kinegraph-v/reports/ragas_openrouter-laguna-s-2-1-free-diagnostic-20260819-hybrid-kgv1-011-retry_results.csv"
+}
