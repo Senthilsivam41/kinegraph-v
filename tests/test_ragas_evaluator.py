@@ -1,4 +1,5 @@
 import asyncio
+import math
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -9,6 +10,7 @@ from backend.app.models import QueryMode
 import eval.ragas_evaluator as ragas_module
 from eval.ragas_evaluator import (
     ALL_METRICS,
+    DEFAULT_METRICS,
     RAGASConfigurationError,
     RAGASEvaluator,
     RAGASValidationError,
@@ -230,6 +232,56 @@ def test_non_finite_or_missing_metrics_are_rejected_even_when_ragas_says_success
     missing = _results().drop(columns=["context_recall"])
     with pytest.raises(RAGASValidationError, match="missing required metric"):
         require_successful_ragas(missing)
+
+
+def test_diagnostic_answer_correctness_failure_does_not_reject_acceptance_metrics():
+    results = _results()
+    results.loc[0, "answer_correctness"] = float("nan")
+    results["diagnostic_ragas_failed"] = True
+    results["diagnostic_ragas_error"] = "TimeoutError"
+
+    require_successful_ragas(results, required_metrics=DEFAULT_METRICS)
+    report = RAGASEvaluator.__new__(RAGASEvaluator).generate_report(results)
+
+    assert report["summary"]["accepted_as_ragas"] is True
+    assert report["summary"]["acceptance_metrics"] == DEFAULT_METRICS
+    assert report["summary"]["diagnostic_metrics"] == ["answer_correctness"]
+    assert report["summary"]["answer_correctness_acceptance_role"] == "diagnostic_only"
+    assert report["summary"]["diagnostic_failure_count"] == 1
+
+
+def test_answer_correctness_is_evaluated_separately_and_cannot_poison_acceptance(monkeypatch):
+    calls = []
+
+    def fake_ragas_evaluate(**kwargs):
+        metric_names = [metric.name for metric in kwargs["metrics"]]
+        calls.append(metric_names)
+        if metric_names == DEFAULT_METRICS:
+            return {metric: [0.8] for metric in DEFAULT_METRICS}
+        raise TimeoutError("diagnostic judge timed out")
+
+    monkeypatch.setattr(ragas_module, "ragas_evaluate", fake_ragas_evaluate)
+    evaluator = RAGASEvaluator.__new__(RAGASEvaluator)
+    evaluator._ragas_metrics = [SimpleNamespace(name=name) for name in ALL_METRICS]
+    evaluator._setup_error = None
+    evaluator._llm = None
+    evaluator._critic_llm = None
+    evaluator._embeddings = None
+    evaluator.judge_max_retries = 2
+    evaluator.judge_retry_backoff_seconds = 0
+
+    result = evaluator.evaluate_single(
+        question="What is RRF?",
+        answer="RRF combines ranked lists.",
+        contexts=["RRF combines ranked lists."],
+        ground_truth="RRF combines ranked lists.",
+    )
+
+    assert calls == [DEFAULT_METRICS, ["answer_correctness"]]
+    assert result["ragas_failed"] is False
+    assert result["diagnostic_ragas_failed"] is True
+    assert "TimeoutError" in result["diagnostic_ragas_error"]
+    assert math.isnan(result["answer_correctness"])
 
 
 def test_report_uses_weighted_composite_and_confidence_interval():

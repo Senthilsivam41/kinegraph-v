@@ -342,6 +342,10 @@ def build_provenance_record(
             },
             "ragas_failed": bool(scores.get("ragas_failed", True)),
             "ragas_error": redact_text(scores.get("ragas_error", ""), limit=1000) or None,
+            "diagnostic_ragas_failed": bool(scores.get("diagnostic_ragas_failed", False)),
+            "diagnostic_ragas_error": (
+                redact_text(scores.get("diagnostic_ragas_error", ""), limit=1000) or None
+            ),
             "judge_model": judge_model,
             "embedding_model": embedding_model,
             "judge_rationale": None,
@@ -401,6 +405,9 @@ def diagnostic_summary(records: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
         "first_failure_stage_counts": dict(sorted(failures.items())),
         "profile_valid": all(record["profile"]["valid"] for record in records),
         "ragas_failed_count": sum(record["evaluation"]["ragas_failed"] for record in records),
+        "diagnostic_ragas_failed_count": sum(
+            record["evaluation"].get("diagnostic_ragas_failed", False) for record in records
+        ),
     }
 
 
