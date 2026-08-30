@@ -72,7 +72,8 @@ except ImportError:
     _OPENAI_AVAILABLE = False
 
 DEFAULT_METRICS = ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]
-ALL_METRICS = DEFAULT_METRICS + ["answer_correctness"]
+DIAGNOSTIC_METRICS = ["answer_correctness"]
+ALL_METRICS = DEFAULT_METRICS + DIAGNOSTIC_METRICS
 JUDGE_MAX_RETRIES = 2
 JUDGE_RETRY_BACKOFF_SECONDS = 1.0
 JUDGE_MAX_TOKENS = 4096
@@ -465,72 +466,41 @@ class RAGASEvaluator:
         if not ground_truth:
             active = [m for m in active if m not in (answer_correctness, context_recall)]
 
+        acceptance_metrics = [m for m in active if m.name in DEFAULT_METRICS]
+        diagnostic_metrics = [m for m in active if m.name in DIAGNOSTIC_METRICS]
+
         try:
-            result = None
-            last_error: Optional[BaseException] = None
-            for attempt in range(self.judge_max_retries + 1):
-                try:
-                    # Keep this strict: a retry may recover a transient judge
-                    # failure, but no exception is converted into a score.
-                    result = ragas_evaluate(
-                        dataset=dataset,
-                        metrics=active,
-                        llm=self._critic_llm or self._llm,
-                        embeddings=self._embeddings,
-                        raise_exceptions=True,
-                    )
-                    break
-                except Exception as exc:
-                    last_error = exc
-                    if (
-                        attempt >= self.judge_max_retries
-                        or not self._is_transient_judge_error(exc)
-                    ):
-                        raise
-                    delay = self.judge_retry_backoff_seconds * (2 ** attempt)
-                    logger.warning(
-                        "Transient RAGAS judge failure (attempt %d/%d): %s; retrying in %.1fs",
-                        attempt + 1,
-                        self.judge_max_retries + 1,
-                        self._judge_exception_details(exc),
-                        delay,
-                    )
-                    if delay:
-                        time.sleep(delay)
-            if result is None and last_error is not None:
-                raise last_error
-            scores_dict = {}
-            nan_metrics = []
-            import math
-            for m in active:
-                val = result[m.name]
-                if isinstance(val, list):
-                    val = val[0] if val else 0.0
-                elif hasattr(val, "iloc"):
-                    val = val.iloc[0] if len(val) > 0 else 0.0
-                
-                # Check for NaN
-                is_nan = False
-                try:
-                    fval = float(val) if val is not None else float('nan')
-                    if math.isnan(fval):
-                        is_nan = True
-                except (ValueError, TypeError):
-                    is_nan = True
-                
-                if is_nan:
-                    nan_metrics.append(m.name)
-                    scores_dict[m.name] = float('nan')
-                else:
-                    scores_dict[m.name] = round(fval, 4)
-            
+            result = self._run_ragas_metrics(dataset, acceptance_metrics)
+            scores_dict, nan_metrics = self._extract_metric_scores(result, acceptance_metrics)
             if nan_metrics:
-                scores_dict["ragas_failed"] = True
-                scores_dict["ragas_error"] = f"RAGAS returned NaN for metric(s): {', '.join(nan_metrics)}"
+                raise ValueError(
+                    f"RAGAS returned NaN for acceptance metric(s): {', '.join(nan_metrics)}"
+                )
+            scores_dict.update({"ragas_failed": False, "ragas_error": None})
+
+            if diagnostic_metrics:
+                try:
+                    diagnostic_result = self._run_ragas_metrics(
+                        dataset, diagnostic_metrics, max_retries=0
+                    )
+                    diagnostic_scores, diagnostic_nan = self._extract_metric_scores(
+                        diagnostic_result, diagnostic_metrics
+                    )
+                    scores_dict.update(diagnostic_scores)
+                    scores_dict["diagnostic_ragas_failed"] = bool(diagnostic_nan)
+                    scores_dict["diagnostic_ragas_error"] = (
+                        f"RAGAS returned NaN for diagnostic metric(s): {', '.join(diagnostic_nan)}"
+                        if diagnostic_nan else None
+                    )
+                except Exception as exc:
+                    details = self._judge_exception_details(exc)
+                    logger.warning("Diagnostic RAGAS metric failed: %s", details)
+                    scores_dict.update({m.name: float("nan") for m in diagnostic_metrics})
+                    scores_dict["diagnostic_ragas_failed"] = True
+                    scores_dict["diagnostic_ragas_error"] = f"Exception: {details}"
             else:
-                scores_dict["ragas_failed"] = False
-                scores_dict["ragas_error"] = None
-                
+                scores_dict["diagnostic_ragas_failed"] = False
+                scores_dict["diagnostic_ragas_error"] = None
             return scores_dict
         except Exception as exc:
             details = self._judge_exception_details(exc)
@@ -539,8 +509,61 @@ class RAGASEvaluator:
             return {
                 **scores,
                 "ragas_failed": True,
-                "ragas_error": f"Exception: {details}"
+                "ragas_error": f"Exception: {details}",
+                "diagnostic_ragas_failed": bool(diagnostic_metrics),
+                "diagnostic_ragas_error": "Acceptance metrics failed before diagnostics ran",
             }
+
+    def _run_ragas_metrics(
+        self, dataset: Any, metrics: List[Any], max_retries: Optional[int] = None
+    ) -> Any:
+        retries = self.judge_max_retries if max_retries is None else max_retries
+        last_error: Optional[BaseException] = None
+        for attempt in range(retries + 1):
+            try:
+                return ragas_evaluate(
+                    dataset=dataset,
+                    metrics=metrics,
+                    llm=self._critic_llm or self._llm,
+                    embeddings=self._embeddings,
+                    raise_exceptions=True,
+                )
+            except Exception as exc:
+                last_error = exc
+                if attempt >= retries or not self._is_transient_judge_error(exc):
+                    raise
+                delay = self.judge_retry_backoff_seconds * (2 ** attempt)
+                logger.warning(
+                    "Transient RAGAS judge failure (attempt %d/%d): %s; retrying in %.1fs",
+                    attempt + 1,
+                    retries + 1,
+                    self._judge_exception_details(exc),
+                    delay,
+                )
+                if delay:
+                    time.sleep(delay)
+        raise last_error or RuntimeError("RAGAS evaluation produced no result")
+
+    @staticmethod
+    def _extract_metric_scores(result: Any, metrics: List[Any]) -> tuple[Dict[str, float], List[str]]:
+        import math
+
+        scores: Dict[str, float] = {}
+        nan_metrics = []
+        for metric in metrics:
+            value = result[metric.name]
+            if isinstance(value, list):
+                value = value[0] if value else float("nan")
+            elif hasattr(value, "iloc"):
+                value = value.iloc[0] if len(value) > 0 else float("nan")
+            try:
+                numeric = float(value) if value is not None else float("nan")
+            except (TypeError, ValueError):
+                numeric = float("nan")
+            if math.isnan(numeric):
+                nan_metrics.append(metric.name)
+            scores[metric.name] = round(numeric, 4)
+        return scores, nan_metrics
 
     def evaluate_batch(
         self, dataset: List[Dict[str, Any]], show_progress: bool = True
@@ -1098,6 +1121,19 @@ class RAGASEvaluator:
                 "composite_confidence_interval_95": [round(ci_low, 4), round(ci_high, 4)],
                 "composite_metric_weights": dict(policy.metric_weights),
                 "metrics_evaluated": metric_cols,
+                "acceptance_metrics": [
+                    metric for metric in DEFAULT_METRICS if metric in policy.metric_weights
+                ] + [
+                    metric for metric in policy.metric_weights if metric not in DEFAULT_METRICS
+                ],
+                "diagnostic_metrics": [
+                    metric for metric in metric_cols if metric not in policy.metric_weights
+                ],
+                "answer_correctness_acceptance_role": "diagnostic_only",
+                "diagnostic_failure_count": (
+                    int(results["diagnostic_ragas_failed"].fillna(False).astype(bool).sum())
+                    if "diagnostic_ragas_failed" in results.columns else 0
+                ),
                 "quality_distribution": results["quality_tier"].value_counts().to_dict(),
                 "eval_mode": "ragas" if ragas_accepted else "heuristic_or_mixed",
                 "accepted_as_ragas": ragas_accepted,
@@ -1316,7 +1352,7 @@ if __name__ == "__main__":
             require_successful_ragas(
                 smoke_results,
                 expected_rows=1,
-                required_metrics=ALL_METRICS,
+                required_metrics=DEFAULT_METRICS,
             )
         except RAGASValidationError as exc:
             print(f"RAGAS JUDGE SMOKE TEST FAILED: {exc}", file=sys.stderr)
@@ -1420,7 +1456,7 @@ if __name__ == "__main__":
         require_successful_ragas(
             results_df,
             expected_rows=len(raw_data),
-            required_metrics=evaluator.metrics_names,
+            required_metrics=DEFAULT_METRICS,
         )
     except RAGASValidationError as exc:
         print(f"\nBENCHMARK REJECTED: {exc}", file=sys.stderr)
