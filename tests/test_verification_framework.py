@@ -76,6 +76,32 @@ def test_missing_semantic_verification_fails_closed():
     assert outcome["reason"] == "semantic_verification_unavailable"
 
 
+def test_invalid_citation_validation_forces_refusal():
+    state = _validated_claim_state()
+    state["citation_validation"] = {
+        "structured_output_valid": False,
+        "total_claims": 1,
+        "accepted_claims": 0,
+        "rejected_claims": [{"claim_id": "claim-1", "reason": "unknown_chunk_id"}],
+    }
+
+    outcome = build_verification_outcome(**state)
+
+    assert outcome["status"] == "refused"
+    assert outcome["reason"] == "citation_validation_unavailable"
+
+
+def test_explicit_retrieval_conflict_remains_partial():
+    state = _validated_claim_state()
+    state["contexts"][0]["metadata"] = {"conflict": True, "conflicts_with": "c-2"}
+
+    outcome = build_verification_outcome(**state)
+
+    assert outcome["status"] == "partial"
+    assert outcome["conflicts"]
+    assert "conflict marker" in outcome["gaps"][0]
+
+
 def test_kinetic_score_is_versioned_shadow_evidence_confidence():
     state = _validated_claim_state()
     outcome = build_verification_outcome(**state)
@@ -99,3 +125,12 @@ def test_score_calibration_requires_labeled_sample_floor():
     assert insufficient["status"] == "insufficient_labeled_samples"
     assert calibrated["status"] == "calibrated"
     assert calibrated["promotion_allowed"] is False
+
+
+def test_score_calibration_rejects_string_labels():
+    result = calibrate_kinetic_score([
+        {"kinetic_score": 20, "acceptable": "false"},
+        {"kinetic_score": 80, "acceptable": "true"},
+    ], minimum_samples=2)
+
+    assert result["status"] == "insufficient_labeled_samples"

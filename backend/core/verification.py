@@ -66,7 +66,9 @@ def build_verification_outcome(
     conflicts = _explicit_conflicts(contexts)
     gaps = list(dict.fromkeys(missing_facets))
 
-    if not contexts:
+    if not citation_validation.get("structured_output_valid", False):
+        status, reason = "refused", "citation_validation_unavailable"
+    elif not contexts:
         status, reason = "refused", "no_retrieved_evidence"
     elif not claims:
         status, reason = "refused", "no_supported_claims"
@@ -262,16 +264,20 @@ def calibrate_kinetic_score(
     for record in records:
         try:
             score = float(record["kinetic_score"])
-            acceptable = bool(record["acceptable"])
+            acceptable = record["acceptable"]
         except (KeyError, TypeError, ValueError):
             continue
-        if 0.0 <= score <= 100.0:
+        if isinstance(acceptable, bool) and 0.0 <= score <= 100.0:
             samples.append((score, acceptable))
+    positive_samples = sum(label for _, label in samples)
+    negative_samples = len(samples) - positive_samples
     if len(samples) < minimum_samples or not {label for _, label in samples} == {False, True}:
         return {
             "policy_version": KINETIC_SCORE_CALIBRATION_VERSION,
             "status": "insufficient_labeled_samples",
             "samples": len(samples),
+            "positive_samples": positive_samples,
+            "negative_samples": negative_samples,
             "minimum_samples": minimum_samples,
             "promotion_allowed": False,
         }
@@ -296,6 +302,8 @@ def calibrate_kinetic_score(
         "policy_version": KINETIC_SCORE_CALIBRATION_VERSION,
         "status": "calibrated",
         "samples": len(samples),
+        "positive_samples": positive_samples,
+        "negative_samples": negative_samples,
         "threshold": threshold,
         "balanced_accuracy": round(balanced_accuracy, 4),
         "precision": round(precision, 4),
