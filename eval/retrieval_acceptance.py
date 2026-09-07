@@ -1,6 +1,7 @@
 """Benchmark acceptance gates for ADR-003 and controlled reranker experiments."""
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any, Mapping
 
@@ -65,9 +66,31 @@ def assess_retrieval_benchmark(
             measured[metric] = value
             if value is None:
                 profile_failures.append(f"missing metric: {metric}")
+                continue
+            try:
+                numeric = float(value)
+            except (TypeError, ValueError):
+                profile_failures.append(f"{metric} is not numeric")
+                continue
+            if not math.isfinite(numeric):
+                profile_failures.append(f"{metric} is not finite")
+            elif metric == "p95_latency_ms":
+                if numeric < 0:
+                    profile_failures.append("p95_latency_ms must be non-negative")
+            elif not 0.0 <= numeric <= 1.0:
+                profile_failures.append(f"{metric} must be between 0 and 1")
         provenance = measured.get("candidate_provenance_completeness")
-        if provenance is not None and float(provenance) < policy.minimum_provenance_completeness:
-            profile_failures.append("candidate provenance is incomplete")
+        if provenance is not None:
+            try:
+                provenance_value = float(provenance)
+            except (TypeError, ValueError):
+                provenance_value = None
+            if (
+                provenance_value is not None
+                and math.isfinite(provenance_value)
+                and provenance_value < policy.minimum_provenance_completeness
+            ):
+                profile_failures.append("candidate provenance is incomplete")
         if profile_failures:
             failures.extend(f"{profile}: {failure}" for failure in profile_failures)
         profile_results[profile] = {

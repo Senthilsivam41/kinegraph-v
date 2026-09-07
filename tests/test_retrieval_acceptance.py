@@ -29,6 +29,32 @@ def test_retrieval_acceptance_requires_all_profiles_and_real_ragas():
     assert any("RAGAS result is not accepted" in item for item in rejected["failures"])
 
 
+def test_retrieval_acceptance_rejects_non_finite_or_out_of_range_metrics():
+    reports = {name: _accepted_profile() for name in (
+        "hybrid", "hybrid_lexical", "vectorless"
+    )}
+    reports["hybrid"]["context_recall"] = float("nan")
+    reports["vectorless"]["precision_at_5"] = 1.1
+
+    result = assess_retrieval_benchmark(reports)
+
+    assert result["accepted"] is False
+    assert any("context_recall is not finite" in item for item in result["failures"])
+    assert any("precision_at_5 must be between 0 and 1" in item for item in result["failures"])
+
+
+def test_retrieval_acceptance_reports_non_numeric_provenance_without_raising():
+    reports = {name: _accepted_profile() for name in (
+        "hybrid", "hybrid_lexical", "vectorless"
+    )}
+    reports["hybrid"]["candidate_provenance_completeness"] = "unknown"
+
+    result = assess_retrieval_benchmark(reports)
+
+    assert result["accepted"] is False
+    assert any("candidate_provenance_completeness is not numeric" in item for item in result["failures"])
+
+
 def test_cross_encoder_gate_requires_one_lever_and_slice_gain():
     baseline = {
         "configuration": {"enable_cross_encoder_reranking": False, "max_hops": 2},
