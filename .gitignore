@@ -78,3 +78,5 @@ Thumbs.db
 .autoclaw/**/*.sqlite
 .autoclaw/vector/*.*
 
+# Graphify cache
+/graphify-out/cache/

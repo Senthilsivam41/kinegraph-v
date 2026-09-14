@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Kinetic-V Hybrid GraphRAG Architecture",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "https://github.com/Senthilsivam41/kinegraph-v.git",
+      "revision": "b709ab9187266c73531b8df1b144c707b1fee097"
+    },
+    "views": [
+      { "id": "query-path", "label": "Query path", "focus": ["client", "api", "routing", "retrieval", "verification"], "note": "Follow a query from the local UI through retrieval and evidence validation." },
+      { "id": "dual-store", "label": "Dual-store retrieval", "focus": ["retrieval", "vector", "graph", "lexical"], "note": "Inspect the vector, graph, and lexical evidence channels." },
+      { "id": "ingestion", "label": "Document ingestion", "focus": ["client", "api", "parser", "ingestion", "vector", "graph", "queue"], "note": "Trace document processing into the local evidence stores." },
+      { "id": "evaluation", "label": "Evaluation controls", "focus": ["evaluator", "retrieval", "verification"], "note": "Connect acceptance gates and shadow verification without implying promotion." }
+    ]
+  },
+  "components": [
+    { "id": "client", "type": "frontend", "label": "Chat UI", "sublabel": "localhost:8080", "tag": "local browser", "pos": [40, 300], "size": [150, 68], "sources": [{ "path": "frontend/app.js", "line": 49 }] },
+    { "id": "api", "type": "backend", "label": "FastAPI", "sublabel": "localhost:8000", "tag": "query + ingest API", "pos": [250, 300], "size": [160, 68], "sources": [{ "path": "backend/app/main.py", "line": 1 }] },
+    { "id": "routing", "type": "backend", "label": "Intent Routing", "sublabel": "adaptive route selection", "pos": [470, 300], "size": [170, 68], "sources": [{ "path": "backend/core/langgraph_workflow.py", "line": 353 }] },
+    { "id": "retrieval", "type": "backend", "label": "Retrieval Orchestration", "sublabel": "RRF + dedup + rerank", "tag": "ADR-003", "pos": [700, 300], "size": [190, 68], "sources": [{ "path": "backend/core/retrieval_orchestration.py", "line": 1 }] },
+    { "id": "verification", "type": "security", "label": "Verification Framework", "sublabel": "claims + citations", "tag": "ADR-004 shadow", "pos": [950, 300], "size": [190, 68], "sources": [{ "path": "backend/core/verification.py", "line": 50 }] },
+    { "id": "vector", "type": "database", "label": "ChromaDB", "sublabel": "localhost:8001", "tag": "semantic evidence", "pos": [700, 140], "size": [170, 64], "sources": [{ "path": "backend/services/chroma_service.py", "line": 1 }] },
+    { "id": "graph", "type": "database", "label": "Neo4j", "sublabel": "localhost:7474", "tag": "graph evidence", "pos": [930, 140], "size": [170, 64], "sources": [{ "path": "backend/services/neo4j_service.py", "line": 1 }] },
+    { "id": "lexical", "type": "backend", "label": "BM25 / Vectorless", "sublabel": "local lexical channel", "pos": [470, 480], "size": [180, 64], "sources": [{ "path": "backend/services/vectorless_service.py", "line": 24 }] },
+    { "id": "parser", "type": "backend", "label": "LiteParse", "sublabel": "localhost:5707", "tag": "local parser", "pos": [40, 80], "size": [170, 64], "sources": [{ "path": "backend/graph_ingestion/lite_parser.py", "line": 1 }] },
+    { "id": "ingestion", "type": "backend", "label": "Ingestion Workers", "sublabel": "Celery processing", "pos": [270, 80], "size": [180, 64], "sources": [{ "path": "backend/workers/tasks.py", "line": 1 }] },
+    { "id": "queue", "type": "messagebus", "label": "Redis", "sublabel": "localhost:6379", "tag": "task queue", "pos": [500, 80], "size": [150, 64], "sources": [{ "path": "backend/core/config.py", "line": 12 }] },
+    { "id": "evaluator", "type": "external", "label": "Evaluation Harness", "sublabel": "RAGAS + acceptance gates", "tag": "diagnostic only", "pos": [950, 480], "size": [190, 64], "sources": [{ "path": "eval/ragas_evaluator.py", "line": 189 }] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Docker Desktop local stack", "wraps": ["api", "routing", "retrieval", "verification", "vector", "graph", "lexical", "parser", "ingestion", "queue"], "pad": 28 }
+  ],
+  "connections": [
+    { "id": "client-api", "from": "client", "to": "api", "label": "HTTP query / upload", "variant": "emphasis", "labelDy": -40 },
+    { "id": "api-routing", "from": "api", "to": "routing", "label": "dispatch request", "labelDy": -40 },
+    { "id": "routing-retrieval", "from": "routing", "to": "retrieval", "label": "selected route", "labelDy": -40 },
+    { "id": "retrieval-verification", "from": "retrieval", "to": "verification", "label": "ranked evidence", "labelDy": -40 },
+    { "id": "verification-api", "from": "verification", "to": "api", "label": "validated claims", "variant": "security", "fromSide": "bottom", "toSide": "bottom", "via": [[1045, 420], [1170, 420], [1170, 600], [330, 600]] },
+    { "id": "retrieval-vector", "from": "retrieval", "to": "vector", "label": "semantic search", "fromSide": "top", "toSide": "bottom", "labelDx": -58 },
+    { "id": "retrieval-graph", "from": "retrieval", "to": "graph", "label": "graph traversal", "fromSide": "top", "toSide": "bottom", "labelDx": 58 },
+    { "id": "routing-lexical", "from": "routing", "to": "lexical", "label": "exact / local lookup", "fromSide": "bottom", "toSide": "top", "labelDx": 70 },
+    { "id": "api-parser", "from": "api", "to": "parser", "label": "parse document", "fromSide": "top", "toSide": "bottom", "labelDx": -60 },
+    { "id": "parser-ingestion", "from": "parser", "to": "ingestion", "label": "structured Markdown", "labelDy": 70 },
+    { "id": "ingestion-queue", "from": "ingestion", "to": "queue", "label": "enqueue work", "labelDy": 70 },
+    { "id": "evaluator-retrieval", "from": "evaluator", "to": "retrieval", "label": "measure slices", "variant": "dashed", "fromSide": "top", "toSide": "bottom", "labelDx": -70 },
+    { "id": "evaluator-verification", "from": "evaluator", "to": "verification", "label": "score evidence", "variant": "dashed", "fromSide": "top", "toSide": "bottom", "labelDx": 70 }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Query path", "items": ["FastAPI dispatches to adaptive routing", "Retrieval preserves channel and graph provenance", "Verification returns citation-validated claims"] },
+    { "dot": "emerald", "title": "Local evidence", "items": ["ChromaDB stores semantic chunks", "Neo4j stores entities and relationships", "BM25 supports exact and vectorless lookup"] },
+    { "dot": "rose", "title": "Governance", "items": ["ADR-003 remains experimental pending benchmark promotion", "ADR-004 remains shadow-only pending calibration", "Evaluation results stay separate from accepted baselines"] }
+  ]
+}
