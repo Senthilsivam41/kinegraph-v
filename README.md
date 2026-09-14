@@ -93,6 +93,8 @@ Unlike default implementations that collapse both vectors and graph entities int
 - **Vendor Lock-in Avoidance**: Swap out ChromaDB or Neo4j for other specialized engines without rebuilding the entire extraction or ingestion pipelines.
 - **Granular Embedding Fusing**: Compute and store embeddings for chunks, entities, and relationship summaries, enabling precise Reciprocal Rank Fusion (RRF) at query time.
 
+The [medium-priority Neo4j hybrid-search experiment](docs/architecture/NEO4J-HYBRID-EXPERIMENT.md) defines the evidence needed to reconsider this separation. It remains proposed; no storage migration or ADR promotion has occurred.
+
 #### Ingestion Flow & Extractor Stack
 Every ingested document goes through a pipeline of concurrent, specialized extractors aligned with a constrained ontology schema:
 
@@ -146,7 +148,7 @@ After RRF, candidates pass through a relevance gate based on the original user q
 
 The precision path retrieves a wide per-channel candidate pool (25 by default), applies RRF, removes near-identical chunks at cosine similarity ≥ 0.95, reranks the survivors, and sends at most 6 contexts to generation. The graph traversal default is two hops, while one to five hops remain request-configurable for evaluation.
 
-The reranker preserves `score`, `rrf_score`, `original_score`, and source provenance. It adds `semantic_score`, `graph_signal_score`, `rerank_score`, `rerank_components`, and `rerank_mode` for observability. Cross-encoder scoring is enabled by default in the normal workflow; the model and relevance floor are configured through `RERANKER_MODEL` and `RERANKER_MIN_RELEVANCE`. `cross-encoder/ms-marco-MiniLM-L-6-v2` remains the lightweight default; `BAAI/bge-reranker-v2-m3` can be selected for a stronger multilingual reranker. If the optional model is unavailable, Kinegraph logs the fallback and reports `graph_aware_keyword` mode.
+The reranker preserves `score`, `rrf_score`, `original_score`, and source provenance. It adds `semantic_score`, `graph_signal_score`, `rerank_score`, `rerank_components`, and `rerank_mode` for observability. Keyword scoring remains the normal workflow default (`CROSS_ENCODER_RERANK_ENABLED=false`). Cross-encoder scoring is a controlled experiment: opt in per request with `enable_cross_encoder_reranking: true`, or set `CROSS_ENCODER_RERANK_ENABLED=true` for an experiment environment. The model and relevance floor are configured through `RERANKER_MODEL` and `RERANKER_MIN_RELEVANCE`. `cross-encoder/ms-marco-MiniLM-L-6-v2` remains the configured default model; `BAAI/bge-reranker-v2-m3` is another selectable model. If the optional dependency or model cannot load, provenance reports the fallback reason and `graph_aware_keyword` mode. Promotion remains subject to the accepted comparison in [issue #48](https://github.com/Senthilsivam41/kinegraph-v/issues/48).
 
 ### 7. Conditional Query Recovery Before RRF
 
