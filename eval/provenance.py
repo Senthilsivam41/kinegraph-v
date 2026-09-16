@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from collections import Counter
 from pathlib import Path
@@ -99,29 +100,45 @@ def _graph_path_audit(trace: Mapping[str, Any]) -> dict[str, Any]:
     for candidate in traversal_candidates:
         metadata = candidate.get("metadata") or {}
         relationship_path = metadata.get("relationship_path") or []
-        depth = int(metadata.get("traversal_depth") or 0)
+        if not isinstance(relationship_path, list):
+            relationship_path = []
+        depth = metadata.get("traversal_depth")
+        max_hops = metadata.get("max_hops")
+        valid_depth = type(depth) is int and type(max_hops) is int and 1 <= depth <= max_hops <= 5
         node_sequence = []
         missing_edge_fields = []
+        connected = bool(relationship_path)
         for edge_index, edge in enumerate(relationship_path):
+            edge = edge if isinstance(edge, Mapping) else {}
+            expected_from = metadata.get("seed_node_id") if edge_index == 0 else node_sequence[-1]
+            connected = connected and bool(expected_from) and edge.get("from_node_id") == expected_from
             if edge_index == 0:
                 node_sequence.append(edge.get("from_node_id"))
             node_sequence.append(edge.get("to_node_id"))
             missing = [
                 key for key in (
                     "from_node_id", "to_node_id", "relationship_type",
-                    "direction", "weight", "evidence_text",
+                    "evidence_text",
                 )
-                if edge.get(key) in (None, "")
+                if not isinstance(edge.get(key), str) or not edge[key].strip()
             ]
+            if edge.get("direction") not in ("OUTGOING", "INCOMING"):
+                missing.append("direction")
+            weight = edge.get("weight")
+            if type(weight) not in (int, float) or not 0 <= weight <= 1 or not math.isfinite(weight):
+                missing.append("weight")
             if missing:
                 missing_edge_fields.append({"edge_index": edge_index, "fields": missing})
+        nodes = [node for node in node_sequence if isinstance(node, str)]
+        cycle_detected = len(nodes) != len(set(nodes))
         paths.append({
             "candidate_id": candidate_id(candidate),
             "seed_node_id": metadata.get("seed_node_id"),
-            "traversal_depth": depth,
+            "traversal_depth": depth if type(depth) is int else None,
             "path_length": len(relationship_path),
-            "path_complete": depth > 0 and len(relationship_path) == depth and not missing_edge_fields,
-            "cycle_detected": len([node for node in node_sequence if node is not None]) != len(set(node for node in node_sequence if node is not None)),
+            "path_complete": valid_depth and len(relationship_path) == depth and connected and not cycle_detected and not missing_edge_fields,
+            "cycle_detected": cycle_detected,
+            "connected_to_seed": connected,
             "missing_edge_fields": missing_edge_fields,
         })
     return {

@@ -135,3 +135,29 @@ def test_query_model_validates_active_fusion_weights():
             vector_fusion_weight=0,
             graph_fusion_weight=0,
         )
+
+
+@pytest.mark.parametrize("hops", [0, -1, 6, True, False, 1.5])
+def test_traversal_rejects_invalid_request_hops_without_defaulting(hops):
+    retriever = FakeTraversal({"A": [_edge("B")]}, max_hops=2)
+    with pytest.raises(ValueError, match="max_hops"):
+        retriever.retrieve("A", max_hops=hops)
+
+
+@pytest.mark.parametrize("hops", [1, 2, 3])
+def test_hop_ablation_bounds_paths_and_preserves_frozen_graph(hops):
+    retriever = FakeTraversal({"A": [_edge("B")], "B": [_edge("C")], "C": [_edge("D")], "D": [_edge("A")]}, max_hops=2)
+    results = retriever.retrieve("A", max_hops=hops)
+    assert [row["metadata"]["traversal_depth"] for row in results] == list(range(1, hops + 1))
+    assert all(len(row["metadata"]["relationship_path"]) == row["metadata"]["traversal_depth"] for row in results)
+    assert retriever.max_hops == 2
+
+
+def test_empty_seeds_return_empty_results_with_explicit_diagnostics():
+    retriever = FakeTraversal({})
+    retriever._find_seeds = lambda *args: []
+    diagnostics = {}
+    assert retriever.retrieve("unmatched", diagnostics=diagnostics) == []
+    assert diagnostics["empty_seed"] is True
+    assert diagnostics["seed_node_ids"] == []
+    assert diagnostics["returned_path_count"] == 0
