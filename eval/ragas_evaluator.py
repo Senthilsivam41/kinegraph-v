@@ -1028,6 +1028,7 @@ class RAGASEvaluator:
                 if "workflow_latency_ms" in results.columns
                 else None
             ),
+            "candidate_provenance_samples": len(provenance_completeness),
             "candidate_provenance_completeness": (
                 round(sum(provenance_completeness) / len(provenance_completeness), 4)
                 if provenance_completeness
@@ -1199,6 +1200,7 @@ if __name__ == "__main__":
         default=settings.RETRIEVAL_CANDIDATE_LIMIT,
     )
     parser.add_argument("--run-label", default="latest", help="Safe label used for persisted result files")
+    parser.add_argument("--output-dir", help="Directory for this run's reports, manifests, and provenance")
     parser.add_argument(
         "--concurrency",
         type=int,
@@ -1444,7 +1446,7 @@ if __name__ == "__main__":
             neo4j.close()
         except Exception:
             pass
-    reports_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "reports"))
+    reports_dir = os.path.abspath(args.output_dir or os.path.join(repo_root, "reports"))
     os.makedirs(reports_dir, exist_ok=True)
     provenance_records = results_df["provenance"].tolist()
     provenance_path = os.path.join(reports_dir, f"ragas_{artifact_label}_provenance.jsonl")
@@ -1560,7 +1562,7 @@ if __name__ == "__main__":
             "grounding_critic_temperature": settings.FAITHFULNESS_CRITIC_TEMPERATURE,
             "enable_verification_framework": args.enable_verification_framework,
         },
-        "evaluation": readiness,
+        "evaluation": {**readiness, "concurrency": args.concurrency},
     }
     manifest = build_manifest(
         run_label=artifact_label,

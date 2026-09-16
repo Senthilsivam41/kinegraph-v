@@ -1,0 +1,2912 @@
+{
+  "backend/__init__.py": {
+    "mtime": 1771048386.2205603,
+    "ast_hash": "61e6ce9ca37705136cea1b2696c6078d",
+    "semantic_hash": "61e6ce9ca37705136cea1b2696c6078d"
+  },
+  "backend/app/__init__.py": {
+    "mtime": 1770312198.080302,
+    "ast_hash": "39c8ea1bd0b778aceede1e59071bdf85",
+    "semantic_hash": "39c8ea1bd0b778aceede1e59071bdf85"
+  },
+  "backend/app/api/__init__.py": {
+    "mtime": 1770312198.08028,
+    "ast_hash": "ea0a7be83135b36ed7b47ee816be7af6",
+    "semantic_hash": "ea0a7be83135b36ed7b47ee816be7af6"
+  },
+  "backend/app/api/routes/__init__.py": {
+    "mtime": 1770312198.076599,
+    "ast_hash": "40daa1e1cf9c71bf02d1d787aa5e2883",
+    "semantic_hash": "40daa1e1cf9c71bf02d1d787aa5e2883"
+  },
+  "backend/app/api/routes/health.py": {
+    "mtime": 1771048547.5040114,
+    "ast_hash": "16fed3f64fe1771aaa221659d667b793",
+    "semantic_hash": "16fed3f64fe1771aaa221659d667b793"
+  },
+  "backend/app/api/routes/ingest.py": {
+    "mtime": 1784848577.885952,
+    "ast_hash": "51d2d972035721b6b0ae22a6ddf53b56",
+    "semantic_hash": "51d2d972035721b6b0ae22a6ddf53b56"
+  },
+  "backend/app/api/routes/query.py": {
+    "mtime": 1785516165.9196365,
+    "ast_hash": "f2fc7c4330ac49d360726b19796ecc86",
+    "semantic_hash": "f2fc7c4330ac49d360726b19796ecc86"
+  },
+  "backend/app/main.py": {
+    "mtime": 1784776896.844997,
+    "ast_hash": "1870bc6055c782a23523e0354b1003ef",
+    "semantic_hash": "1870bc6055c782a23523e0354b1003ef"
+  },
+  "backend/app/models.py": {
+    "mtime": 1785516165.920316,
+    "ast_hash": "80e8f5b0efd640b8f519500e3d5b652c",
+    "semantic_hash": "80e8f5b0efd640b8f519500e3d5b652c"
+  },
+  "backend/core/__init__.py": {
+    "mtime": 1770312257.718639,
+    "ast_hash": "2ab19e68e4710d2e25b921d64dd57b25",
+    "semantic_hash": "2ab19e68e4710d2e25b921d64dd57b25"
+  },
+  "backend/core/adaptive_routing.py": {
+    "mtime": 1784854677.8809114,
+    "ast_hash": "d9979546427d02b156df65a4c3cee7a5",
+    "semantic_hash": "d9979546427d02b156df65a4c3cee7a5"
+  },
+  "backend/core/config.py": {
+    "mtime": 1785516165.9207,
+    "ast_hash": "e87d6ce2e78738e3aed135b686893f49",
+    "semantic_hash": "e87d6ce2e78738e3aed135b686893f49"
+  },
+  "backend/core/context_ranker.py": {
+    "mtime": 1785516165.9216058,
+    "ast_hash": "e57844f3d97b16feb0cea41b3299edc9",
+    "semantic_hash": "e57844f3d97b16feb0cea41b3299edc9"
+  },
+  "backend/core/grounding.py": {
+    "mtime": 1785516165.9218738,
+    "ast_hash": "e3881274431566b0fc1b3e1acc07334c",
+    "semantic_hash": "e3881274431566b0fc1b3e1acc07334c"
+  },
+  "backend/core/intent_classifier.py": {
+    "mtime": 1784854412.0420277,
+    "ast_hash": "7f35f87eb4737daca69c3312b8bdfa35",
+    "semantic_hash": "7f35f87eb4737daca69c3312b8bdfa35"
+  },
+  "backend/core/langgraph_workflow.py": {
+    "mtime": 1788746231.448951,
+    "ast_hash": "98da77a305cc1e6f9a287910fd2621c6",
+    "semantic_hash": "98da77a305cc1e6f9a287910fd2621c6"
+  },
+  "backend/core/query_recovery.py": {
+    "mtime": 1784688472.2058218,
+    "ast_hash": "93ac75a6c738c45c16208afc769d1082",
+    "semantic_hash": "93ac75a6c738c45c16208afc769d1082"
+  },
+  "backend/core/retrieval_orchestration.py": {
+    "mtime": 1785516165.9227564,
+    "ast_hash": "02036edd02fb6891bdb3343c151281b6",
+    "semantic_hash": "02036edd02fb6891bdb3343c151281b6"
+  },
+  "backend/core/rrf.py": {
+    "mtime": 1785516165.9229863,
+    "ast_hash": "d858264b7f7eb7758c41feec77631241",
+    "semantic_hash": "d858264b7f7eb7758c41feec77631241"
+  },
+  "backend/core/verification.py": {
+    "mtime": 1788746312.728778,
+    "ast_hash": "791cae3b033adf2ea0e7580229c55d75",
+    "semantic_hash": "791cae3b033adf2ea0e7580229c55d75"
+  },
+  "backend/graph_ingestion/adaptive_chunking.py": {
+    "mtime": 1785513861.765461,
+    "ast_hash": "a81eec30fd59eb4e43dcf98a8bed9f4e",
+    "semantic_hash": "a81eec30fd59eb4e43dcf98a8bed9f4e"
+  },
+  "backend/graph_ingestion/dedup.py": {
+    "mtime": 1783095250.7316477,
+    "ast_hash": "32037cb6f2d44ab5ab682139ebd61c9f",
+    "semantic_hash": "32037cb6f2d44ab5ab682139ebd61c9f"
+  },
+  "backend/graph_ingestion/embedding_wrapper.py": {
+    "mtime": 1783095079.2871144,
+    "ast_hash": "e035188b550b9fe82a11320cf29c08f2",
+    "semantic_hash": "e035188b550b9fe82a11320cf29c08f2"
+  },
+  "backend/graph_ingestion/enrichment.py": {
+    "mtime": 1785513861.7865553,
+    "ast_hash": "d89db972aaf759118248c21fc8397b47",
+    "semantic_hash": "d89db972aaf759118248c21fc8397b47"
+  },
+  "backend/graph_ingestion/enrichment_v2.py": {
+    "mtime": 1784565197.0498748,
+    "ast_hash": "0c3c4e6a38b0ab34ddbcbf74b3b50029",
+    "semantic_hash": "0c3c4e6a38b0ab34ddbcbf74b3b50029"
+  },
+  "backend/graph_ingestion/extractors.py": {
+    "mtime": 1783126302.5487895,
+    "ast_hash": "d63a5d69cac54bbacd7c2e9590da7204",
+    "semantic_hash": "d63a5d69cac54bbacd7c2e9590da7204"
+  },
+  "backend/graph_ingestion/ingest.py": {
+    "mtime": 1785513861.7869885,
+    "ast_hash": "4d7c008a18c0cc4a91e537618e6ce74d",
+    "semantic_hash": "4d7c008a18c0cc4a91e537618e6ce74d"
+  },
+  "backend/graph_ingestion/lite_parser.py": {
+    "mtime": 1785773201.0090227,
+    "ast_hash": "65fc6eb3dd6b02dc8a29d06c7548915c",
+    "semantic_hash": "65fc6eb3dd6b02dc8a29d06c7548915c"
+  },
+  "backend/graph_ingestion/schema.py": {
+    "mtime": 1783095059.76184,
+    "ast_hash": "34e96e9b14ea68f8a0cc7e671831537b",
+    "semantic_hash": "34e96e9b14ea68f8a0cc7e671831537b"
+  },
+  "backend/graph_ingestion/schema_coverage.py": {
+    "mtime": 1784565197.0506687,
+    "ast_hash": "06b3304b33b2f369499a575543c4ee98",
+    "semantic_hash": "06b3304b33b2f369499a575543c4ee98"
+  },
+  "backend/graph_ingestion/stores.py": {
+    "mtime": 1783126577.9485369,
+    "ast_hash": "554df6f43f7ea4ca79e4807462bed22e",
+    "semantic_hash": "554df6f43f7ea4ca79e4807462bed22e"
+  },
+  "backend/graph_retrieval/langgraph_node.py": {
+    "mtime": 1784735613.2348948,
+    "ast_hash": "0da1ec8c0f929c795dcc1d6faa988394",
+    "semantic_hash": "0da1ec8c0f929c795dcc1d6faa988394"
+  },
+  "backend/graph_retrieval/multi_hop.py": {
+    "mtime": 1785516165.9237866,
+    "ast_hash": "3102fe637c0bf15efe37713f553c9953",
+    "semantic_hash": "3102fe637c0bf15efe37713f553c9953"
+  },
+  "backend/graph_retrieval/multi_hop_v2.py": {
+    "mtime": 1784565197.0515301,
+    "ast_hash": "6e027cf595d8c70e768ffe01f0d35166",
+    "semantic_hash": "6e027cf595d8c70e768ffe01f0d35166"
+  },
+  "backend/graph_retrieval/retrievers.py": {
+    "mtime": 1784735613.1392941,
+    "ast_hash": "71e095cd045b6b62b4ae1f16e6cc1cca",
+    "semantic_hash": "71e095cd045b6b62b4ae1f16e6cc1cca"
+  },
+  "backend/services/__init__.py": {
+    "mtime": 1770312218.1705244,
+    "ast_hash": "70ed1af7d565143f104dd9aef5d8c00c",
+    "semantic_hash": "70ed1af7d565143f104dd9aef5d8c00c"
+  },
+  "backend/services/chroma_service.py": {
+    "mtime": 1784848578.1013558,
+    "ast_hash": "2b91aa9d51e5936cef7964bc1493e1c8",
+    "semantic_hash": "2b91aa9d51e5936cef7964bc1493e1c8"
+  },
+  "backend/services/neo4j_service.py": {
+    "mtime": 1785513861.766162,
+    "ast_hash": "22be4db404952a6b918c5d9a7edafca3",
+    "semantic_hash": "22be4db404952a6b918c5d9a7edafca3"
+  },
+  "backend/services/vectorless_service.py": {
+    "mtime": 1782019779.7051764,
+    "ast_hash": "27068ed1f3a8ed058c3c993a383848e4",
+    "semantic_hash": "27068ed1f3a8ed058c3c993a383848e4"
+  },
+  "backend/workers/__init__.py": {
+    "mtime": 1770312317.928929,
+    "ast_hash": "cbab67f5e411da71605b72655e998b34",
+    "semantic_hash": "cbab67f5e411da71605b72655e998b34"
+  },
+  "backend/workers/celery_app.py": {
+    "mtime": 1771048547.5040333,
+    "ast_hash": "51602b40ab08283b0cbe3d9d3322c4ce",
+    "semantic_hash": "51602b40ab08283b0cbe3d9d3322c4ce"
+  },
+  "backend/workers/document_processor.py": {
+    "mtime": 1784982015.973555,
+    "ast_hash": "3ed836bde930b8ee90a04cc278f5f52a",
+    "semantic_hash": "3ed836bde930b8ee90a04cc278f5f52a"
+  },
+  "backend/workers/tasks.py": {
+    "mtime": 1785513861.7665665,
+    "ast_hash": "6d39d453b4a22e648db24c15deb25958",
+    "semantic_hash": "6d39d453b4a22e648db24c15deb25958"
+  },
+  "tests/test_adaptive_chunking.py": {
+    "mtime": 1785513861.7667716,
+    "ast_hash": "a5968aaeab6a0fa1c9172aced4ed5e53",
+    "semantic_hash": "a5968aaeab6a0fa1c9172aced4ed5e53"
+  },
+  "tests/test_adaptive_routing.py": {
+    "mtime": 1784854678.0810056,
+    "ast_hash": "2fb09a5e2acf9bde1051ba044cb2891e",
+    "semantic_hash": "2fb09a5e2acf9bde1051ba044cb2891e"
+  },
+  "tests/test_benchmark_profiles.py": {
+    "mtime": 1785516165.9319654,
+    "ast_hash": "d0748223c25ed6d5dcd00207c0a0576e",
+    "semantic_hash": "d0748223c25ed6d5dcd00207c0a0576e"
+  },
+  "tests/test_benchmark_reference_audit.py": {
+    "mtime": 1785516165.9321165,
+    "ast_hash": "4c7eca6467fc648bc7a2611be2256b53",
+    "semantic_hash": "4c7eca6467fc648bc7a2611be2256b53"
+  },
+  "tests/test_context_ranker.py": {
+    "mtime": 1785516165.932412,
+    "ast_hash": "12d8571f47196d66fef997ae82227eb0",
+    "semantic_hash": "12d8571f47196d66fef997ae82227eb0"
+  },
+  "tests/test_dedup.py": {
+    "mtime": 1783095254.1011581,
+    "ast_hash": "3b08ec2a4dfe7e3ebf1cbd4da4545704",
+    "semantic_hash": "3b08ec2a4dfe7e3ebf1cbd4da4545704"
+  },
+  "tests/test_document_processor.py": {
+    "mtime": 1783832525.3460023,
+    "ast_hash": "c11b85ebaef90e71004ba5c8ca8461f7",
+    "semantic_hash": "c11b85ebaef90e71004ba5c8ca8461f7"
+  },
+  "tests/test_embedding_wrapper.py": {
+    "mtime": 1783095082.3768458,
+    "ast_hash": "8909a16d637599bbe5665441dc9ef297",
+    "semantic_hash": "8909a16d637599bbe5665441dc9ef297"
+  },
+  "tests/test_enrichment.py": {
+    "mtime": 1785513861.7671068,
+    "ast_hash": "a72b427afbf3271b5a951e305d70e08e",
+    "semantic_hash": "a72b427afbf3271b5a951e305d70e08e"
+  },
+  "tests/test_experiment_validation.py": {
+    "mtime": 1784736070.5187764,
+    "ast_hash": "617f21e7646fa0ba8717cd776ed64b3f",
+    "semantic_hash": "617f21e7646fa0ba8717cd776ed64b3f"
+  },
+  "tests/test_extractors.py": {
+    "mtime": 1783126286.9068396,
+    "ast_hash": "39e5bda531d0bda249653b91af001b07",
+    "semantic_hash": "39e5bda531d0bda249653b91af001b07"
+  },
+  "tests/test_grounding.py": {
+    "mtime": 1787985949.3345757,
+    "ast_hash": "2d8e56b88047fe4cd59338dfde748f53",
+    "semantic_hash": "2d8e56b88047fe4cd59338dfde748f53"
+  },
+  "tests/test_ingest_idempotency.py": {
+    "mtime": 1785513861.787222,
+    "ast_hash": "2a0eeeddef9d1396ff2149b1c431bf95",
+    "semantic_hash": "2a0eeeddef9d1396ff2149b1c431bf95"
+  },
+  "tests/test_intent_routing.py": {
+    "mtime": 1784691730.7007952,
+    "ast_hash": "9f13555d44d83739e31617a068964b3b",
+    "semantic_hash": "9f13555d44d83739e31617a068964b3b"
+  },
+  "tests/test_lite_parser.py": {
+    "mtime": 1783832508.9915905,
+    "ast_hash": "513574624d34787237927ba5783b9aa8",
+    "semantic_hash": "513574624d34787237927ba5783b9aa8"
+  },
+  "tests/test_multi_hop.py": {
+    "mtime": 1784735989.057296,
+    "ast_hash": "df6b36bb2d27aaf5553ae4b1aaf31d8f",
+    "semantic_hash": "df6b36bb2d27aaf5553ae4b1aaf31d8f"
+  },
+  "tests/test_provenance.py": {
+    "mtime": 1784736059.1659021,
+    "ast_hash": "718f752c2c996de74c094ca1bcb986cd",
+    "semantic_hash": "718f752c2c996de74c094ca1bcb986cd"
+  },
+  "tests/test_query_recovery.py": {
+    "mtime": 1784688942.5534334,
+    "ast_hash": "44e95346f6cd8da7fa2449c7e7185eb8",
+    "semantic_hash": "44e95346f6cd8da7fa2449c7e7185eb8"
+  },
+  "tests/test_ragas_evaluator.py": {
+    "mtime": 1787993094.2793036,
+    "ast_hash": "646ce69812284ca15d919dbaa1ceba7d",
+    "semantic_hash": "646ce69812284ca15d919dbaa1ceba7d"
+  },
+  "tests/test_retrieval_acceptance.py": {
+    "mtime": 1788746387.7781177,
+    "ast_hash": "26ad61e838dd8c857dcb2b12b4ea34a1",
+    "semantic_hash": "26ad61e838dd8c857dcb2b12b4ea34a1"
+  },
+  "tests/test_retrieval_orchestration.py": {
+    "mtime": 1785516165.9326875,
+    "ast_hash": "660daf9baf49f3c70230b3042794d460",
+    "semantic_hash": "660daf9baf49f3c70230b3042794d460"
+  },
+  "tests/test_retrieval_precision.py": {
+    "mtime": 1784735989.1507235,
+    "ast_hash": "cfc302d5b2aed2971e2c6f11336d971e",
+    "semantic_hash": "cfc302d5b2aed2971e2c6f11336d971e"
+  },
+  "tests/test_retrievers.py": {
+    "mtime": 1784735995.0135016,
+    "ast_hash": "695c36cfe5d7c2baaa773f24e08982d7",
+    "semantic_hash": "695c36cfe5d7c2baaa773f24e08982d7"
+  },
+  "tests/test_schema.py": {
+    "mtime": 1783095063.8789074,
+    "ast_hash": "64aeadc7df668fac6b41503781540434",
+    "semantic_hash": "64aeadc7df668fac6b41503781540434"
+  },
+  "tests/test_schema_coverage.py": {
+    "mtime": 1784565197.063948,
+    "ast_hash": "98b262b874b573f2300b95d57ead1024",
+    "semantic_hash": "98b262b874b573f2300b95d57ead1024"
+  },
+  "tests/test_security_remediations.py": {
+    "mtime": 1785513861.7874365,
+    "ast_hash": "955bcfa460c621de3e6c07a23fb5561a",
+    "semantic_hash": "955bcfa460c621de3e6c07a23fb5561a"
+  },
+  "tests/test_stores.py": {
+    "mtime": 1783124912.1495614,
+    "ast_hash": "11859097f5868a8cfc7669fbcb43d617",
+    "semantic_hash": "11859097f5868a8cfc7669fbcb43d617"
+  },
+  "tests/test_synthetic_eval_stack.py": {
+    "mtime": 1785516165.9328883,
+    "ast_hash": "bcfd416506128bdd78fb6d519394b6ca",
+    "semantic_hash": "bcfd416506128bdd78fb6d519394b6ca"
+  },
+  "tests/test_traversal_sweep.py": {
+    "mtime": 1784776223.7085242,
+    "ast_hash": "bca49c9122446346b4ed5cc969c3bdae",
+    "semantic_hash": "bca49c9122446346b4ed5cc969c3bdae"
+  },
+  "tests/test_verification_framework.py": {
+    "mtime": 1788746295.739341,
+    "ast_hash": "2a801b948dbd1de480c7c18019525f4e",
+    "semantic_hash": "2a801b948dbd1de480c7c18019525f4e"
+  },
+  "tests/test_warning_hardening.py": {
+    "mtime": 1784848675.664375,
+    "ast_hash": "ed4fc69071f05273967388a5796afc99",
+    "semantic_hash": "ed4fc69071f05273967388a5796afc99"
+  },
+  "docs/API.md": {
+    "mtime": 1784567873.3408222,
+    "ast_hash": "a8f06e9f0dcbcd34104bf38a4df4c26f",
+    "semantic_hash": "a8f06e9f0dcbcd34104bf38a4df4c26f"
+  },
+  "docs/ARCHITECTURE.md": {
+    "mtime": 1782403006.653095,
+    "ast_hash": "0c1c04164d9e916f3f9b9e9836bfd20a",
+    "semantic_hash": "0c1c04164d9e916f3f9b9e9836bfd20a"
+  },
+  "docs/ARCHITECTURE_PRINCIPLES.md": {
+    "mtime": 1784567873.3411288,
+    "ast_hash": "ce4628fdc4bb6d561cbe1872c5566da5",
+    "semantic_hash": "ce4628fdc4bb6d561cbe1872c5566da5"
+  },
+  "docs/BENCHMARK_REFERENCE_AUDIT.md": {
+    "mtime": 1784775197.6643903,
+    "ast_hash": "3a75c4197fbcc0ace2fe1bda24652e4a",
+    "semantic_hash": "3a75c4197fbcc0ace2fe1bda24652e4a"
+  },
+  "docs/DOCKER_FIXES.md": {
+    "mtime": 1770770065.1268957,
+    "ast_hash": "bd657c5358c0967b80193037aed0977b",
+    "semantic_hash": "bd657c5358c0967b80193037aed0977b"
+  },
+  "docs/EXPERIMENT_VALIDATION.md": {
+    "mtime": 1785774304.5855339,
+    "ast_hash": "63f93225a8f386612da813e36a19359e",
+    "semantic_hash": "63f93225a8f386612da813e36a19359e"
+  },
+  "docs/FEATURE_REQUEST.md": {
+    "mtime": 1783831900.9603412,
+    "ast_hash": "f181926ea241c1172653338bac6def90",
+    "semantic_hash": "f181926ea241c1172653338bac6def90"
+  },
+  "docs/FIX_API_KEY.md": {
+    "mtime": 1770771446.8741693,
+    "ast_hash": "35736ebb227d985627c184cc761f0049",
+    "semantic_hash": "35736ebb227d985627c184cc761f0049"
+  },
+  "docs/METRIC_ROOT_CAUSE_ANALYSIS.md": {
+    "mtime": 1784687221.1940053,
+    "ast_hash": "d247bda5196bd1f4e0e0f69854632e83",
+    "semantic_hash": "d247bda5196bd1f4e0e0f69854632e83"
+  },
+  "docs/QUICKSTART.md": {
+    "mtime": 1784776812.767325,
+    "ast_hash": "d4242106ee30c1cb72275183e3bd37f7",
+    "semantic_hash": "d4242106ee30c1cb72275183e3bd37f7"
+  },
+  "docs/SECURITY.md": {
+    "mtime": 1784776812.8751392,
+    "ast_hash": "ee62d7488a98ad5efa18b037bc970831",
+    "semantic_hash": "ee62d7488a98ad5efa18b037bc970831"
+  },
+  "docs/SYSTEM_READY.md": {
+    "mtime": 1784776718.6959538,
+    "ast_hash": "2cff4501c57f39a542dc3f08fe4cc203",
+    "semantic_hash": "2cff4501c57f39a542dc3f08fe4cc203"
+  },
+  "docs/architecture/ADR-001-Adaptive-Routing.md": {
+    "mtime": 1784854692.9497855,
+    "ast_hash": "cc8816b1c602f489648a6275448a5cf3",
+    "semantic_hash": "cc8816b1c602f489648a6275448a5cf3"
+  },
+  "docs/architecture/ADR-002-Adaptive-Chunking.md": {
+    "mtime": 1784982217.3125837,
+    "ast_hash": "11246483ca8b87d16385902c21044ff3",
+    "semantic_hash": "11246483ca8b87d16385902c21044ff3"
+  },
+  "docs/architecture/ADR-003-Retrieval-Orchestration.md": {
+    "mtime": 1785516165.9239984,
+    "ast_hash": "6eb2fefa094cbac83019669875aaa61b",
+    "semantic_hash": "6eb2fefa094cbac83019669875aaa61b"
+  },
+  "docs/architecture/ADR-004-Verification-Framework.md": {
+    "mtime": 1785516165.9241917,
+    "ast_hash": "09e17dc6edd5804f6b8e5fbf3f297d6b",
+    "semantic_hash": "09e17dc6edd5804f6b8e5fbf3f297d6b"
+  },
+  "docs/architecture/ARCHITECTURAL_IMPROVEMENT_PLAN.md": {
+    "mtime": 1784824458.840384,
+    "ast_hash": "af0a1369ca982d557e364544a2ffe6b6",
+    "semantic_hash": "af0a1369ca982d557e364544a2ffe6b6"
+  },
+  "docs/architecture/ROADMAP.md": {
+    "mtime": 1785857065.064261,
+    "ast_hash": "ace2e2c169f16f05e33d7a73416793db",
+    "semantic_hash": "ace2e2c169f16f05e33d7a73416793db"
+  },
+  "docs/improvements_validation_report.md": {
+    "mtime": 1784853019.462024,
+    "ast_hash": "c1f677996cba46429fcf961c51f4abd8",
+    "semantic_hash": "c1f677996cba46429fcf961c51f4abd8"
+  },
+  "docs/kinetic_graph_solution.md": {
+    "mtime": 1781434224.8057573,
+    "ast_hash": "813746e6b0ed44443a59c61d97e26e3a",
+    "semantic_hash": "813746e6b0ed44443a59c61d97e26e3a"
+  },
+  "docs/quick_start.md": {
+    "mtime": 1770344593.0005846,
+    "ast_hash": "e98518e47cf450803fe5e2629b0cfe85",
+    "semantic_hash": "e98518e47cf450803fe5e2629b0cfe85"
+  },
+  "docs/superpowers/plans/2026-07-03-propertygraphindex.md": {
+    "mtime": 1783094390.9472659,
+    "ast_hash": "7e3c091f3ff70ff42192288dd57f3413",
+    "semantic_hash": "7e3c091f3ff70ff42192288dd57f3413"
+  },
+  "docs/superpowers/specs/2026-07-03-propertygraphindex-design.md": {
+    "mtime": 1783094315.7981622,
+    "ast_hash": "3b8b8287ed95a71411fb740f5cb1bd61",
+    "semantic_hash": "3b8b8287ed95a71411fb740f5cb1bd61"
+  },
+  "docs/v3_schema_audit.md": {
+    "mtime": 1784565197.0535676,
+    "ast_hash": "4e4291557cc0ea2047ad23e09049691c",
+    "semantic_hash": "4e4291557cc0ea2047ad23e09049691c"
+  },
+  ".codebase-memory/artifact.json": {
+    "mtime": 1788829704.1682587,
+    "ast_hash": "b7c0fc67c8381a87b330ad679884dedd",
+    "semantic_hash": "b7c0fc67c8381a87b330ad679884dedd"
+  },
+  "code-review/adaptive-chunking-production-readiness.canvas.tsx": {
+    "mtime": 1784981823.0505557,
+    "ast_hash": "78f464bc6912453e821e5c4da810913d",
+    "semantic_hash": "78f464bc6912453e821e5c4da810913d"
+  },
+  "eval/__init__.py": {
+    "mtime": 1786580992.4233108,
+    "ast_hash": "e3dd42cb56fec02499b1432d8891a142",
+    "semantic_hash": "e3dd42cb56fec02499b1432d8891a142"
+  },
+  "eval/benchmark_profiles.py": {
+    "mtime": 1785516165.9246163,
+    "ast_hash": "16fc3802d26b177b4a31fc853472796d",
+    "semantic_hash": "16fc3802d26b177b4a31fc853472796d"
+  },
+  "eval/benchmark_reference_audit.py": {
+    "mtime": 1785516165.9249299,
+    "ast_hash": "540ebd62034dc69c7b8e149dd5b07429",
+    "semantic_hash": "540ebd62034dc69c7b8e149dd5b07429"
+  },
+  "eval/drafts/kinegraph_benchmark_chunk-ab-adaptive-draft.audit.json": {
+    "mtime": 1785516165.9255264,
+    "ast_hash": "c37f26793eefad24b672c0c54032c9a0",
+    "semantic_hash": "c37f26793eefad24b672c0c54032c9a0"
+  },
+  "eval/drafts/kinegraph_benchmark_chunk-ab-adaptive-draft.generation.json": {
+    "mtime": 1785516165.9262054,
+    "ast_hash": "95f675e53939748954519b1a714a51f6",
+    "semantic_hash": "95f675e53939748954519b1a714a51f6"
+  },
+  "eval/drafts/kinegraph_benchmark_chunk-ab-recursive-draft.audit.json": {
+    "mtime": 1785516165.9263716,
+    "ast_hash": "0cf7e9a676e56a25f39bde1ae12ac518",
+    "semantic_hash": "0cf7e9a676e56a25f39bde1ae12ac518"
+  },
+  "eval/drafts/kinegraph_benchmark_chunk-ab-recursive-draft.generation.json": {
+    "mtime": 1785516165.9267037,
+    "ast_hash": "616265165316ac84bd13c4f8a72c0311",
+    "semantic_hash": "616265165316ac84bd13c4f8a72c0311"
+  },
+  "eval/drafts/kinegraph_benchmark_graph-seed-v1-draft.audit.json": {
+    "mtime": 1785516165.9268634,
+    "ast_hash": "0def5e238340588d5d9b9750fb49826b",
+    "semantic_hash": "0def5e238340588d5d9b9750fb49826b"
+  },
+  "eval/drafts/kinegraph_benchmark_spike-phase0-draft.audit.json": {
+    "mtime": 1785516165.9271984,
+    "ast_hash": "24e33665501ff2725a893916eeff0cb9",
+    "semantic_hash": "24e33665501ff2725a893916eeff0cb9"
+  },
+  "eval/drafts/kinegraph_benchmark_spike-phase0-draft.generation.json": {
+    "mtime": 1785516165.9274888,
+    "ast_hash": "2bb9d2d79f5655649f59be98297aec47",
+    "semantic_hash": "2bb9d2d79f5655649f59be98297aec47"
+  },
+  "eval/experiment_validation.py": {
+    "mtime": 1784735905.2622845,
+    "ast_hash": "dde2b1eb8beb4ee18d8b37778082b560",
+    "semantic_hash": "dde2b1eb8beb4ee18d8b37778082b560"
+  },
+  "eval/graph_testset_synthesis.py": {
+    "mtime": 1785516165.9276264,
+    "ast_hash": "e13c00a1824b4c632d362b446936b885",
+    "semantic_hash": "e13c00a1824b4c632d362b446936b885"
+  },
+  "eval/ir_metrics.py": {
+    "mtime": 1785516165.9279704,
+    "ast_hash": "da3a072fc2260793144cad7baa182969",
+    "semantic_hash": "da3a072fc2260793144cad7baa182969"
+  },
+  "eval/kinegraph_benchmark_v1.audit.json": {
+    "mtime": 1786582402.797341,
+    "ast_hash": "d83aabca0be9c928798925414071a46b",
+    "semantic_hash": "d83aabca0be9c928798925414071a46b"
+  },
+  "eval/kinetic_score.py": {
+    "mtime": 1785516165.9286609,
+    "ast_hash": "dd79740ede31c13d6e881e2008c1ea2a",
+    "semantic_hash": "dd79740ede31c13d6e881e2008c1ea2a"
+  },
+  "eval/provenance.py": {
+    "mtime": 1787988338.7855124,
+    "ast_hash": "ecb24819fd4b662875c848b93f9f5f37",
+    "semantic_hash": "ecb24819fd4b662875c848b93f9f5f37"
+  },
+  "eval/ragas_evaluator.py": {
+    "mtime": 1787993094.3380694,
+    "ast_hash": "288d71ecfbdd7bcd170e4e7013b8d20d",
+    "semantic_hash": "288d71ecfbdd7bcd170e4e7013b8d20d"
+  },
+  "eval/regression_gate.py": {
+    "mtime": 1786582344.5183082,
+    "ast_hash": "aa1a4a2d83146cbc0e395588bbea0458",
+    "semantic_hash": "aa1a4a2d83146cbc0e395588bbea0458"
+  },
+  "eval/retrieval_acceptance.py": {
+    "mtime": 1788746371.648195,
+    "ast_hash": "5596586d10fc9992973d85ac555bf811",
+    "semantic_hash": "5596586d10fc9992973d85ac555bf811"
+  },
+  "eval/testset_generation.py": {
+    "mtime": 1785516165.929809,
+    "ast_hash": "71caf4cd8df5bd153b213da142052b8a",
+    "semantic_hash": "71caf4cd8df5bd153b213da142052b8a"
+  },
+  "eval/traversal_sweep.py": {
+    "mtime": 1784735785.6715636,
+    "ast_hash": "ede76bfe4065c97e6ed43345041e7cbc",
+    "semantic_hash": "ede76bfe4065c97e6ed43345041e7cbc"
+  },
+  "eval/usage_cost.py": {
+    "mtime": 1785516165.9300432,
+    "ast_hash": "dfa1e99cd2b2766fb18a024faad16d1d",
+    "semantic_hash": "dfa1e99cd2b2766fb18a024faad16d1d"
+  },
+  "frontend/app.js": {
+    "mtime": 1782408306.0769095,
+    "ast_hash": "85ca9af3e58e25c5862a64f0b6c4732b",
+    "semantic_hash": "85ca9af3e58e25c5862a64f0b6c4732b"
+  },
+  "frontend/serve.py": {
+    "mtime": 1770769233.7338655,
+    "ast_hash": "0d58b40d369fdb60b816bc9259e01354",
+    "semantic_hash": "0d58b40d369fdb60b816bc9259e01354"
+  },
+  "regression_gate.py": {
+    "mtime": 1786580660.165807,
+    "ast_hash": "c5c3b36b1d3a3abb93076f3097863a47",
+    "semantic_hash": "c5c3b36b1d3a3abb93076f3097863a47"
+  },
+  "reports/1.0/baseline_status.json": {
+    "mtime": 1784853975.6649737,
+    "ast_hash": "44bb833ab07a187a34a7845ce943a7de",
+    "semantic_hash": "44bb833ab07a187a34a7845ce943a7de"
+  },
+  "reports/1.0/kinegraph-1.0-qwen36-diagnostic_diagnostics.json": {
+    "mtime": 1784826270.532551,
+    "ast_hash": "87dc3ab30daf774844d9186ecaf8544c",
+    "semantic_hash": "87dc3ab30daf774844d9186ecaf8544c"
+  },
+  "reports/1.0/kinegraph-1.0-qwen36-diagnostic_report.json": {
+    "mtime": 1784826270.5261054,
+    "ast_hash": "18f1d93af0045ebb6338b18621dad401",
+    "semantic_hash": "18f1d93af0045ebb6338b18621dad401"
+  },
+  "reports/openrouter_laguna_s_2_1_free_four_metric_resumed_baseline_run_output.json": {
+    "mtime": 1787972680.490305,
+    "ast_hash": "2064f8ab5b3f8c7b0b417b0672b577a8",
+    "semantic_hash": "2064f8ab5b3f8c7b0b417b0672b577a8"
+  },
+  "reports/ragas_baseline-fireworks-nemotron-ultra-hybrid_diagnostics.json": {
+    "mtime": 1787070401.9477253,
+    "ast_hash": "7600cab8b078657f5bda2ba090079229",
+    "semantic_hash": "7600cab8b078657f5bda2ba090079229"
+  },
+  "reports/ragas_baseline-hybrid_diagnostics.json": {
+    "mtime": 1786588819.6891103,
+    "ast_hash": "b469fe45fd6a078744193ed5ecfa7ee5",
+    "semantic_hash": "b469fe45fd6a078744193ed5ecfa7ee5"
+  },
+  "reports/ragas_openrouter-laguna-s-2-1-free-diagnostic-20260819-hybrid-kgv1-011-answer-correctness-resolved.json": {
+    "mtime": 1787187452.8895466,
+    "ast_hash": "6fb68eb3d869cfc3909d7a1c60cd8e8e",
+    "semantic_hash": "6fb68eb3d869cfc3909d7a1c60cd8e8e"
+  },
+  "reports/ragas_openrouter-laguna-s-2-1-free-diagnostic-20260819-hybrid-kgv1-011-retry_diagnostics.json": {
+    "mtime": 1787162751.506095,
+    "ast_hash": "5e6724af59ce743471db02d03251cfb2",
+    "semantic_hash": "5e6724af59ce743471db02d03251cfb2"
+  },
+  "reports/ragas_openrouter-laguna-s-2-1-free-diagnostic-20260819-hybrid-kgv1-011-retry_serial_metric_retry.json": {
+    "mtime": 1787163713.129518,
+    "ast_hash": "d99234a48e2c3d9136628838668a9ee9",
+    "semantic_hash": "d99234a48e2c3d9136628838668a9ee9"
+  },
+  "reports/ragas_openrouter-laguna-s-2-1-free-diagnostic-20260819-hybrid-kgv1-011-retry_summary.json": {
+    "mtime": 1787162751.5313427,
+    "ast_hash": "4351a204613ce67818d2871e5573a36f",
+    "semantic_hash": "4351a204613ce67818d2871e5573a36f"
+  },
+  "reports/ragas_openrouter-laguna-s-2-1-free-diagnostic-20260819-hybrid_diagnostics.json": {
+    "mtime": 1787162075.5417898,
+    "ast_hash": "228122ab871014ad8973433c575b22db",
+    "semantic_hash": "228122ab871014ad8973433c575b22db"
+  },
+  "reports/ragas_openrouter-laguna-s-2-1-free-four-metric-resumed-baseline-20260829-hybrid_diagnostics.json": {
+    "mtime": 1787972680.4555247,
+    "ast_hash": "c23af204195b661991fc4fb26ee98081",
+    "semantic_hash": "c23af204195b661991fc4fb26ee98081"
+  },
+  "reports/ragas_openrouter-laguna-s-2-1-free-four-metric-resumed-baseline-20260829-hybrid_manifest.json": {
+    "mtime": 1787972721.5679665,
+    "ast_hash": "66cd5a02cdc84b7fe82a8c8d5667ac29",
+    "semantic_hash": "66cd5a02cdc84b7fe82a8c8d5667ac29"
+  },
+  "reports/ragas_openrouter-laguna-s-2-1-free-four-metric-resumed-baseline-20260829-hybrid_report.json": {
+    "mtime": 1787972680.4885175,
+    "ast_hash": "4e00d7809149de54a7cf331a20a2b3e4",
+    "semantic_hash": "4e00d7809149de54a7cf331a20a2b3e4"
+  },
+  "reports/ragas_openrouter-laguna-s-2-1-free-four-metric-resumed-baseline-20260829-hybrid_resume_receipt.json": {
+    "mtime": 1787972721.5763311,
+    "ast_hash": "0485a10a332ea3f7f7282296090a4cf5",
+    "semantic_hash": "0485a10a332ea3f7f7282296090a4cf5"
+  },
+  "reports/ragas_openrouter-laguna-s-2-1-free-targeted-invalid-metric-repair-20260820-hybrid_diagnostics.json": {
+    "mtime": 1787188775.0661945,
+    "ast_hash": "c44d50311dc7680c7a854c9f44c2862f",
+    "semantic_hash": "c44d50311dc7680c7a854c9f44c2862f"
+  },
+  "reports/ragas_openrouter-laguna-s-2-1-free-targeted-invalid-metric-repair-20260820-hybrid_summary.json": {
+    "mtime": 1787188775.102015,
+    "ast_hash": "22e50698a24a4cbd1b489cafc170dbc6",
+    "semantic_hash": "22e50698a24a4cbd1b489cafc170dbc6"
+  },
+  "reports/ragas_openrouter-laguna-s-2.1-free-frozen-retry-20260819.json": {
+    "mtime": 1787159480.2680876,
+    "ast_hash": "060b37d6a18d86a27af1b90b67a24285",
+    "semantic_hash": "060b37d6a18d86a27af1b90b67a24285"
+  },
+  "reports/ragas_openrouter-nemotron3-super-free-judge-diagnostic-20260818-hybrid_diagnostics.json": {
+    "mtime": 1787074470.604651,
+    "ast_hash": "18ae3d81848400eca526a49d7adbba93",
+    "semantic_hash": "18ae3d81848400eca526a49d7adbba93"
+  },
+  "reports/ragas_openrouter-nemotron3-super-free-judge-retry-20260819-hybrid_diagnostics.json": {
+    "mtime": 1787158502.1070065,
+    "ast_hash": "f5563a0d133717e84ea087d79e4687d3",
+    "semantic_hash": "f5563a0d133717e84ea087d79e4687d3"
+  },
+  "reports/ragas_openrouter-nemotron3-super-free-judge-retry-20260819-hybrid_summary.json": {
+    "mtime": 1787158677.9054334,
+    "ast_hash": "b9d31d6c2a64078ce1d19c902ebdcaaa",
+    "semantic_hash": "b9d31d6c2a64078ce1d19c902ebdcaaa"
+  },
+  "reports/ragas_openrouter-nemotron3-super-free-judge-retry-20260819-hybrid_targeted_metric_retry.json": {
+    "mtime": 1787158677.965456,
+    "ast_hash": "78306bfea9fc85743292ec12fcee7409",
+    "semantic_hash": "78306bfea9fc85743292ec12fcee7409"
+  },
+  "reports/ragas_v1-nemotron-openrouter-hybrid_diagnostics.json": {
+    "mtime": 1786261592.207305,
+    "ast_hash": "65dc52e05291740d690ad9305b4af01b",
+    "semantic_hash": "65dc52e05291740d690ad9305b4af01b"
+  },
+  "reports/ragas_v1-post-adr004-citation-repair-20260829-hybrid_diagnostics.json": {
+    "mtime": 1787988099.79051,
+    "ast_hash": "18ae3d81848400eca526a49d7adbba93",
+    "semantic_hash": "18ae3d81848400eca526a49d7adbba93"
+  },
+  "reports/ragas_v1-qwen36-hybrid_diagnostics.json": {
+    "mtime": 1786211856.0839639,
+    "ast_hash": "58f22766d7bf1176d9ef2c34d2f4372d",
+    "semantic_hash": "58f22766d7bf1176d9ef2c34d2f4372d"
+  },
+  "reports/run_output.json": {
+    "mtime": 1788283252.293385,
+    "ast_hash": "2064f8ab5b3f8c7b0b417b0672b577a8",
+    "semantic_hash": "2064f8ab5b3f8c7b0b417b0672b577a8"
+  },
+  "scripts/audit_benchmark_references.py": {
+    "mtime": 1785516165.9306703,
+    "ast_hash": "25ce5ef363f1bc498e591585649722a3",
+    "semantic_hash": "25ce5ef363f1bc498e591585649722a3"
+  },
+  "scripts/audit_schema_coverage.py": {
+    "mtime": 1784565197.057218,
+    "ast_hash": "264ad5fab3f1d4d27486b888a4e78356",
+    "semantic_hash": "264ad5fab3f1d4d27486b888a4e78356"
+  },
+  "scripts/compare_benchmark_manifests.py": {
+    "mtime": 1785516165.930853,
+    "ast_hash": "25095a7a7da92ebb196d07487c554a94",
+    "semantic_hash": "25095a7a7da92ebb196d07487c554a94"
+  },
+  "scripts/enrich_kinetic_v_nodes.py": {
+    "mtime": 1784565197.0574734,
+    "ast_hash": "083a644f6809ca26bc54d786e4277537",
+    "semantic_hash": "083a644f6809ca26bc54d786e4277537"
+  },
+  "scripts/fix-api-key.sh": {
+    "mtime": 1786582352.3584976,
+    "ast_hash": "364410246b7a4825bf780d8fc2d20732",
+    "semantic_hash": "364410246b7a4825bf780d8fc2d20732"
+  },
+  "scripts/generate_benchmark_spider.py": {
+    "mtime": 1784565197.057974,
+    "ast_hash": "16c07ccdd32d2e1e5081e15efea11f6f",
+    "semantic_hash": "16c07ccdd32d2e1e5081e15efea11f6f"
+  },
+  "scripts/generate_chunk_policy_ab.py": {
+    "mtime": 1785516165.931051,
+    "ast_hash": "318bf8a1ea09d67448e33f4bb77ddaa8",
+    "semantic_hash": "318bf8a1ea09d67448e33f4bb77ddaa8"
+  },
+  "scripts/generate_graph_testset.py": {
+    "mtime": 1785516165.9312458,
+    "ast_hash": "6025ff424c435be8005cef6857118013",
+    "semantic_hash": "6025ff424c435be8005cef6857118013"
+  },
+  "scripts/generate_testset.py": {
+    "mtime": 1785516165.9314198,
+    "ast_hash": "5ecf761b3cda4bc933cc6ce18826a090",
+    "semantic_hash": "5ecf761b3cda4bc933cc6ce18826a090"
+  },
+  "scripts/ingest_docs.py": {
+    "mtime": 1786212132.5445669,
+    "ast_hash": "335cd3146175b4ccf74e9d34464e31b8",
+    "semantic_hash": "335cd3146175b4ccf74e9d34464e31b8"
+  },
+  "scripts/ingest_graph.py": {
+    "mtime": 1783095622.7432213,
+    "ast_hash": "ae37b64504f6fd89cf5513e187f21d73",
+    "semantic_hash": "ae37b64504f6fd89cf5513e187f21d73"
+  },
+  "scripts/run_ragas_evaluation.py": {
+    "mtime": 1786580698.5663884,
+    "ast_hash": "d2a15e170e067ab14107aac213821aa8",
+    "semantic_hash": "d2a15e170e067ab14107aac213821aa8"
+  },
+  "scripts/run_traversal_sweep.py": {
+    "mtime": 1784735785.764914,
+    "ast_hash": "7af5a8278b81d332535df72ae7487838",
+    "semantic_hash": "7af5a8278b81d332535df72ae7487838"
+  },
+  "scripts/run_validation_demo.sh": {
+    "mtime": 1784565197.058797,
+    "ast_hash": "0696f19f3a2bb3c89b00ea28da0ad547",
+    "semantic_hash": "0696f19f3a2bb3c89b00ea28da0ad547"
+  },
+  "scripts/start-ui.sh": {
+    "mtime": 1786581508.4516222,
+    "ast_hash": "08af45cfafe47bc4fe9b14efd70b0cc0",
+    "semantic_hash": "08af45cfafe47bc4fe9b14efd70b0cc0"
+  },
+  "scripts/start_services.sh": {
+    "mtime": 1786582296.9739194,
+    "ast_hash": "fe1298e871a903ff3536ab6a6ce170ac",
+    "semantic_hash": "fe1298e871a903ff3536ab6a6ce170ac"
+  },
+  "scripts/validate_improvements.py": {
+    "mtime": 1784776223.6972172,
+    "ast_hash": "a56dce141471de30dc07115e92f48167",
+    "semantic_hash": "a56dce141471de30dc07115e92f48167"
+  },
+  "scripts/validate_retrieval_acceptance.py": {
+    "mtime": 1785516165.931797,
+    "ast_hash": "45b0f6fb30b76f8b34a66721884f4de9",
+    "semantic_hash": "45b0f6fb30b76f8b34a66721884f4de9"
+  },
+  "start_services.sh": {
+    "mtime": 1782021630.9540699,
+    "ast_hash": "34e8665bb18aa58e5e330eaf12ef7dcc",
+    "semantic_hash": "34e8665bb18aa58e5e330eaf12ef7dcc"
+  },
+  "tests/test_regression_gate.py": {
+    "mtime": 1786581076.916747,
+    "ast_hash": "a206524afbf8f0c4f1e622cf9f86961e",
+    "semantic_hash": "a206524afbf8f0c4f1e622cf9f86961e"
+  },
+  "venv311/bin/Activate.ps1": {
+    "mtime": 1770657164.5574493,
+    "ast_hash": "ffb074b8336789578f50a6c1a1632342",
+    "semantic_hash": "ffb074b8336789578f50a6c1a1632342"
+  },
+  "venv311/etc/jupyter/jupyter_notebook_config.d/jupyterlab.json": {
+    "mtime": 1782020492.500481,
+    "ast_hash": "92696529f3d0ba99d098eeb90481350b",
+    "semantic_hash": "92696529f3d0ba99d098eeb90481350b"
+  },
+  "venv311/etc/jupyter/jupyter_server_config.d/jupyter-lsp-jupyter-server.json": {
+    "mtime": 1782020492.4068365,
+    "ast_hash": "f4a8bb0c7dbee222892ab906f7f4a51f",
+    "semantic_hash": "f4a8bb0c7dbee222892ab906f7f4a51f"
+  },
+  "venv311/etc/jupyter/jupyter_server_config.d/jupyter_server_terminals.json": {
+    "mtime": 1782020491.2779303,
+    "ast_hash": "9de252f2b0e8c2206b4fdde680caac0e",
+    "semantic_hash": "9de252f2b0e8c2206b4fdde680caac0e"
+  },
+  "venv311/etc/jupyter/jupyter_server_config.d/jupyterlab.json": {
+    "mtime": 1782020492.5005732,
+    "ast_hash": "61742f26f5123d6192ef11af15c6028a",
+    "semantic_hash": "61742f26f5123d6192ef11af15c6028a"
+  },
+  "venv311/etc/jupyter/jupyter_server_config.d/notebook.json": {
+    "mtime": 1782020492.6351318,
+    "ast_hash": "75ddd70d25b13d3320e98b3b19cb1168",
+    "semantic_hash": "75ddd70d25b13d3320e98b3b19cb1168"
+  },
+  "venv311/etc/jupyter/jupyter_server_config.d/notebook_shim.json": {
+    "mtime": 1782020492.379195,
+    "ast_hash": "2fc04c96ec2e54f7f374a915bc32893e",
+    "semantic_hash": "2fc04c96ec2e54f7f374a915bc32893e"
+  },
+  "venv311/etc/jupyter/nbconfig/notebook.d/pydeck.json": {
+    "mtime": 1782020489.7946334,
+    "ast_hash": "9862b53a8912028d4078fe0d147e21e8",
+    "semantic_hash": "9862b53a8912028d4078fe0d147e21e8"
+  },
+  "venv311/etc/jupyter/nbconfig/notebook.d/widgetsnbextension.json": {
+    "mtime": 1782020487.4314456,
+    "ast_hash": "57434aea836bed25d14de869f0b1c514",
+    "semantic_hash": "57434aea836bed25d14de869f0b1c514"
+  },
+  "venv311/include/site/python3.11/greenlet/greenlet.h": {
+    "mtime": 1783095043.6358657,
+    "ast_hash": "6c9c3b83ecae50dcd2ea5ce90fb157cb",
+    "semantic_hash": "6c9c3b83ecae50dcd2ea5ce90fb157cb"
+  },
+  "venv311/share/jupyter/kernels/python3/kernel.json": {
+    "mtime": 1782020491.7438426,
+    "ast_hash": "ecccad0bde6c7ef042a519612ca55b08",
+    "semantic_hash": "ecccad0bde6c7ef042a519612ca55b08"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/application-extension/menus.json": {
+    "mtime": 1782020492.6353805,
+    "ast_hash": "e8da66625103e7adbc269b4ec1762cf5",
+    "semantic_hash": "e8da66625103e7adbc269b4ec1762cf5"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/application-extension/pages.json": {
+    "mtime": 1782020492.6355016,
+    "ast_hash": "963b4f60da5d1b7c2820c912e5a7b9d9",
+    "semantic_hash": "963b4f60da5d1b7c2820c912e5a7b9d9"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/application-extension/shell.json": {
+    "mtime": 1782020492.6355717,
+    "ast_hash": "7f3ddf0135bf77028478d8c7fa91674a",
+    "semantic_hash": "7f3ddf0135bf77028478d8c7fa91674a"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/application-extension/shortcuts.json": {
+    "mtime": 1782020492.63564,
+    "ast_hash": "767407f0401d082daee13effa4b7589f",
+    "semantic_hash": "767407f0401d082daee13effa4b7589f"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/application-extension/title.json": {
+    "mtime": 1782020492.6357052,
+    "ast_hash": "ee773d350f9ed12ac92a8c1a05c2798d",
+    "semantic_hash": "ee773d350f9ed12ac92a8c1a05c2798d"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/application-extension/top.json": {
+    "mtime": 1782020492.6357727,
+    "ast_hash": "090247597384d286a2029face7aa9a9e",
+    "semantic_hash": "090247597384d286a2029face7aa9a9e"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/application-extension/zen.json": {
+    "mtime": 1782020492.6358516,
+    "ast_hash": "bc663c511ea86787287faa1145c39115",
+    "semantic_hash": "bc663c511ea86787287faa1145c39115"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/console-extension/scratchpad-console.json": {
+    "mtime": 1782020492.6360507,
+    "ast_hash": "0c3f32f8eb34a543658b2681dde38e1c",
+    "semantic_hash": "0c3f32f8eb34a543658b2681dde38e1c"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/help-extension/open.json": {
+    "mtime": 1782020492.6362665,
+    "ast_hash": "4b9ee4b1bc6390ebaf470ae933c429ac",
+    "semantic_hash": "4b9ee4b1bc6390ebaf470ae933c429ac"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/notebook-extension/checkpoints.json": {
+    "mtime": 1782020492.6364646,
+    "ast_hash": "a5dd142cdec0d785ff8ec7a99128e4a5",
+    "semantic_hash": "a5dd142cdec0d785ff8ec7a99128e4a5"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/notebook-extension/close-tab.json": {
+    "mtime": 1782020492.636543,
+    "ast_hash": "ff185f7e4dd39ab64b301d005a7396f4",
+    "semantic_hash": "ff185f7e4dd39ab64b301d005a7396f4"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/notebook-extension/edit-notebook-metadata.json": {
+    "mtime": 1782020492.6366181,
+    "ast_hash": "e649a06fc72cbafef2951b6cebc45ba1",
+    "semantic_hash": "e649a06fc72cbafef2951b6cebc45ba1"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/notebook-extension/full-width-notebook.json": {
+    "mtime": 1782020492.6366987,
+    "ast_hash": "cc35b1b54a2c4e12d0b3fe41bf02e28c",
+    "semantic_hash": "cc35b1b54a2c4e12d0b3fe41bf02e28c"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/notebook-extension/kernel-logo.json": {
+    "mtime": 1782020492.6367795,
+    "ast_hash": "0b6fb9a812f32f5ab5607ff96b15d2b7",
+    "semantic_hash": "0b6fb9a812f32f5ab5607ff96b15d2b7"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/notebook-extension/menu-override.json": {
+    "mtime": 1782020492.636861,
+    "ast_hash": "acb32327d6ee9ba94fb38483ccb43931",
+    "semantic_hash": "acb32327d6ee9ba94fb38483ccb43931"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/notebook-extension/scroll-output.json": {
+    "mtime": 1782020492.6370099,
+    "ast_hash": "c2f8ef53939d05744092a43e78320452",
+    "semantic_hash": "c2f8ef53939d05744092a43e78320452"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/tree-extension/file-actions.json": {
+    "mtime": 1782020492.637119,
+    "ast_hash": "ed08083c1be945a4525110d7521c245f",
+    "semantic_hash": "ed08083c1be945a4525110d7521c245f"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyter-notebook/tree-extension/widget.json": {
+    "mtime": 1782020492.6372733,
+    "ast_hash": "e7e36819847b9ce5ccd297ac3bf25e6b",
+    "semantic_hash": "e7e36819847b9ce5ccd297ac3bf25e6b"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/application-extension/commands.json": {
+    "mtime": 1782020492.500986,
+    "ast_hash": "1a5cc244b5e3e18cab5693e5efecce88",
+    "semantic_hash": "1a5cc244b5e3e18cab5693e5efecce88"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/application-extension/context-menu.json": {
+    "mtime": 1782020492.5010715,
+    "ast_hash": "0533c30a10e5587e6fa5693ae60d153d",
+    "semantic_hash": "0533c30a10e5587e6fa5693ae60d153d"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/application-extension/move-widget.json": {
+    "mtime": 1782020492.5011468,
+    "ast_hash": "7eb931181696926eb5eb31576b04fa20",
+    "semantic_hash": "7eb931181696926eb5eb31576b04fa20"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/application-extension/property-inspector.json": {
+    "mtime": 1782020492.5012906,
+    "ast_hash": "0518cee107964e7326a02ca8e7327e51",
+    "semantic_hash": "0518cee107964e7326a02ca8e7327e51"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/application-extension/shell.json": {
+    "mtime": 1782020492.501396,
+    "ast_hash": "145df7ea011cbe534127e604e9276d6d",
+    "semantic_hash": "145df7ea011cbe534127e604e9276d6d"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/application-extension/top-bar.json": {
+    "mtime": 1782020492.5014749,
+    "ast_hash": "7d0a1ba5d6b0f9728277e98e427fd890",
+    "semantic_hash": "7d0a1ba5d6b0f9728277e98e427fd890"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/apputils-extension/kernels-settings.json": {
+    "mtime": 1782020492.5015757,
+    "ast_hash": "eb5a33b04ed04dfbf3765fd4042a36d3",
+    "semantic_hash": "eb5a33b04ed04dfbf3765fd4042a36d3"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/apputils-extension/notification.json": {
+    "mtime": 1782020492.501643,
+    "ast_hash": "1df586625da456e4c405b08abf6659e8",
+    "semantic_hash": "1df586625da456e4c405b08abf6659e8"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/apputils-extension/palette.json": {
+    "mtime": 1782020492.5017755,
+    "ast_hash": "060dc6690cd7c86830f8991b22bf2a88",
+    "semantic_hash": "060dc6690cd7c86830f8991b22bf2a88"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/apputils-extension/print.json": {
+    "mtime": 1782020492.5018485,
+    "ast_hash": "805043aca9462e938915a8ffc8f8f0c7",
+    "semantic_hash": "805043aca9462e938915a8ffc8f8f0c7"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/apputils-extension/sanitizer.json": {
+    "mtime": 1782020492.50193,
+    "ast_hash": "db4dbc033351b1884650a17c099303d1",
+    "semantic_hash": "db4dbc033351b1884650a17c099303d1"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/apputils-extension/sessionDialogs.json": {
+    "mtime": 1782020492.502008,
+    "ast_hash": "d1d16674c4d0d2cc2e7b68515ea8053d",
+    "semantic_hash": "d1d16674c4d0d2cc2e7b68515ea8053d"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/apputils-extension/themes.json": {
+    "mtime": 1782020492.5021105,
+    "ast_hash": "0fbde7ab5fd348ed291f52c7bd162bfb",
+    "semantic_hash": "0fbde7ab5fd348ed291f52c7bd162bfb"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/apputils-extension/utilityCommands.json": {
+    "mtime": 1782020492.5021796,
+    "ast_hash": "c765adf107e56133e33cd3378922f9e7",
+    "semantic_hash": "c765adf107e56133e33cd3378922f9e7"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/cell-toolbar-extension/plugin.json": {
+    "mtime": 1782020492.5023649,
+    "ast_hash": "1a4937d549e2019fa8579f181b44b93b",
+    "semantic_hash": "1a4937d549e2019fa8579f181b44b93b"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/celltags-extension/plugin.json": {
+    "mtime": 1782020492.5025287,
+    "ast_hash": "c52fa419501e0b246c4418528bbcf9b2",
+    "semantic_hash": "c52fa419501e0b246c4418528bbcf9b2"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/codemirror-extension/plugin.json": {
+    "mtime": 1782020492.5027015,
+    "ast_hash": "7affed92470ea2ddfd992db1b529e118",
+    "semantic_hash": "7affed92470ea2ddfd992db1b529e118"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/completer-extension/inline-completer.json": {
+    "mtime": 1782020492.5027974,
+    "ast_hash": "82aee462f195d3fa3a598bcfdf68f925",
+    "semantic_hash": "82aee462f195d3fa3a598bcfdf68f925"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/completer-extension/manager.json": {
+    "mtime": 1782020492.5028641,
+    "ast_hash": "a9df787fc4beb60e382335deca069e5b",
+    "semantic_hash": "a9df787fc4beb60e382335deca069e5b"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/console-extension/completer.json": {
+    "mtime": 1782020492.5030408,
+    "ast_hash": "e9c26c87cde10b03edb636a34f308581",
+    "semantic_hash": "e9c26c87cde10b03edb636a34f308581"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/console-extension/foreign.json": {
+    "mtime": 1782020492.503121,
+    "ast_hash": "03f955de5d46b19f69a514e0648d18c0",
+    "semantic_hash": "03f955de5d46b19f69a514e0648d18c0"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/console-extension/tracker.json": {
+    "mtime": 1782020492.5032938,
+    "ast_hash": "4b9b16193795ffae820461ebee872d39",
+    "semantic_hash": "4b9b16193795ffae820461ebee872d39"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/csvviewer-extension/csv.json": {
+    "mtime": 1782020492.5033903,
+    "ast_hash": "7752c2da32ed3b707ee6d261b89f3b2d",
+    "semantic_hash": "7752c2da32ed3b707ee6d261b89f3b2d"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/csvviewer-extension/tsv.json": {
+    "mtime": 1782020492.503523,
+    "ast_hash": "ac0f251f9efdbf06bc0124d2d09b55bd",
+    "semantic_hash": "ac0f251f9efdbf06bc0124d2d09b55bd"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/debugger-extension/main.json": {
+    "mtime": 1782020492.5036144,
+    "ast_hash": "f7e5596ad1a57034ce58ab519371f519",
+    "semantic_hash": "f7e5596ad1a57034ce58ab519371f519"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/docmanager-extension/download.json": {
+    "mtime": 1782020492.5037787,
+    "ast_hash": "9cf3acd4174901e8f5027618f9b278e9",
+    "semantic_hash": "9cf3acd4174901e8f5027618f9b278e9"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/docmanager-extension/plugin.json": {
+    "mtime": 1782020492.5039685,
+    "ast_hash": "f3da4460232d0d0307fc7340bc8bb9e3",
+    "semantic_hash": "f3da4460232d0d0307fc7340bc8bb9e3"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/documentsearch-extension/plugin.json": {
+    "mtime": 1782020492.50414,
+    "ast_hash": "c0b0109971d4e2218bc65908f0459671",
+    "semantic_hash": "c0b0109971d4e2218bc65908f0459671"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/extensionmanager-extension/plugin.json": {
+    "mtime": 1782020492.5043612,
+    "ast_hash": "7cfd6d44e9e6a4ddaa0f3ae1da66b396",
+    "semantic_hash": "7cfd6d44e9e6a4ddaa0f3ae1da66b396"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/filebrowser-extension/browser.json": {
+    "mtime": 1782020492.5045538,
+    "ast_hash": "12e2bb2a298f8749b0b0c66157abc826",
+    "semantic_hash": "12e2bb2a298f8749b0b0c66157abc826"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/filebrowser-extension/download.json": {
+    "mtime": 1782020492.5046313,
+    "ast_hash": "f566939a483031cbcf3a1ac1a27ccb2a",
+    "semantic_hash": "f566939a483031cbcf3a1ac1a27ccb2a"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/filebrowser-extension/open-browser-tab.json": {
+    "mtime": 1782020492.5047297,
+    "ast_hash": "c008ae7cc497179992d33145897ee975",
+    "semantic_hash": "c008ae7cc497179992d33145897ee975"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/filebrowser-extension/open-with.json": {
+    "mtime": 1782020492.5048108,
+    "ast_hash": "fd51f0483581d6ff1b9e69ae522a11dc",
+    "semantic_hash": "fd51f0483581d6ff1b9e69ae522a11dc"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/filebrowser-extension/widget.json": {
+    "mtime": 1782020492.5049677,
+    "ast_hash": "7f93c2edb30c607a27235fa757ff2e82",
+    "semantic_hash": "7f93c2edb30c607a27235fa757ff2e82"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/fileeditor-extension/completer.json": {
+    "mtime": 1782020492.5050693,
+    "ast_hash": "d52fbfd0328b2cc639e54a3f1e127022",
+    "semantic_hash": "d52fbfd0328b2cc639e54a3f1e127022"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/fileeditor-extension/plugin.json": {
+    "mtime": 1782020492.5052793,
+    "ast_hash": "1b488d766e436eb5050fab32b53cb51f",
+    "semantic_hash": "1b488d766e436eb5050fab32b53cb51f"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/help-extension/about.json": {
+    "mtime": 1782020492.5053935,
+    "ast_hash": "07008998ead9bb853ce4bfccaf23904e",
+    "semantic_hash": "07008998ead9bb853ce4bfccaf23904e"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/help-extension/jupyter-forum.json": {
+    "mtime": 1782020492.5054734,
+    "ast_hash": "d541601418c9e088635d73da431da961",
+    "semantic_hash": "d541601418c9e088635d73da431da961"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/help-extension/launch-classic.json": {
+    "mtime": 1782020492.5055573,
+    "ast_hash": "af97813e6d751ea351bc4495ebe2fb15",
+    "semantic_hash": "af97813e6d751ea351bc4495ebe2fb15"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/htmlviewer-extension/plugin.json": {
+    "mtime": 1782020492.5058644,
+    "ast_hash": "b7155c5ec2b25e662144e2a45e5319b3",
+    "semantic_hash": "b7155c5ec2b25e662144e2a45e5319b3"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/hub-extension/menu.json": {
+    "mtime": 1782020492.505985,
+    "ast_hash": "3fed8392144073d9d28bcd920c3afdbd",
+    "semantic_hash": "3fed8392144073d9d28bcd920c3afdbd"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/imageviewer-extension/plugin.json": {
+    "mtime": 1782020492.5062537,
+    "ast_hash": "1c7821016898861678ef6e47ed1bb813",
+    "semantic_hash": "1c7821016898861678ef6e47ed1bb813"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/inspector-extension/consoles.json": {
+    "mtime": 1782020492.5063672,
+    "ast_hash": "e2b0bbff035eb39abb2804178930b937",
+    "semantic_hash": "e2b0bbff035eb39abb2804178930b937"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/inspector-extension/inspector.json": {
+    "mtime": 1782020492.5064342,
+    "ast_hash": "85bf16f79b87aedac283623b32737b6c",
+    "semantic_hash": "85bf16f79b87aedac283623b32737b6c"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/inspector-extension/notebooks.json": {
+    "mtime": 1782020492.5065,
+    "ast_hash": "072f59ff1b05dd94764ce27af1fc3b6c",
+    "semantic_hash": "072f59ff1b05dd94764ce27af1fc3b6c"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/launcher-extension/plugin.json": {
+    "mtime": 1782020492.5067601,
+    "ast_hash": "7fb4d918d277dbe55929fcf78517f52e",
+    "semantic_hash": "7fb4d918d277dbe55929fcf78517f52e"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/logconsole-extension/plugin.json": {
+    "mtime": 1782020492.5069284,
+    "ast_hash": "c059d8379537c2d1e2977e35609fe049",
+    "semantic_hash": "c059d8379537c2d1e2977e35609fe049"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/lsp-extension/plugin.json": {
+    "mtime": 1782020492.50709,
+    "ast_hash": "bf0055fa5b1d26176358922726fb5bd9",
+    "semantic_hash": "bf0055fa5b1d26176358922726fb5bd9"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/mainmenu-extension/plugin.json": {
+    "mtime": 1782020492.5073428,
+    "ast_hash": "127d3fb687285a77d874936665368a84",
+    "semantic_hash": "127d3fb687285a77d874936665368a84"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/markdownviewer-extension/plugin.json": {
+    "mtime": 1782020492.5075173,
+    "ast_hash": "8f065dd499df69acc0fbe41dbe35daf9",
+    "semantic_hash": "8f065dd499df69acc0fbe41dbe35daf9"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/mathjax-extension/plugin.json": {
+    "mtime": 1782020492.5076904,
+    "ast_hash": "dee4092a3f949c6b314326a7c79c20de",
+    "semantic_hash": "dee4092a3f949c6b314326a7c79c20de"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/metadataform-extension/metadataforms.json": {
+    "mtime": 1782020492.5077832,
+    "ast_hash": "86561819a7581cd67ddf8e51421b4099",
+    "semantic_hash": "86561819a7581cd67ddf8e51421b4099"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/notebook-extension/completer.json": {
+    "mtime": 1782020492.5079432,
+    "ast_hash": "5242f308aa63f3a1f7926527b44bd476",
+    "semantic_hash": "5242f308aa63f3a1f7926527b44bd476"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/notebook-extension/export.json": {
+    "mtime": 1782020492.5080125,
+    "ast_hash": "64fdc40ed315e0c27da2cecea39207b4",
+    "semantic_hash": "64fdc40ed315e0c27da2cecea39207b4"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/notebook-extension/panel.json": {
+    "mtime": 1782020492.5081623,
+    "ast_hash": "381438270c3168ef5a2d6a093da1a451",
+    "semantic_hash": "381438270c3168ef5a2d6a093da1a451"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/notebook-extension/tools.json": {
+    "mtime": 1782020492.5082452,
+    "ast_hash": "26f2ee11d0ce00bffd2741bbbcd2cf42",
+    "semantic_hash": "26f2ee11d0ce00bffd2741bbbcd2cf42"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/notebook-extension/tracker.json": {
+    "mtime": 1782020492.508346,
+    "ast_hash": "2e25f1089433578cf10be2a278b34a5b",
+    "semantic_hash": "2e25f1089433578cf10be2a278b34a5b"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/running-extension/plugin.json": {
+    "mtime": 1782020492.508538,
+    "ast_hash": "3e80fa8cb464fdd9102d940cbb8bd8e9",
+    "semantic_hash": "3e80fa8cb464fdd9102d940cbb8bd8e9"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/settingeditor-extension/form-ui.json": {
+    "mtime": 1782020492.5086465,
+    "ast_hash": "94cbb0f45e7ed33eda75c9e2a61b9c6f",
+    "semantic_hash": "94cbb0f45e7ed33eda75c9e2a61b9c6f"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/settingeditor-extension/plugin.json": {
+    "mtime": 1782020492.508776,
+    "ast_hash": "ed17277f16bda37a43518c5248cba232",
+    "semantic_hash": "ed17277f16bda37a43518c5248cba232"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/shortcuts-extension/shortcuts.json": {
+    "mtime": 1782020492.5089588,
+    "ast_hash": "903aee8cc95b5ef79309144e9a1d27c2",
+    "semantic_hash": "903aee8cc95b5ef79309144e9a1d27c2"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/statusbar-extension/plugin.json": {
+    "mtime": 1782020492.5091183,
+    "ast_hash": "8bd25e88654602d09d31428eba42db48",
+    "semantic_hash": "8bd25e88654602d09d31428eba42db48"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/terminal-extension/plugin.json": {
+    "mtime": 1782020492.5093205,
+    "ast_hash": "a39385f4aef99af196cbcdeda8243be2",
+    "semantic_hash": "a39385f4aef99af196cbcdeda8243be2"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/toc-extension/registry.json": {
+    "mtime": 1782020492.5094929,
+    "ast_hash": "98c4d6b58583d0e4fe1f200af5033aa6",
+    "semantic_hash": "98c4d6b58583d0e4fe1f200af5033aa6"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/tooltip-extension/consoles.json": {
+    "mtime": 1782020492.5095975,
+    "ast_hash": "ba869585e756d50fa7e1b3180ace3270",
+    "semantic_hash": "ba869585e756d50fa7e1b3180ace3270"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/tooltip-extension/files.json": {
+    "mtime": 1782020492.5096657,
+    "ast_hash": "e7f2bc6050b7d6016f7817e3abf34e86",
+    "semantic_hash": "e7f2bc6050b7d6016f7817e3abf34e86"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/tooltip-extension/notebooks.json": {
+    "mtime": 1782020492.5097396,
+    "ast_hash": "9b93f5c215b0862766c75add10a56a33",
+    "semantic_hash": "9b93f5c215b0862766c75add10a56a33"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/translation-extension/plugin.json": {
+    "mtime": 1782020492.5099745,
+    "ast_hash": "6a679ab243f70eafbba3bc7cac03c79a",
+    "semantic_hash": "6a679ab243f70eafbba3bc7cac03c79a"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/workspaces-extension/indicator.json": {
+    "mtime": 1782020492.5100746,
+    "ast_hash": "894e38b873567be45c58a66ac7e0fa79",
+    "semantic_hash": "894e38b873567be45c58a66ac7e0fa79"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/workspaces-extension/menu.json": {
+    "mtime": 1782020492.5101395,
+    "ast_hash": "5f6ab6457fe9bc1de65315e4fd5270b7",
+    "semantic_hash": "5f6ab6457fe9bc1de65315e4fd5270b7"
+  },
+  "venv311/share/jupyter/lab/schemas/@jupyterlab/workspaces-extension/sidebar.json": {
+    "mtime": 1782020492.510267,
+    "ast_hash": "ec883111939491211a7abae8e3cbd6d2",
+    "semantic_hash": "ec883111939491211a7abae8e3cbd6d2"
+  },
+  "venv311/share/jupyter/lab/static/1014.073326ef5d98db5e.js": {
+    "mtime": 1782020492.5111408,
+    "ast_hash": "399f5854f0500959ef2039bfef4f5073",
+    "semantic_hash": "399f5854f0500959ef2039bfef4f5073"
+  },
+  "venv311/share/jupyter/lab/static/1027.289ea871537e71a7.js": {
+    "mtime": 1782020492.5112596,
+    "ast_hash": "1c4a452b459f4f2aacffe910720158b8",
+    "semantic_hash": "1c4a452b459f4f2aacffe910720158b8"
+  },
+  "venv311/share/jupyter/lab/static/1028.812a1281fd9f7ba1.js": {
+    "mtime": 1782020492.5113363,
+    "ast_hash": "fa9560741879fcf64692f324dc071cb8",
+    "semantic_hash": "fa9560741879fcf64692f324dc071cb8"
+  },
+  "venv311/share/jupyter/lab/static/109.493a12dc42da3115.js": {
+    "mtime": 1782020492.5114524,
+    "ast_hash": "43564f9a3962d9d1ba831912948d1c7d",
+    "semantic_hash": "43564f9a3962d9d1ba831912948d1c7d"
+  },
+  "venv311/share/jupyter/lab/static/1164.8f9ceacce3ada5a5.js": {
+    "mtime": 1782020492.5115721,
+    "ast_hash": "f8b2adb6456cb25d32a95e39ddf3cc97",
+    "semantic_hash": "f8b2adb6456cb25d32a95e39ddf3cc97"
+  },
+  "venv311/share/jupyter/lab/static/1207.29d49de7be30f3c3.js": {
+    "mtime": 1782020492.5116475,
+    "ast_hash": "4e50a6739a69c60c96263b8847e691b4",
+    "semantic_hash": "4e50a6739a69c60c96263b8847e691b4"
+  },
+  "venv311/share/jupyter/lab/static/1286.7087e8344ef3005e.js": {
+    "mtime": 1782020492.511909,
+    "ast_hash": "3fd690cffddb6c7420ffe2cd64e4c589",
+    "semantic_hash": "3fd690cffddb6c7420ffe2cd64e4c589"
+  },
+  "venv311/share/jupyter/lab/static/130.6ae02d05d1662acf.js": {
+    "mtime": 1782020492.5120163,
+    "ast_hash": "96401fbb3f770cf4308a95bdd0094f16",
+    "semantic_hash": "96401fbb3f770cf4308a95bdd0094f16"
+  },
+  "venv311/share/jupyter/lab/static/1311.39c4bb0b68584307.js": {
+    "mtime": 1782020492.5121214,
+    "ast_hash": "9cba6a7e78f4acd708c6b8bd65090e97",
+    "semantic_hash": "9cba6a7e78f4acd708c6b8bd65090e97"
+  },
+  "venv311/share/jupyter/lab/static/1325.1a013842dc2be176.js": {
+    "mtime": 1782020492.5122375,
+    "ast_hash": "dab39e9654a76521d5992cd146dc6017",
+    "semantic_hash": "dab39e9654a76521d5992cd146dc6017"
+  },
+  "venv311/share/jupyter/lab/static/1344.7c0e73be6aeed30b.js": {
+    "mtime": 1782020492.512401,
+    "ast_hash": "355f6ee6e21f5bda3d838356ddc48f34",
+    "semantic_hash": "355f6ee6e21f5bda3d838356ddc48f34"
+  },
+  "venv311/share/jupyter/lab/static/1410.1d8b2fb31efaebee.js": {
+    "mtime": 1782020492.5125597,
+    "ast_hash": "1afb2a41dcb548fa6215dc0e74d5afae",
+    "semantic_hash": "1afb2a41dcb548fa6215dc0e74d5afae"
+  },
+  "venv311/share/jupyter/lab/static/1447.0dc5eacf8f731ec8.js": {
+    "mtime": 1782020492.5126433,
+    "ast_hash": "b2b437f5ff53854a9dd7015284021235",
+    "semantic_hash": "b2b437f5ff53854a9dd7015284021235"
+  },
+  "venv311/share/jupyter/lab/static/1460.b9d12dc72e63ec38.js": {
+    "mtime": 1782020492.5127597,
+    "ast_hash": "e18a1adc2f9322e023ba0e478aee446d",
+    "semantic_hash": "e18a1adc2f9322e023ba0e478aee446d"
+  },
+  "venv311/share/jupyter/lab/static/1527.6dfbfd27636edb2e.js": {
+    "mtime": 1782020492.5128398,
+    "ast_hash": "83bdecc6ede20ee0599d0b4eb5d96147",
+    "semantic_hash": "83bdecc6ede20ee0599d0b4eb5d96147"
+  },
+  "venv311/share/jupyter/lab/static/1539.2f9625818a3d1b90.js": {
+    "mtime": 1782020492.5129173,
+    "ast_hash": "a3a250943aac78175b425d259c1287f0",
+    "semantic_hash": "a3a250943aac78175b425d259c1287f0"
+  },
+  "venv311/share/jupyter/lab/static/1584.f43d421d2384c719.js": {
+    "mtime": 1782020492.5132,
+    "ast_hash": "5176d10f1fafbab6b616ba3ad36cb6ce",
+    "semantic_hash": "5176d10f1fafbab6b616ba3ad36cb6ce"
+  },
+  "venv311/share/jupyter/lab/static/16.6cda5b6d5f0fa449.js": {
+    "mtime": 1782020492.5133932,
+    "ast_hash": "bc46958936621eadc4148e43ff054aae",
+    "semantic_hash": "bc46958936621eadc4148e43ff054aae"
+  },
+  "venv311/share/jupyter/lab/static/1601.c443d46d5b6dbb77.js": {
+    "mtime": 1782020492.5134687,
+    "ast_hash": "66f213f36c098c04faba28342ec56c2c",
+    "semantic_hash": "66f213f36c098c04faba28342ec56c2c"
+  },
+  "venv311/share/jupyter/lab/static/1617.cc66edd89898364c.js": {
+    "mtime": 1782020492.5135367,
+    "ast_hash": "a4ffca32b4a12b5d5238582ed83308a9",
+    "semantic_hash": "a4ffca32b4a12b5d5238582ed83308a9"
+  },
+  "venv311/share/jupyter/lab/static/1645.ed332d3fefafaead.js": {
+    "mtime": 1782020492.5136025,
+    "ast_hash": "9deadb1f47e302a3234860df66e00c31",
+    "semantic_hash": "9deadb1f47e302a3234860df66e00c31"
+  },
+  "venv311/share/jupyter/lab/static/170.bf91d89e4b982380.js": {
+    "mtime": 1782020492.5138273,
+    "ast_hash": "4430e94ddc13bbf8fd148ce9a8634bf2",
+    "semantic_hash": "4430e94ddc13bbf8fd148ce9a8634bf2"
+  },
+  "venv311/share/jupyter/lab/static/173.0f2f9c4254903e63.js": {
+    "mtime": 1782020492.5139196,
+    "ast_hash": "72feb1cce1b4111578e3ca7575d9569c",
+    "semantic_hash": "72feb1cce1b4111578e3ca7575d9569c"
+  },
+  "venv311/share/jupyter/lab/static/1815.b4c56924ee770a55.js": {
+    "mtime": 1782020492.513988,
+    "ast_hash": "9765a80e6bcaf795b8683a268a07b7ed",
+    "semantic_hash": "9765a80e6bcaf795b8683a268a07b7ed"
+  },
+  "venv311/share/jupyter/lab/static/1873.d0e670bd840a1d49.js": {
+    "mtime": 1782020492.5140579,
+    "ast_hash": "ee093de698d67d1129ce415b5d2053e4",
+    "semantic_hash": "ee093de698d67d1129ce415b5d2053e4"
+  },
+  "venv311/share/jupyter/lab/static/1917.12a55957e6bd6fd0.js": {
+    "mtime": 1782020492.5142071,
+    "ast_hash": "c3310528e6fe2c19c596009dcf980ea2",
+    "semantic_hash": "c3310528e6fe2c19c596009dcf980ea2"
+  },
+  "venv311/share/jupyter/lab/static/1957.84d282100e18cd6c.js": {
+    "mtime": 1782020492.5143695,
+    "ast_hash": "f52e86ac36d7804f6117591f71b9ca30",
+    "semantic_hash": "f52e86ac36d7804f6117591f71b9ca30"
+  },
+  "venv311/share/jupyter/lab/static/1984.129e1d8ddca9362f.js": {
+    "mtime": 1782020492.514437,
+    "ast_hash": "7154fc568b7b8f36ac190c232789944c",
+    "semantic_hash": "7154fc568b7b8f36ac190c232789944c"
+  },
+  "venv311/share/jupyter/lab/static/2001.fcd2209118a7e77d.js": {
+    "mtime": 1782020492.5147228,
+    "ast_hash": "06c38008df517ddf12677a3e490b414a",
+    "semantic_hash": "06c38008df517ddf12677a3e490b414a"
+  },
+  "venv311/share/jupyter/lab/static/2004.2f631b96f5439cea.js": {
+    "mtime": 1782020492.5147903,
+    "ast_hash": "1970c0b48d5d20b840f853885457b06e",
+    "semantic_hash": "1970c0b48d5d20b840f853885457b06e"
+  },
+  "venv311/share/jupyter/lab/static/2011.2e10f24e0a331c02.js": {
+    "mtime": 1782020492.5148942,
+    "ast_hash": "1472a85c44cca08005b4337ade8ea6f8",
+    "semantic_hash": "1472a85c44cca08005b4337ade8ea6f8"
+  },
+  "venv311/share/jupyter/lab/static/2115.aaf130fb21b64ca1.js": {
+    "mtime": 1782020492.5150163,
+    "ast_hash": "457fefc6d0e8340cdbec5cdcd9ebca76",
+    "semantic_hash": "457fefc6d0e8340cdbec5cdcd9ebca76"
+  },
+  "venv311/share/jupyter/lab/static/2121.5b651dddbda86f52.js": {
+    "mtime": 1782020492.5151668,
+    "ast_hash": "15af66eb43edf19e49206536bb17604f",
+    "semantic_hash": "15af66eb43edf19e49206536bb17604f"
+  },
+  "venv311/share/jupyter/lab/static/213.4168e841092fb2f0.js": {
+    "mtime": 1782020492.515277,
+    "ast_hash": "ae8bb4030e97dfb692c5159391982099",
+    "semantic_hash": "ae8bb4030e97dfb692c5159391982099"
+  },
+  "venv311/share/jupyter/lab/static/2134.6e059facb193ea72.js": {
+    "mtime": 1782020492.5157292,
+    "ast_hash": "64f8948b6d4a2a92193606940d637bb6",
+    "semantic_hash": "64f8948b6d4a2a92193606940d637bb6"
+  },
+  "venv311/share/jupyter/lab/static/219.2389a53dc040cbd0.js": {
+    "mtime": 1782020492.5159438,
+    "ast_hash": "973f3856039065a3d627cf6ba72d61b7",
+    "semantic_hash": "973f3856039065a3d627cf6ba72d61b7"
+  },
+  "venv311/share/jupyter/lab/static/2208.ef6ea98c27c7851d.js": {
+    "mtime": 1782020492.5160391,
+    "ast_hash": "257d6692af43527cf5d9d22ed8167c80",
+    "semantic_hash": "257d6692af43527cf5d9d22ed8167c80"
+  },
+  "venv311/share/jupyter/lab/static/2272.1dd8f8d1ed60185f.js": {
+    "mtime": 1782020492.5161748,
+    "ast_hash": "d48433b0f7b631619f6be015208aa07d",
+    "semantic_hash": "d48433b0f7b631619f6be015208aa07d"
+  },
+  "venv311/share/jupyter/lab/static/2287.a918ef4a3b6b8f66.js": {
+    "mtime": 1782020492.5163405,
+    "ast_hash": "f5b4d2f0f786c8acd3dacd54768c6b98",
+    "semantic_hash": "f5b4d2f0f786c8acd3dacd54768c6b98"
+  },
+  "venv311/share/jupyter/lab/static/2292.faf2551abff7e12e.js": {
+    "mtime": 1782020492.5164278,
+    "ast_hash": "153b87aba0d206b6ffcbb49ddf368640",
+    "semantic_hash": "153b87aba0d206b6ffcbb49ddf368640"
+  },
+  "venv311/share/jupyter/lab/static/2299.55a1012700ee6259.js": {
+    "mtime": 1782020492.5165315,
+    "ast_hash": "69fbbf635642aa8b5f61d752b6445ef4",
+    "semantic_hash": "69fbbf635642aa8b5f61d752b6445ef4"
+  },
+  "venv311/share/jupyter/lab/static/2323.c7bce40851364fb3.js": {
+    "mtime": 1782020492.51661,
+    "ast_hash": "b471d8a3764efd31f953cee9cfc9ad6f",
+    "semantic_hash": "b471d8a3764efd31f953cee9cfc9ad6f"
+  },
+  "venv311/share/jupyter/lab/static/2358.10a325f4d19e3817.js": {
+    "mtime": 1782020492.5166934,
+    "ast_hash": "920b384813effcf467829ee61bcc097f",
+    "semantic_hash": "920b384813effcf467829ee61bcc097f"
+  },
+  "venv311/share/jupyter/lab/static/2407.41669022954d447f.js": {
+    "mtime": 1782020492.5169313,
+    "ast_hash": "b2a6401f4db318c5b57a3f062f4912b3",
+    "semantic_hash": "b2a6401f4db318c5b57a3f062f4912b3"
+  },
+  "venv311/share/jupyter/lab/static/2461.eb1ea097b2eb54cf.js": {
+    "mtime": 1782020492.5171046,
+    "ast_hash": "30ec4cd51b9564bc845e01d5a3a5935e",
+    "semantic_hash": "30ec4cd51b9564bc845e01d5a3a5935e"
+  },
+  "venv311/share/jupyter/lab/static/2521.60af3fcdacace00b.js": {
+    "mtime": 1782020492.517265,
+    "ast_hash": "1a492753920e97f1f418a9e019149642",
+    "semantic_hash": "1a492753920e97f1f418a9e019149642"
+  },
+  "venv311/share/jupyter/lab/static/2527.c3d675c406bf83b7.js": {
+    "mtime": 1782020492.517343,
+    "ast_hash": "6b4e293306fa62358042e176a76c2d27",
+    "semantic_hash": "6b4e293306fa62358042e176a76c2d27"
+  },
+  "venv311/share/jupyter/lab/static/2563.bdd3149d69816d76.js": {
+    "mtime": 1782020492.517462,
+    "ast_hash": "3efabac9031912b25174249e4b734222",
+    "semantic_hash": "3efabac9031912b25174249e4b734222"
+  },
+  "venv311/share/jupyter/lab/static/2692.eee86b8138bc264e.js": {
+    "mtime": 1782020492.5175455,
+    "ast_hash": "0d633d365bf52541cf1aaf512f907a81",
+    "semantic_hash": "0d633d365bf52541cf1aaf512f907a81"
+  },
+  "venv311/share/jupyter/lab/static/2751.054be16d1de152ed.js": {
+    "mtime": 1782020492.517622,
+    "ast_hash": "9e7dc27a6b361b74b340af1bc911a7fd",
+    "semantic_hash": "9e7dc27a6b361b74b340af1bc911a7fd"
+  },
+  "venv311/share/jupyter/lab/static/279.1d87a19f5d7ab5ba.js": {
+    "mtime": 1782020492.5177357,
+    "ast_hash": "7e1acb759040b0e9d8a3528288428025",
+    "semantic_hash": "7e1acb759040b0e9d8a3528288428025"
+  },
+  "venv311/share/jupyter/lab/static/2814.dbb035d0ef740a9d.js": {
+    "mtime": 1782020492.5178156,
+    "ast_hash": "de7a85c16e34478672ef8d040046c39c",
+    "semantic_hash": "de7a85c16e34478672ef8d040046c39c"
+  },
+  "venv311/share/jupyter/lab/static/2841.86506b718eec3c99.js": {
+    "mtime": 1782020492.5178866,
+    "ast_hash": "862d07d32977f753dc307c96f9f6396e",
+    "semantic_hash": "862d07d32977f753dc307c96f9f6396e"
+  },
+  "venv311/share/jupyter/lab/static/2857.ac62be053c711761.js": {
+    "mtime": 1782020492.5180516,
+    "ast_hash": "91f03d88ecedc352c265f34ac8d0f7af",
+    "semantic_hash": "91f03d88ecedc352c265f34ac8d0f7af"
+  },
+  "venv311/share/jupyter/lab/static/2874.ea9bd8ad31b1acb0.js": {
+    "mtime": 1782020492.5183766,
+    "ast_hash": "d2950b271b94c90c9efa03114178ba96",
+    "semantic_hash": "d2950b271b94c90c9efa03114178ba96"
+  },
+  "venv311/share/jupyter/lab/static/29.7a78d733ea4303ef.js": {
+    "mtime": 1782020492.5184917,
+    "ast_hash": "ea5cd862bc4cc6fde18ae8190676f6e3",
+    "semantic_hash": "ea5cd862bc4cc6fde18ae8190676f6e3"
+  },
+  "venv311/share/jupyter/lab/static/2914.93ec2ce85349bfcb.js": {
+    "mtime": 1782020492.518576,
+    "ast_hash": "ffd627cd95205ea85fcd6e1d8894d00d",
+    "semantic_hash": "ffd627cd95205ea85fcd6e1d8894d00d"
+  },
+  "venv311/share/jupyter/lab/static/293.9e31f21f77925d6d.js": {
+    "mtime": 1782020492.5188038,
+    "ast_hash": "e2435760d332d340d202eae8764284ed",
+    "semantic_hash": "e2435760d332d340d202eae8764284ed"
+  },
+  "venv311/share/jupyter/lab/static/298.14d454ce4b32b3cb.js": {
+    "mtime": 1782020492.5189133,
+    "ast_hash": "cbf704b18b4b2bd0e9cec888dde41553",
+    "semantic_hash": "cbf704b18b4b2bd0e9cec888dde41553"
+  },
+  "venv311/share/jupyter/lab/static/2985.0927e52ba300a767.js": {
+    "mtime": 1782020492.5192614,
+    "ast_hash": "5a2f9e8506e3812d930142b836d49ed0",
+    "semantic_hash": "5a2f9e8506e3812d930142b836d49ed0"
+  },
+  "venv311/share/jupyter/lab/static/3058.b4a2fce8c76a0dc7.js": {
+    "mtime": 1782020492.519828,
+    "ast_hash": "11a5c40f0ce1c429abce2391afa050ca",
+    "semantic_hash": "11a5c40f0ce1c429abce2391afa050ca"
+  },
+  "venv311/share/jupyter/lab/static/3071.838fd3a7554dd171.js": {
+    "mtime": 1782020492.5198936,
+    "ast_hash": "58a4feb35973a773c479df0ec3ec4136",
+    "semantic_hash": "58a4feb35973a773c479df0ec3ec4136"
+  },
+  "venv311/share/jupyter/lab/static/3081.8e8795bb5ef2ff2b.js": {
+    "mtime": 1782020492.5199635,
+    "ast_hash": "faf8f3c59bac46e1ec0e525cac7a08fd",
+    "semantic_hash": "faf8f3c59bac46e1ec0e525cac7a08fd"
+  },
+  "venv311/share/jupyter/lab/static/3118.4862a7ce8cd88c72.js": {
+    "mtime": 1782020492.5200655,
+    "ast_hash": "04576a3ecac7bea06423811fdb4120a2",
+    "semantic_hash": "04576a3ecac7bea06423811fdb4120a2"
+  },
+  "venv311/share/jupyter/lab/static/3221.993c168647fb91ad.js": {
+    "mtime": 1782020492.5201359,
+    "ast_hash": "8854df164ecf94053227e513a9959cf7",
+    "semantic_hash": "8854df164ecf94053227e513a9959cf7"
+  },
+  "venv311/share/jupyter/lab/static/3244.fc189622bc1b7623.js": {
+    "mtime": 1782020492.5202792,
+    "ast_hash": "6c9ec005a9cf72dff7d2a9411e800ce0",
+    "semantic_hash": "6c9ec005a9cf72dff7d2a9411e800ce0"
+  },
+  "venv311/share/jupyter/lab/static/3288.0379d6d2ee2b1de4.js": {
+    "mtime": 1782020492.520348,
+    "ast_hash": "1744d6739796b1692e9ed9374c26d378",
+    "semantic_hash": "1744d6739796b1692e9ed9374c26d378"
+  },
+  "venv311/share/jupyter/lab/static/3301.76c0882553a666a0.js": {
+    "mtime": 1782020492.5204904,
+    "ast_hash": "172b5df8adb7939c8a832452cdfe07e4",
+    "semantic_hash": "172b5df8adb7939c8a832452cdfe07e4"
+  },
+  "venv311/share/jupyter/lab/static/3312.e5f6edb28463f660.js": {
+    "mtime": 1782020492.5206323,
+    "ast_hash": "dc9f64fcaa4fdd11d389a85cb640948f",
+    "semantic_hash": "dc9f64fcaa4fdd11d389a85cb640948f"
+  },
+  "venv311/share/jupyter/lab/static/3395.deb605f5e3565fba.js": {
+    "mtime": 1782020492.5208297,
+    "ast_hash": "13a170780b733c253c12d58d856bb9fe",
+    "semantic_hash": "13a170780b733c253c12d58d856bb9fe"
+  },
+  "venv311/share/jupyter/lab/static/3459.387b0b56c73ca3d1.js": {
+    "mtime": 1782020492.5209005,
+    "ast_hash": "5eb353ea9da6f3bea5aeb0455fd919e6",
+    "semantic_hash": "5eb353ea9da6f3bea5aeb0455fd919e6"
+  },
+  "venv311/share/jupyter/lab/static/3481.72f0535629efba91.js": {
+    "mtime": 1782020492.52118,
+    "ast_hash": "c731a3e4fd60853727b9bb4fd5163e06",
+    "semantic_hash": "c731a3e4fd60853727b9bb4fd5163e06"
+  },
+  "venv311/share/jupyter/lab/static/3502.2a088e489938b55f.js": {
+    "mtime": 1782020492.5214555,
+    "ast_hash": "708d251c84e98d5f3077cd985d170404",
+    "semantic_hash": "708d251c84e98d5f3077cd985d170404"
+  },
+  "venv311/share/jupyter/lab/static/3508.adc857c378089e63.js": {
+    "mtime": 1782020492.5215986,
+    "ast_hash": "7fa3933b93260d7e7c23dc678ab9c7e9",
+    "semantic_hash": "7fa3933b93260d7e7c23dc678ab9c7e9"
+  },
+  "venv311/share/jupyter/lab/static/3588.79c167117ee5e79a.js": {
+    "mtime": 1782020492.521688,
+    "ast_hash": "0a795afff21ced6424a2ae2f02c53156",
+    "semantic_hash": "0a795afff21ced6424a2ae2f02c53156"
+  },
+  "venv311/share/jupyter/lab/static/364.bcb9782f2a53ddba.js": {
+    "mtime": 1782020492.5217876,
+    "ast_hash": "4b621c536da0734b45d3f4c69eda087b",
+    "semantic_hash": "4b621c536da0734b45d3f4c69eda087b"
+  },
+  "venv311/share/jupyter/lab/static/3684.a33054656643494f.js": {
+    "mtime": 1782020492.521858,
+    "ast_hash": "772404cf9a0a2c82bf454afb84382dd5",
+    "semantic_hash": "772404cf9a0a2c82bf454afb84382dd5"
+  },
+  "venv311/share/jupyter/lab/static/3702.bb3bb0b9a9626bd4.js": {
+    "mtime": 1782020492.521918,
+    "ast_hash": "b3389a6d49c1bf8006923594dc1371bf",
+    "semantic_hash": "b3389a6d49c1bf8006923594dc1371bf"
+  },
+  "venv311/share/jupyter/lab/static/3762.bc2173c156f5a1fe.js": {
+    "mtime": 1782020492.5219972,
+    "ast_hash": "e29433f5884685dd90ea13b39ccfd54a",
+    "semantic_hash": "e29433f5884685dd90ea13b39ccfd54a"
+  },
+  "venv311/share/jupyter/lab/static/3801.2a49fc8317ea8350.js": {
+    "mtime": 1782020492.52209,
+    "ast_hash": "15be8074af01654727974b70375703d0",
+    "semantic_hash": "15be8074af01654727974b70375703d0"
+  },
+  "venv311/share/jupyter/lab/static/3854.c1914441ea5bae8d.js": {
+    "mtime": 1782020492.5221786,
+    "ast_hash": "9246c543dfc22873a5cfd27376c01723",
+    "semantic_hash": "9246c543dfc22873a5cfd27376c01723"
+  },
+  "venv311/share/jupyter/lab/static/3859.403a786cad5dbcb1.js": {
+    "mtime": 1782020492.5222952,
+    "ast_hash": "f8ab864d01c4a2d723437acbe7f884e0",
+    "semantic_hash": "f8ab864d01c4a2d723437acbe7f884e0"
+  },
+  "venv311/share/jupyter/lab/static/3946.5f42cf47e8320bf9.js": {
+    "mtime": 1782020492.5225806,
+    "ast_hash": "3d041a8eaa6cf7c9960f75f2a62ed226",
+    "semantic_hash": "3d041a8eaa6cf7c9960f75f2a62ed226"
+  },
+  "venv311/share/jupyter/lab/static/3968.b2bb6b9a5ddda9c3.js": {
+    "mtime": 1782020492.5226831,
+    "ast_hash": "6b17d716d420d2d366074b9b18f3eb23",
+    "semantic_hash": "6b17d716d420d2d366074b9b18f3eb23"
+  },
+  "venv311/share/jupyter/lab/static/415.d68965406d746cf6.js": {
+    "mtime": 1782020492.5227795,
+    "ast_hash": "55071af7413836f7cdded08cf121e4b9",
+    "semantic_hash": "55071af7413836f7cdded08cf121e4b9"
+  },
+  "venv311/share/jupyter/lab/static/4204.25e6678031ce64da.js": {
+    "mtime": 1782020492.522937,
+    "ast_hash": "d24ade0a5e23307a066d96abbc2450cb",
+    "semantic_hash": "d24ade0a5e23307a066d96abbc2450cb"
+  },
+  "venv311/share/jupyter/lab/static/4232.15151af47a0093e1.js": {
+    "mtime": 1782020492.5230358,
+    "ast_hash": "8ee26d15f913c1ec7380df5b97ad0d37",
+    "semantic_hash": "8ee26d15f913c1ec7380df5b97ad0d37"
+  },
+  "venv311/share/jupyter/lab/static/4251.502491875ee0f0d1.js": {
+    "mtime": 1782020492.5231035,
+    "ast_hash": "36323767602dd38911d90d7c9e879c63",
+    "semantic_hash": "36323767602dd38911d90d7c9e879c63"
+  },
+  "venv311/share/jupyter/lab/static/4324.764a63584c864a84.js": {
+    "mtime": 1782020492.5245628,
+    "ast_hash": "38587389a0dccea42aebb9cbb0d6722d",
+    "semantic_hash": "38587389a0dccea42aebb9cbb0d6722d"
+  },
+  "venv311/share/jupyter/lab/static/4350.8660e174406ea5be.js": {
+    "mtime": 1782020492.5247457,
+    "ast_hash": "faed55b69a9ebc1e17b39f606e6e18fc",
+    "semantic_hash": "faed55b69a9ebc1e17b39f606e6e18fc"
+  },
+  "venv311/share/jupyter/lab/static/4379.b42d95e853a44d36.js": {
+    "mtime": 1782020492.52486,
+    "ast_hash": "31a4c8a94dcd578ab5d7656ddb2b7c53",
+    "semantic_hash": "31a4c8a94dcd578ab5d7656ddb2b7c53"
+  },
+  "venv311/share/jupyter/lab/static/4385.29cdf9dd304b8c00.js": {
+    "mtime": 1782020492.5249836,
+    "ast_hash": "2e7ed2fe2e31cbffa8942275b521e526",
+    "semantic_hash": "2e7ed2fe2e31cbffa8942275b521e526"
+  },
+  "venv311/share/jupyter/lab/static/4395.a391f759c80d1173.js": {
+    "mtime": 1782020492.5251057,
+    "ast_hash": "702f315f6eb3d77fec8e61de6364af37",
+    "semantic_hash": "702f315f6eb3d77fec8e61de6364af37"
+  },
+  "venv311/share/jupyter/lab/static/4402.a3418dcfee7961fa.js": {
+    "mtime": 1782020492.525264,
+    "ast_hash": "46928975b9e3eaf8cf6938d239a58922",
+    "semantic_hash": "46928975b9e3eaf8cf6938d239a58922"
+  },
+  "venv311/share/jupyter/lab/static/442.cafd6178a234483f.js": {
+    "mtime": 1782020492.5258327,
+    "ast_hash": "3cfda4abe362ee26b69eaff862289932",
+    "semantic_hash": "3cfda4abe362ee26b69eaff862289932"
+  },
+  "venv311/share/jupyter/lab/static/4474.8417de259dd57241.js": {
+    "mtime": 1782020492.5259407,
+    "ast_hash": "e76ad785b9d09c9d87cff5830854c5c1",
+    "semantic_hash": "e76ad785b9d09c9d87cff5830854c5c1"
+  },
+  "venv311/share/jupyter/lab/static/4489.c64fdc8db0dead6d.js": {
+    "mtime": 1782020492.526077,
+    "ast_hash": "1e7e27b477ccc2fc966049011d3c0290",
+    "semantic_hash": "1e7e27b477ccc2fc966049011d3c0290"
+  },
+  "venv311/share/jupyter/lab/static/4501.8968b41e3c311fa4.js": {
+    "mtime": 1782020492.5261474,
+    "ast_hash": "aed7584069f6284c32c4c03331da538b",
+    "semantic_hash": "aed7584069f6284c32c4c03331da538b"
+  },
+  "venv311/share/jupyter/lab/static/4518.7178f5d20f9b21c8.js": {
+    "mtime": 1782020492.5262105,
+    "ast_hash": "afd84762eb837ec3785ca11ab3240b24",
+    "semantic_hash": "afd84762eb837ec3785ca11ab3240b24"
+  },
+  "venv311/share/jupyter/lab/static/4529.df0e69513649e036.js": {
+    "mtime": 1782020492.5263548,
+    "ast_hash": "a89541565f4bb4c90ae84bb7986d7ca5",
+    "semantic_hash": "a89541565f4bb4c90ae84bb7986d7ca5"
+  },
+  "venv311/share/jupyter/lab/static/4545.70eefc0dbcb94c56.js": {
+    "mtime": 1782020492.5264244,
+    "ast_hash": "8616dc08134c0a7260e65b49e6f0c107",
+    "semantic_hash": "8616dc08134c0a7260e65b49e6f0c107"
+  },
+  "venv311/share/jupyter/lab/static/4550.097f83560a3b698b.js": {
+    "mtime": 1782020492.52649,
+    "ast_hash": "e2fbaf5bf6d2f4c4fe3c1647f30721c6",
+    "semantic_hash": "e2fbaf5bf6d2f4c4fe3c1647f30721c6"
+  },
+  "venv311/share/jupyter/lab/static/4607.01840ddc3a670dc8.js": {
+    "mtime": 1782020492.5265975,
+    "ast_hash": "c767afaef5f4948abc527c298a9950d7",
+    "semantic_hash": "c767afaef5f4948abc527c298a9950d7"
+  },
+  "venv311/share/jupyter/lab/static/4672.7e8d3c7ebaca758b.js": {
+    "mtime": 1782020492.5266662,
+    "ast_hash": "fb22467db4e2feb2c8e7f4fe617e4024",
+    "semantic_hash": "fb22467db4e2feb2c8e7f4fe617e4024"
+  },
+  "venv311/share/jupyter/lab/static/4674.02b8876e400198a2.js": {
+    "mtime": 1782020492.526768,
+    "ast_hash": "3f9c42b8af8aed9a69b24d8b3c69e463",
+    "semantic_hash": "3f9c42b8af8aed9a69b24d8b3c69e463"
+  },
+  "venv311/share/jupyter/lab/static/4699.9a951709f4e3ac3b.js": {
+    "mtime": 1782020492.5268676,
+    "ast_hash": "b1beb2720bf023aaf4990698f9b6d33a",
+    "semantic_hash": "b1beb2720bf023aaf4990698f9b6d33a"
+  },
+  "venv311/share/jupyter/lab/static/4726.a26e5e177770dbdd.js": {
+    "mtime": 1782020492.5269809,
+    "ast_hash": "a0943d53bacb5c84b4ab025a84398257",
+    "semantic_hash": "a0943d53bacb5c84b4ab025a84398257"
+  },
+  "venv311/share/jupyter/lab/static/4743.95a1b3de81f80653.js": {
+    "mtime": 1782020492.5271127,
+    "ast_hash": "ffd87072911e15a2b48925cdf8d01941",
+    "semantic_hash": "ffd87072911e15a2b48925cdf8d01941"
+  },
+  "venv311/share/jupyter/lab/static/479.bdbaa5d2cdd9bc91.js": {
+    "mtime": 1782020492.5272148,
+    "ast_hash": "745e0e54e2781ceb90ea3416f75f8222",
+    "semantic_hash": "745e0e54e2781ceb90ea3416f75f8222"
+  },
+  "venv311/share/jupyter/lab/static/4797.ff27331deddd5f5e.js": {
+    "mtime": 1782020492.527318,
+    "ast_hash": "51e4b83907d3a5b089e69890a65a249e",
+    "semantic_hash": "51e4b83907d3a5b089e69890a65a249e"
+  },
+  "venv311/share/jupyter/lab/static/4818.15eaf82d426f67a6.js": {
+    "mtime": 1782020492.527428,
+    "ast_hash": "64a9e3be70c8e2a400ed9359292cd015",
+    "semantic_hash": "64a9e3be70c8e2a400ed9359292cd015"
+  },
+  "venv311/share/jupyter/lab/static/4845.6da260237bbb8966.js": {
+    "mtime": 1782020492.5274956,
+    "ast_hash": "c0faae07bf1e203b9a5add2fcb5d19eb",
+    "semantic_hash": "c0faae07bf1e203b9a5add2fcb5d19eb"
+  },
+  "venv311/share/jupyter/lab/static/4889.054114d42698ba53.js": {
+    "mtime": 1782020492.5275948,
+    "ast_hash": "6aa2e547e9240382d080e2741dc0cc46",
+    "semantic_hash": "6aa2e547e9240382d080e2741dc0cc46"
+  },
+  "venv311/share/jupyter/lab/static/5091.fdbada73b8596c3a.js": {
+    "mtime": 1782020492.527859,
+    "ast_hash": "ce9dc960b9835d64600253a47385a25e",
+    "semantic_hash": "ce9dc960b9835d64600253a47385a25e"
+  },
+  "venv311/share/jupyter/lab/static/5092.6ac83eda32fe365b.js": {
+    "mtime": 1782020492.5279284,
+    "ast_hash": "716a4d18a8eac3d217c8adb7a7f3837e",
+    "semantic_hash": "716a4d18a8eac3d217c8adb7a7f3837e"
+  },
+  "venv311/share/jupyter/lab/static/5098.4ee4636d061dc431.js": {
+    "mtime": 1782020492.5281417,
+    "ast_hash": "c260c8a754b9dc2884b25ae76bddff3f",
+    "semantic_hash": "c260c8a754b9dc2884b25ae76bddff3f"
+  },
+  "venv311/share/jupyter/lab/static/5112.6b421092c62def94.js": {
+    "mtime": 1782020492.5282233,
+    "ast_hash": "04732d26a3b619149f83297bba794550",
+    "semantic_hash": "04732d26a3b619149f83297bba794550"
+  },
+  "venv311/share/jupyter/lab/static/5121.60a6f2420855edfe.js": {
+    "mtime": 1782020492.5282924,
+    "ast_hash": "1de557bbbca5987ad231b60e5c15b48a",
+    "semantic_hash": "1de557bbbca5987ad231b60e5c15b48a"
+  },
+  "venv311/share/jupyter/lab/static/5132.1738325d3b452d0c.js": {
+    "mtime": 1782020492.5284152,
+    "ast_hash": "42b6009b087a95befc32c0e74b8dc102",
+    "semantic_hash": "42b6009b087a95befc32c0e74b8dc102"
+  },
+  "venv311/share/jupyter/lab/static/518.3e2d29a1fff0ce98.js": {
+    "mtime": 1782020492.5285735,
+    "ast_hash": "6f3ec2e6b862fc67aa41197d59d465a1",
+    "semantic_hash": "6f3ec2e6b862fc67aa41197d59d465a1"
+  },
+  "venv311/share/jupyter/lab/static/5199.774d95482e8610ed.js": {
+    "mtime": 1782020492.5286944,
+    "ast_hash": "f2950ca372ece20b334c9256b735af98",
+    "semantic_hash": "f2950ca372ece20b334c9256b735af98"
+  },
+  "venv311/share/jupyter/lab/static/52.7e412bab2a382a4b.js": {
+    "mtime": 1782020492.5288062,
+    "ast_hash": "7bc83a86e748b3bd713ffd409250d2d3",
+    "semantic_hash": "7bc83a86e748b3bd713ffd409250d2d3"
+  },
+  "venv311/share/jupyter/lab/static/5260.1901af9c24d663ff.js": {
+    "mtime": 1782020492.52893,
+    "ast_hash": "91022cdb78c54d90dacee1299e4cef43",
+    "semantic_hash": "91022cdb78c54d90dacee1299e4cef43"
+  },
+  "venv311/share/jupyter/lab/static/5269.526be35f2326f6d5.js": {
+    "mtime": 1782020492.5290854,
+    "ast_hash": "2b4710329c798e07b66cdf29c10550de",
+    "semantic_hash": "2b4710329c798e07b66cdf29c10550de"
+  },
+  "venv311/share/jupyter/lab/static/5361.408aea5c276e7040.js": {
+    "mtime": 1782020492.5293758,
+    "ast_hash": "bbab8569d20cf057f4d26f03ff6ce8b3",
+    "semantic_hash": "bbab8569d20cf057f4d26f03ff6ce8b3"
+  },
+  "venv311/share/jupyter/lab/static/5365.5cde9e2eed3459e1.js": {
+    "mtime": 1782020492.5295238,
+    "ast_hash": "0c2759ae92533976a85739705bb59768",
+    "semantic_hash": "0c2759ae92533976a85739705bb59768"
+  },
+  "venv311/share/jupyter/lab/static/5371.b91aaf1a3fb37f5a.js": {
+    "mtime": 1782020492.5296798,
+    "ast_hash": "dff7bf090cdf6bcff57e4d07a6066e22",
+    "semantic_hash": "dff7bf090cdf6bcff57e4d07a6066e22"
+  },
+  "venv311/share/jupyter/lab/static/5393.e1ea0a2854451599.js": {
+    "mtime": 1782020492.5297852,
+    "ast_hash": "8634d211a6e18afb9e1c07fb4fc260ba",
+    "semantic_hash": "8634d211a6e18afb9e1c07fb4fc260ba"
+  },
+  "venv311/share/jupyter/lab/static/5536.b41e413ca860c880.js": {
+    "mtime": 1782020492.5298674,
+    "ast_hash": "79d7501fd48c500af9a8bff46a95a85c",
+    "semantic_hash": "79d7501fd48c500af9a8bff46a95a85c"
+  },
+  "venv311/share/jupyter/lab/static/556.93609824fb812907.js": {
+    "mtime": 1782020492.5299335,
+    "ast_hash": "0243b3fe7498f80a87906ee0aac6ac88",
+    "semantic_hash": "0243b3fe7498f80a87906ee0aac6ac88"
+  },
+  "venv311/share/jupyter/lab/static/5560.d4dcb973b404cdb2.js": {
+    "mtime": 1782020492.5300767,
+    "ast_hash": "240a7a0da758d5341d0f752be03f8853",
+    "semantic_hash": "240a7a0da758d5341d0f752be03f8853"
+  },
+  "venv311/share/jupyter/lab/static/5590.b1eff6ecc707d732.js": {
+    "mtime": 1782020492.530152,
+    "ast_hash": "b187b77966481d16051341bef2009e20",
+    "semantic_hash": "b187b77966481d16051341bef2009e20"
+  },
+  "venv311/share/jupyter/lab/static/5633.af0479b6c739b55f.js": {
+    "mtime": 1782020492.5302632,
+    "ast_hash": "a1d890799e13236741c0204b11989d39",
+    "semantic_hash": "a1d890799e13236741c0204b11989d39"
+  },
+  "venv311/share/jupyter/lab/static/5681.1b71fd9241161445.js": {
+    "mtime": 1782020492.530334,
+    "ast_hash": "7705d673b47800a151ca798ab020e3c4",
+    "semantic_hash": "7705d673b47800a151ca798ab020e3c4"
+  },
+  "venv311/share/jupyter/lab/static/5695.3b0d58847fe6e5b9.js": {
+    "mtime": 1782020492.5304952,
+    "ast_hash": "9966b97e5724db6fbe3e303327411b3e",
+    "semantic_hash": "9966b97e5724db6fbe3e303327411b3e"
+  },
+  "venv311/share/jupyter/lab/static/5771.81ccf7f308486f21.js": {
+    "mtime": 1782020492.5305693,
+    "ast_hash": "77dc86a61d96cc5b9f8ba2068feac1c2",
+    "semantic_hash": "77dc86a61d96cc5b9f8ba2068feac1c2"
+  },
+  "venv311/share/jupyter/lab/static/5786.2d554c43063b5a1c.js": {
+    "mtime": 1782020492.5308354,
+    "ast_hash": "506e2eeee5f62ff1f55f9973417449a0",
+    "semantic_hash": "506e2eeee5f62ff1f55f9973417449a0"
+  },
+  "venv311/share/jupyter/lab/static/5950.746569d70231a7a3.js": {
+    "mtime": 1782020492.5309188,
+    "ast_hash": "568768b5916e3bb5101dab1e168cd211",
+    "semantic_hash": "568768b5916e3bb5101dab1e168cd211"
+  },
+  "venv311/share/jupyter/lab/static/5968.885b22ebe1703fa9.js": {
+    "mtime": 1782020492.5312817,
+    "ast_hash": "bcce51d4bb004929f27a7cff81fe7bc4",
+    "semantic_hash": "bcce51d4bb004929f27a7cff81fe7bc4"
+  },
+  "venv311/share/jupyter/lab/static/5972.5f8363a8e415817a.js": {
+    "mtime": 1782020492.5314066,
+    "ast_hash": "768488d936cddb2670b0e917dc6de224",
+    "semantic_hash": "768488d936cddb2670b0e917dc6de224"
+  },
+  "venv311/share/jupyter/lab/static/6046.dc0342f041d9a57e.js": {
+    "mtime": 1782020492.5314775,
+    "ast_hash": "7c5fc39baf88424bdfae3a141823badc",
+    "semantic_hash": "7c5fc39baf88424bdfae3a141823badc"
+  },
+  "venv311/share/jupyter/lab/static/6091.c33ea6c1d12337e9.js": {
+    "mtime": 1782020492.531547,
+    "ast_hash": "70669e0c918986a5fadeaa79d4e933bc",
+    "semantic_hash": "70669e0c918986a5fadeaa79d4e933bc"
+  },
+  "venv311/share/jupyter/lab/static/6128.e0b412861d5dc655.js": {
+    "mtime": 1782020492.531632,
+    "ast_hash": "c471abdb4e2c6cf8c1109668b7e4d9f8",
+    "semantic_hash": "c471abdb4e2c6cf8c1109668b7e4d9f8"
+  },
+  "venv311/share/jupyter/lab/static/616.eead7f6763461e23.js": {
+    "mtime": 1782020492.5317016,
+    "ast_hash": "35783d9f155a6aaaec32cee6f9099a86",
+    "semantic_hash": "35783d9f155a6aaaec32cee6f9099a86"
+  },
+  "venv311/share/jupyter/lab/static/6210.f06451ec672125de.js": {
+    "mtime": 1782020492.5319006,
+    "ast_hash": "8e9695fd0386a68959d68d48b8c86136",
+    "semantic_hash": "8e9695fd0386a68959d68d48b8c86136"
+  },
+  "venv311/share/jupyter/lab/static/6226.17128996c369590f.js": {
+    "mtime": 1782020492.5320563,
+    "ast_hash": "54933b64b22bbf20e519a0f14d467323",
+    "semantic_hash": "54933b64b22bbf20e519a0f14d467323"
+  },
+  "venv311/share/jupyter/lab/static/6237.491f37a4e6aeb893.js": {
+    "mtime": 1782020492.5321634,
+    "ast_hash": "c5b1df56ba1cc0f3199a081735edf6ae",
+    "semantic_hash": "c5b1df56ba1cc0f3199a081735edf6ae"
+  },
+  "venv311/share/jupyter/lab/static/6268.c7463ce37d9a9e1a.js": {
+    "mtime": 1782020492.5322328,
+    "ast_hash": "19793ba6a87590ff27b5e09ded056696",
+    "semantic_hash": "19793ba6a87590ff27b5e09ded056696"
+  },
+  "venv311/share/jupyter/lab/static/6307.abc431b32e13adf5.js": {
+    "mtime": 1782020492.5323174,
+    "ast_hash": "845740525a666c91727be0cbd80b277e",
+    "semantic_hash": "845740525a666c91727be0cbd80b277e"
+  },
+  "venv311/share/jupyter/lab/static/6329.cf5cdb43452b6d98.js": {
+    "mtime": 1782020492.5323918,
+    "ast_hash": "93a63854b9941c490ca3e369b49a0894",
+    "semantic_hash": "93a63854b9941c490ca3e369b49a0894"
+  },
+  "venv311/share/jupyter/lab/static/6363.6af9bee83fc1545e.js": {
+    "mtime": 1782020492.532475,
+    "ast_hash": "8e863ec41183ac6dcd50f23ad0b77abc",
+    "semantic_hash": "8e863ec41183ac6dcd50f23ad0b77abc"
+  },
+  "venv311/share/jupyter/lab/static/6401.b0b48dd9f0b7bb70.js": {
+    "mtime": 1782020492.5325432,
+    "ast_hash": "7233312de34d6a97b975a9b08610ba67",
+    "semantic_hash": "7233312de34d6a97b975a9b08610ba67"
+  },
+  "venv311/share/jupyter/lab/static/6445.327be8f9e454c735.js": {
+    "mtime": 1782020492.5326066,
+    "ast_hash": "34b71b067a7697c319fde770e0de55f0",
+    "semantic_hash": "34b71b067a7697c319fde770e0de55f0"
+  },
+  "venv311/share/jupyter/lab/static/6460.cfd47bf7b3826e3c.js": {
+    "mtime": 1782020492.532668,
+    "ast_hash": "d144fcda6fee73604255c413f42d8156",
+    "semantic_hash": "d144fcda6fee73604255c413f42d8156"
+  },
+  "venv311/share/jupyter/lab/static/6482.17d9ad5d34b4312e.js": {
+    "mtime": 1782020492.5327663,
+    "ast_hash": "05200ff1c8e067577b25b0c911dd09e9",
+    "semantic_hash": "05200ff1c8e067577b25b0c911dd09e9"
+  },
+  "venv311/share/jupyter/lab/static/649.e0ad5b8a11471e53.js": {
+    "mtime": 1782020492.532857,
+    "ast_hash": "83898e4fec64702b18a4c74692baf2fc",
+    "semantic_hash": "83898e4fec64702b18a4c74692baf2fc"
+  },
+  "venv311/share/jupyter/lab/static/6490.f54dda44c0e31459.js": {
+    "mtime": 1782020492.5329442,
+    "ast_hash": "db2a8356cca46909182a9d55a62e34ba",
+    "semantic_hash": "db2a8356cca46909182a9d55a62e34ba"
+  },
+  "venv311/share/jupyter/lab/static/6506.c5495027d50f4c04.js": {
+    "mtime": 1782020492.5330715,
+    "ast_hash": "10815c189b48314ff7160d973c2bd845",
+    "semantic_hash": "10815c189b48314ff7160d973c2bd845"
+  },
+  "venv311/share/jupyter/lab/static/6507.3185bd2c238291f5.js": {
+    "mtime": 1782020492.5331786,
+    "ast_hash": "8915916730a54eddb1d28456f2971b9f",
+    "semantic_hash": "8915916730a54eddb1d28456f2971b9f"
+  },
+  "venv311/share/jupyter/lab/static/6520.714093c7cf7d24fa.js": {
+    "mtime": 1782020492.5332735,
+    "ast_hash": "36c93cdc8b69da6f63600fb244ef9c5a",
+    "semantic_hash": "36c93cdc8b69da6f63600fb244ef9c5a"
+  },
+  "venv311/share/jupyter/lab/static/6523.d49becf7e3284255.js": {
+    "mtime": 1782020492.533346,
+    "ast_hash": "e7a72a6142f58698164e3ee52b49f478",
+    "semantic_hash": "e7a72a6142f58698164e3ee52b49f478"
+  },
+  "venv311/share/jupyter/lab/static/6544.a6dd73c3eb3b7acc.js": {
+    "mtime": 1782020492.5334516,
+    "ast_hash": "2a85d9d4e3400bb789ffe2211e7b61f1",
+    "semantic_hash": "2a85d9d4e3400bb789ffe2211e7b61f1"
+  },
+  "venv311/share/jupyter/lab/static/6556.27620b8340ce7baa.js": {
+    "mtime": 1782020492.5335982,
+    "ast_hash": "439b6a2d3866ce195635c35308dab6e0",
+    "semantic_hash": "439b6a2d3866ce195635c35308dab6e0"
+  },
+  "venv311/share/jupyter/lab/static/6591.c9e3bcacefbea81e.js": {
+    "mtime": 1782020492.5337026,
+    "ast_hash": "a708ecc2a17f03d601c9a764dcf374bd",
+    "semantic_hash": "a708ecc2a17f03d601c9a764dcf374bd"
+  },
+  "venv311/share/jupyter/lab/static/6599.c3a11b679a9694da.js": {
+    "mtime": 1782020492.534207,
+    "ast_hash": "a61a55a7f669dbaf4fa6f5f4a3ae4d8b",
+    "semantic_hash": "a61a55a7f669dbaf4fa6f5f4a3ae4d8b"
+  },
+  "venv311/share/jupyter/lab/static/6700.624ed993d5241bd6.js": {
+    "mtime": 1782020492.53453,
+    "ast_hash": "c6f892ff4053801c53f806db1af1be42",
+    "semantic_hash": "c6f892ff4053801c53f806db1af1be42"
+  },
+  "venv311/share/jupyter/lab/static/6715.9ed7169959ed7bbe.js": {
+    "mtime": 1782020492.5346165,
+    "ast_hash": "bbe4e21d0953f5b19a9fdba08002d0e6",
+    "semantic_hash": "bbe4e21d0953f5b19a9fdba08002d0e6"
+  },
+  "venv311/share/jupyter/lab/static/6740.c8a5ff3db279dfe6.js": {
+    "mtime": 1782020492.5346837,
+    "ast_hash": "0db2e792bf616ab26022e6e5d4eecbb6",
+    "semantic_hash": "0db2e792bf616ab26022e6e5d4eecbb6"
+  },
+  "venv311/share/jupyter/lab/static/6925.54225e26e0024dde.js": {
+    "mtime": 1782020492.5348055,
+    "ast_hash": "f10636d342a7ca309b528d618fc7b4f0",
+    "semantic_hash": "f10636d342a7ca309b528d618fc7b4f0"
+  },
+  "venv311/share/jupyter/lab/static/6973.383e2936fdfbf6de.js": {
+    "mtime": 1782020492.5349147,
+    "ast_hash": "3b671573c21b9f38f1a59ab534b14503",
+    "semantic_hash": "3b671573c21b9f38f1a59ab534b14503"
+  },
+  "venv311/share/jupyter/lab/static/7045.803530a771e0dcfb.js": {
+    "mtime": 1782020492.5349855,
+    "ast_hash": "c41e2d347edb8b7c4359c08d6b5c0310",
+    "semantic_hash": "c41e2d347edb8b7c4359c08d6b5c0310"
+  },
+  "venv311/share/jupyter/lab/static/7124.f66cecdfccaf71e3.js": {
+    "mtime": 1782020492.535293,
+    "ast_hash": "e9e00e66e862592c548bb33ca85a03ad",
+    "semantic_hash": "e9e00e66e862592c548bb33ca85a03ad"
+  },
+  "venv311/share/jupyter/lab/static/7164.ba599183b562fd19.js": {
+    "mtime": 1782020492.5353868,
+    "ast_hash": "3d7eed2170c25ff270be900abc96e50e",
+    "semantic_hash": "3d7eed2170c25ff270be900abc96e50e"
+  },
+  "venv311/share/jupyter/lab/static/7178.73884bf9ba7f9b15.js": {
+    "mtime": 1782020492.5354853,
+    "ast_hash": "ddaf96d192c1e6ff91b9f0f7eebeeffc",
+    "semantic_hash": "ddaf96d192c1e6ff91b9f0f7eebeeffc"
+  },
+  "venv311/share/jupyter/lab/static/7208.45afae246938b9e2.js": {
+    "mtime": 1782020492.5355597,
+    "ast_hash": "291c73d6812d563d96fe921876159c83",
+    "semantic_hash": "291c73d6812d563d96fe921876159c83"
+  },
+  "venv311/share/jupyter/lab/static/7303.2f76fa853e5156a1.js": {
+    "mtime": 1782020492.5356824,
+    "ast_hash": "2cdbfffde7bdc222452034d4a770535d",
+    "semantic_hash": "2cdbfffde7bdc222452034d4a770535d"
+  },
+  "venv311/share/jupyter/lab/static/7329.06440d69c17605fa.js": {
+    "mtime": 1782020492.5358295,
+    "ast_hash": "8ad74a53bbb557c10cbdc0ab01177658",
+    "semantic_hash": "8ad74a53bbb557c10cbdc0ab01177658"
+  },
+  "venv311/share/jupyter/lab/static/7335.075b979f938ebf2e.js": {
+    "mtime": 1782020492.5359352,
+    "ast_hash": "71d64bb1d5e12fc2b1f41038c52714f6",
+    "semantic_hash": "71d64bb1d5e12fc2b1f41038c52714f6"
+  },
+  "venv311/share/jupyter/lab/static/7351.ae40313f9570f35e.js": {
+    "mtime": 1782020492.536132,
+    "ast_hash": "7fceec69e719f6401189aff47fa2614a",
+    "semantic_hash": "7fceec69e719f6401189aff47fa2614a"
+  },
+  "venv311/share/jupyter/lab/static/7465.89d45ad931f01de7.js": {
+    "mtime": 1782020492.5362556,
+    "ast_hash": "87d6aa44b4d209c421f16c932209e3a1",
+    "semantic_hash": "87d6aa44b4d209c421f16c932209e3a1"
+  },
+  "venv311/share/jupyter/lab/static/7471.519beb728a80a53d.js": {
+    "mtime": 1782020492.5363388,
+    "ast_hash": "d2c19da96db6bbe103c911f60907b12b",
+    "semantic_hash": "d2c19da96db6bbe103c911f60907b12b"
+  },
+  "venv311/share/jupyter/lab/static/7503.3cd4c5714722eb75.js": {
+    "mtime": 1782020492.5368688,
+    "ast_hash": "89256b2716f501afa691d9a32946d97c",
+    "semantic_hash": "89256b2716f501afa691d9a32946d97c"
+  },
+  "venv311/share/jupyter/lab/static/7517.b4d8b77497bdb47f.js": {
+    "mtime": 1782020492.536977,
+    "ast_hash": "05127ab50516b37fbeb05b3bac24a967",
+    "semantic_hash": "05127ab50516b37fbeb05b3bac24a967"
+  },
+  "venv311/share/jupyter/lab/static/7520.c6ce7217e69f7c4b.js": {
+    "mtime": 1782020492.5370681,
+    "ast_hash": "5a37647531b2dcba0962774d4e0276c3",
+    "semantic_hash": "5a37647531b2dcba0962774d4e0276c3"
+  },
+  "venv311/share/jupyter/lab/static/753.6dbee5789f5b7169.js": {
+    "mtime": 1782020492.5371258,
+    "ast_hash": "6b224405145f53717a0bb2ce0962fc37",
+    "semantic_hash": "6b224405145f53717a0bb2ce0962fc37"
+  },
+  "venv311/share/jupyter/lab/static/7556.376fb09ef7f361a2.js": {
+    "mtime": 1782020492.5371897,
+    "ast_hash": "8691242b93ed5f5947ca23c7506f2502",
+    "semantic_hash": "8691242b93ed5f5947ca23c7506f2502"
+  },
+  "venv311/share/jupyter/lab/static/7624.84e163118dc91e21.js": {
+    "mtime": 1782020492.5372865,
+    "ast_hash": "96247ccb36f48ed9e1d583343e886661",
+    "semantic_hash": "96247ccb36f48ed9e1d583343e886661"
+  },
+  "venv311/share/jupyter/lab/static/7626.3a6cae02a9b4e2b6.js": {
+    "mtime": 1782020492.537401,
+    "ast_hash": "9629b85fc6fe966f5704ea83eb3e4e7e",
+    "semantic_hash": "9629b85fc6fe966f5704ea83eb3e4e7e"
+  },
+  "venv311/share/jupyter/lab/static/7646.4e5abe6a14f86bd3.js": {
+    "mtime": 1782020492.5374753,
+    "ast_hash": "8ba3539be9e9ddd7f52850c984f2c22e",
+    "semantic_hash": "8ba3539be9e9ddd7f52850c984f2c22e"
+  },
+  "venv311/share/jupyter/lab/static/7658.eefc75d66e1237f4.js": {
+    "mtime": 1782020492.5375862,
+    "ast_hash": "4d9cf2b5958b1286e54487f9151bbdec",
+    "semantic_hash": "4d9cf2b5958b1286e54487f9151bbdec"
+  },
+  "venv311/share/jupyter/lab/static/7674.ae2be431343e7b4f.js": {
+    "mtime": 1782020492.537656,
+    "ast_hash": "4067733da8cf3625b22b4a38e209c043",
+    "semantic_hash": "4067733da8cf3625b22b4a38e209c043"
+  },
+  "venv311/share/jupyter/lab/static/79.3f3f05b6ad30d5b2.js": {
+    "mtime": 1782020492.537928,
+    "ast_hash": "a56d526e90c84136e216a5df2e14c898",
+    "semantic_hash": "a56d526e90c84136e216a5df2e14c898"
+  },
+  "venv311/share/jupyter/lab/static/7904.14065a26f61860ed.js": {
+    "mtime": 1782020492.5380118,
+    "ast_hash": "7be429685dbbed03ada6de6a6b141cfb",
+    "semantic_hash": "7be429685dbbed03ada6de6a6b141cfb"
+  },
+  "venv311/share/jupyter/lab/static/7927.da23ef713a87584a.js": {
+    "mtime": 1782020492.5381157,
+    "ast_hash": "8623fd770fb8a4450093ff4b232bd25b",
+    "semantic_hash": "8623fd770fb8a4450093ff4b232bd25b"
+  },
+  "venv311/share/jupyter/lab/static/7945.a101bb619f061c07.js": {
+    "mtime": 1782020492.5382602,
+    "ast_hash": "0a0a7444946614a233267dc3dcf37858",
+    "semantic_hash": "0a0a7444946614a233267dc3dcf37858"
+  },
+  "venv311/share/jupyter/lab/static/795.8863d889ed52477d.js": {
+    "mtime": 1782020492.5383918,
+    "ast_hash": "c1fc5eee7df050ecccabcbe89ca90bd6",
+    "semantic_hash": "c1fc5eee7df050ecccabcbe89ca90bd6"
+  },
+  "venv311/share/jupyter/lab/static/8117.be77bf91abba08f8.js": {
+    "mtime": 1782020492.5385747,
+    "ast_hash": "d393f57cf67473c0673f0d08cfa44b6f",
+    "semantic_hash": "d393f57cf67473c0673f0d08cfa44b6f"
+  },
+  "venv311/share/jupyter/lab/static/8160.3efb802572a85b5e.js": {
+    "mtime": 1782020492.5386338,
+    "ast_hash": "1b623a31f316c9eef1805b4358bf5cfa",
+    "semantic_hash": "1b623a31f316c9eef1805b4358bf5cfa"
+  },
+  "venv311/share/jupyter/lab/static/8171.c78c2cb7fef28816.js": {
+    "mtime": 1782020492.53869,
+    "ast_hash": "a7a7d57242dbf2b0a78a3ee2f2f79727",
+    "semantic_hash": "a7a7d57242dbf2b0a78a3ee2f2f79727"
+  },
+  "venv311/share/jupyter/lab/static/8193.9632c310b34a061a.js": {
+    "mtime": 1782020492.5387707,
+    "ast_hash": "b99b252ef05f3e20a7e1a588b8299f9d",
+    "semantic_hash": "b99b252ef05f3e20a7e1a588b8299f9d"
+  },
+  "venv311/share/jupyter/lab/static/8209.0d84b19beaa90c18.js": {
+    "mtime": 1782020492.5389042,
+    "ast_hash": "e06a8ac6b2d027d79827225cb0253256",
+    "semantic_hash": "e06a8ac6b2d027d79827225cb0253256"
+  },
+  "venv311/share/jupyter/lab/static/8220.e749d8d144cdb1fe.js": {
+    "mtime": 1782020492.538971,
+    "ast_hash": "81909c42271d82d57fcc02212c891c4b",
+    "semantic_hash": "81909c42271d82d57fcc02212c891c4b"
+  },
+  "venv311/share/jupyter/lab/static/8237.c8dda379f753c54f.js": {
+    "mtime": 1782020492.5390365,
+    "ast_hash": "d2f6b3961659721c7e4563840c63b364",
+    "semantic_hash": "d2f6b3961659721c7e4563840c63b364"
+  },
+  "venv311/share/jupyter/lab/static/8256.1e4dcd667fab41ae.js": {
+    "mtime": 1782020492.539177,
+    "ast_hash": "a1e3b705491138e48c054bd1ebc337e8",
+    "semantic_hash": "a1e3b705491138e48c054bd1ebc337e8"
+  },
+  "venv311/share/jupyter/lab/static/8276.ea5cac11a29255a6.js": {
+    "mtime": 1782020492.5393517,
+    "ast_hash": "850238c2fcf0268f6edd8082be49edf7",
+    "semantic_hash": "850238c2fcf0268f6edd8082be49edf7"
+  },
+  "venv311/share/jupyter/lab/static/8334.96a40ee125603c0b.js": {
+    "mtime": 1782020492.5394967,
+    "ast_hash": "d0cef1547e5706d5b3b255a1545ad84f",
+    "semantic_hash": "d0cef1547e5706d5b3b255a1545ad84f"
+  },
+  "venv311/share/jupyter/lab/static/8396.e78222626412f2da.js": {
+    "mtime": 1782020492.5396862,
+    "ast_hash": "488885f59e2d3bf2444354544dbbb954",
+    "semantic_hash": "488885f59e2d3bf2444354544dbbb954"
+  },
+  "venv311/share/jupyter/lab/static/840.097aa3a6454708e0.js": {
+    "mtime": 1782020492.5397964,
+    "ast_hash": "89fc1bdb931ba2034652a4fe977abb0a",
+    "semantic_hash": "89fc1bdb931ba2034652a4fe977abb0a"
+  },
+  "venv311/share/jupyter/lab/static/8450.2d2bdcd5f53625ef.js": {
+    "mtime": 1782020492.5399907,
+    "ast_hash": "6f6b509cee2012b22b2839de84642ce0",
+    "semantic_hash": "6f6b509cee2012b22b2839de84642ce0"
+  },
+  "venv311/share/jupyter/lab/static/8481.8d09bdb5f4090057.js": {
+    "mtime": 1782020492.5401134,
+    "ast_hash": "ffb890e64da9b7e7b8c2b9d5e057a740",
+    "semantic_hash": "ffb890e64da9b7e7b8c2b9d5e057a740"
+  },
+  "venv311/share/jupyter/lab/static/8608.b9176ffe9d48860a.js": {
+    "mtime": 1782020492.5402653,
+    "ast_hash": "993cf1b1c18a303217c5abcecc573077",
+    "semantic_hash": "993cf1b1c18a303217c5abcecc573077"
+  },
+  "venv311/share/jupyter/lab/static/863.305741bdc94095c1.js": {
+    "mtime": 1782020492.5403504,
+    "ast_hash": "21ba324cf36ddd4a2bbf393158e454e4",
+    "semantic_hash": "21ba324cf36ddd4a2bbf393158e454e4"
+  },
+  "venv311/share/jupyter/lab/static/8680.bb5e6e1f4a04dd0d.js": {
+    "mtime": 1782020492.5404396,
+    "ast_hash": "fcfdd64ffb84a0dce79a03ea0112decf",
+    "semantic_hash": "fcfdd64ffb84a0dce79a03ea0112decf"
+  },
+  "venv311/share/jupyter/lab/static/8690.593b205a1e45263d.js": {
+    "mtime": 1782020492.5405924,
+    "ast_hash": "b8e831755a53bd5117d532f634bbe929",
+    "semantic_hash": "b8e831755a53bd5117d532f634bbe929"
+  },
+  "venv311/share/jupyter/lab/static/8710.afb8adb86f4ebcbb.js": {
+    "mtime": 1782020492.5406759,
+    "ast_hash": "c6da54b7837d7a56ba2feea65f62e9ec",
+    "semantic_hash": "c6da54b7837d7a56ba2feea65f62e9ec"
+  },
+  "venv311/share/jupyter/lab/static/875.6483eb89fd8d09e0.js": {
+    "mtime": 1782020492.5407665,
+    "ast_hash": "0cd388940a212efdb81644d1c813455c",
+    "semantic_hash": "0cd388940a212efdb81644d1c813455c"
+  },
+  "venv311/share/jupyter/lab/static/8754.ee90775719c73894.js": {
+    "mtime": 1782020492.5409112,
+    "ast_hash": "3e191fecf426780404a04c4504ea3676",
+    "semantic_hash": "3e191fecf426780404a04c4504ea3676"
+  },
+  "venv311/share/jupyter/lab/static/8774.ed0400e7546c7247.js": {
+    "mtime": 1782020492.5410037,
+    "ast_hash": "7cd28555e4caf1628105db406b284a92",
+    "semantic_hash": "7cd28555e4caf1628105db406b284a92"
+  },
+  "venv311/share/jupyter/lab/static/8777.b792426c6e1a7949.js": {
+    "mtime": 1782020492.541103,
+    "ast_hash": "f6281ce6217d4ead51fd34c9515f44bb",
+    "semantic_hash": "f6281ce6217d4ead51fd34c9515f44bb"
+  },
+  "venv311/share/jupyter/lab/static/8901.ce25f099d5c8a915.js": {
+    "mtime": 1782020492.5413003,
+    "ast_hash": "c37808a94238cdcab9db037bf380178d",
+    "semantic_hash": "c37808a94238cdcab9db037bf380178d"
+  },
+  "venv311/share/jupyter/lab/static/8915.1ef5165c4f3674df.js": {
+    "mtime": 1782020492.5414207,
+    "ast_hash": "d8e158b5378d0367c410ce0da58434ef",
+    "semantic_hash": "d8e158b5378d0367c410ce0da58434ef"
+  },
+  "venv311/share/jupyter/lab/static/9001.4f10419147a67141.js": {
+    "mtime": 1782020492.5414975,
+    "ast_hash": "58e670c197a26f1f62fca4b9c8d55cf0",
+    "semantic_hash": "58e670c197a26f1f62fca4b9c8d55cf0"
+  },
+  "venv311/share/jupyter/lab/static/9029.72fbdeecbac5889f.js": {
+    "mtime": 1782020492.5416665,
+    "ast_hash": "2b4b07588b9d84c952f15a2c52aa85d5",
+    "semantic_hash": "2b4b07588b9d84c952f15a2c52aa85d5"
+  },
+  "venv311/share/jupyter/lab/static/9111.92bcfcf14003ad2f.js": {
+    "mtime": 1782020492.5417438,
+    "ast_hash": "9040400769cb5711d98a6c51e276aa2f",
+    "semantic_hash": "9040400769cb5711d98a6c51e276aa2f"
+  },
+  "venv311/share/jupyter/lab/static/9198.1ee665a54bb815d8.js": {
+    "mtime": 1782020492.5419068,
+    "ast_hash": "f7855d71c57905a459ac18103fc6209f",
+    "semantic_hash": "f7855d71c57905a459ac18103fc6209f"
+  },
+  "venv311/share/jupyter/lab/static/9202.e985dbfa0c547ac4.js": {
+    "mtime": 1782020492.541981,
+    "ast_hash": "bba16567660fec215f46e0e7e62cca1e",
+    "semantic_hash": "bba16567660fec215f46e0e7e62cca1e"
+  },
+  "venv311/share/jupyter/lab/static/9303.c60c457976074d21.js": {
+    "mtime": 1782020492.542081,
+    "ast_hash": "7c21df45b13c4da9593d58b0fdd6d9f5",
+    "semantic_hash": "7c21df45b13c4da9593d58b0fdd6d9f5"
+  },
+  "venv311/share/jupyter/lab/static/9325.b2a91650c8023d6f.js": {
+    "mtime": 1782020492.5421836,
+    "ast_hash": "85ce593f009cf6e2b410e092eafeb416",
+    "semantic_hash": "85ce593f009cf6e2b410e092eafeb416"
+  },
+  "venv311/share/jupyter/lab/static/9508.cf689ff58640c53a.js": {
+    "mtime": 1782020492.5423248,
+    "ast_hash": "ac5cff1910cf7a4f930d93ab32fa2114",
+    "semantic_hash": "ac5cff1910cf7a4f930d93ab32fa2114"
+  },
+  "venv311/share/jupyter/lab/static/9518.eb5fcc76b3bcd2d0.js": {
+    "mtime": 1782020492.5424333,
+    "ast_hash": "6568a17c27e9fd68298da084c734d1f9",
+    "semantic_hash": "6568a17c27e9fd68298da084c734d1f9"
+  },
+  "venv311/share/jupyter/lab/static/9543.a8244c58cf9a6f50.js": {
+    "mtime": 1782020492.5425575,
+    "ast_hash": "01697e12341a28d9ae3ba4f02981e313",
+    "semantic_hash": "01697e12341a28d9ae3ba4f02981e313"
+  },
+  "venv311/share/jupyter/lab/static/9565.1e22fdb334167178.js": {
+    "mtime": 1782020492.5426273,
+    "ast_hash": "f87ef886d18e8164559fee5bbc0afe48",
+    "semantic_hash": "f87ef886d18e8164559fee5bbc0afe48"
+  },
+  "venv311/share/jupyter/lab/static/9571.c203329fce5dca59.js": {
+    "mtime": 1782020492.5427246,
+    "ast_hash": "c2e372646c67c7257cf37f099ef9c2e9",
+    "semantic_hash": "c2e372646c67c7257cf37f099ef9c2e9"
+  },
+  "venv311/share/jupyter/lab/static/9599.dd974794b7c07169.js": {
+    "mtime": 1782020492.542826,
+    "ast_hash": "3b144fa1ad72472cc2859de9caf85718",
+    "semantic_hash": "3b144fa1ad72472cc2859de9caf85718"
+  },
+  "venv311/share/jupyter/lab/static/962.33ba5c4701b5060f.js": {
+    "mtime": 1782020492.5428853,
+    "ast_hash": "ae5c0a428cfb30d9a670f53c9a2c1c6b",
+    "semantic_hash": "ae5c0a428cfb30d9a670f53c9a2c1c6b"
+  },
+  "venv311/share/jupyter/lab/static/9661.655bf8f7a2179fc9.js": {
+    "mtime": 1782020492.5430222,
+    "ast_hash": "bf101a96296b3612c770db5941752f63",
+    "semantic_hash": "bf101a96296b3612c770db5941752f63"
+  },
+  "venv311/share/jupyter/lab/static/9699.3f28ac81b1a6fe0d.js": {
+    "mtime": 1782020492.5431683,
+    "ast_hash": "828667a14aa1134479b22f7eb08c0c74",
+    "semantic_hash": "828667a14aa1134479b22f7eb08c0c74"
+  },
+  "venv311/share/jupyter/lab/static/9701.05648707e9bb8b5d.js": {
+    "mtime": 1782020492.5433104,
+    "ast_hash": "857274cd6b825876cd4e9fd28b94e4ab",
+    "semantic_hash": "857274cd6b825876cd4e9fd28b94e4ab"
+  },
+  "venv311/share/jupyter/lab/static/9797.5f451e6ec7682c9a.js": {
+    "mtime": 1782020492.5438702,
+    "ast_hash": "d075d55870afede774ad4ee4f3bf718d",
+    "semantic_hash": "d075d55870afede774ad4ee4f3bf718d"
+  },
+  "venv311/share/jupyter/lab/static/988.f2a9b9e578d483be.js": {
+    "mtime": 1782020492.5439417,
+    "ast_hash": "127515a7bb3360af2d8c84afa3be3096",
+    "semantic_hash": "127515a7bb3360af2d8c84afa3be3096"
+  },
+  "venv311/share/jupyter/lab/static/992.1e5b27001dad0742.js": {
+    "mtime": 1782020492.544048,
+    "ast_hash": "01fd80ef9ff6afecacb60e5c6aed025c",
+    "semantic_hash": "01fd80ef9ff6afecacb60e5c6aed025c"
+  },
+  "venv311/share/jupyter/lab/static/9954.aa40d27c3a9319cc.js": {
+    "mtime": 1782020492.5441728,
+    "ast_hash": "fe7edc56ae0cf3780fb0345090f938d7",
+    "semantic_hash": "fe7edc56ae0cf3780fb0345090f938d7"
+  },
+  "venv311/share/jupyter/lab/static/bootstrap.js": {
+    "mtime": 1782020492.5461752,
+    "ast_hash": "cf090ba022ebecf8201441a1cd5b3afa",
+    "semantic_hash": "cf090ba022ebecf8201441a1cd5b3afa"
+  },
+  "venv311/share/jupyter/lab/static/build_log.json": {
+    "mtime": 1782020492.5462625,
+    "ast_hash": "696b995541b414609c2cea0c23362462",
+    "semantic_hash": "696b995541b414609c2cea0c23362462"
+  },
+  "venv311/share/jupyter/lab/static/index.out.js": {
+    "mtime": 1782020492.549595,
+    "ast_hash": "3e23418259b0876cce51d41d7e31c4d8",
+    "semantic_hash": "3e23418259b0876cce51d41d7e31c4d8"
+  },
+  "venv311/share/jupyter/lab/static/jlab_core.dd62994cfa466e98.js": {
+    "mtime": 1782020492.5517955,
+    "ast_hash": "356df9534afdb015221b25047968f2be",
+    "semantic_hash": "356df9534afdb015221b25047968f2be"
+  },
+  "venv311/share/jupyter/lab/static/main.5600171c9fe512a9.js": {
+    "mtime": 1782020492.552086,
+    "ast_hash": "7f4880334cf88e535050baf024f5f4ea",
+    "semantic_hash": "7f4880334cf88e535050baf024f5f4ea"
+  },
+  "venv311/share/jupyter/lab/static/package.json": {
+    "mtime": 1782020492.552244,
+    "ast_hash": "b68decd1acbc7488900cee92b46e6570",
+    "semantic_hash": "b68decd1acbc7488900cee92b46e6570"
+  },
+  "venv311/share/jupyter/lab/static/style.js": {
+    "mtime": 1782020492.5523212,
+    "ast_hash": "ff0ccc59a742ebd37ec35ee126e02d34",
+    "semantic_hash": "ff0ccc59a742ebd37ec35ee126e02d34"
+  },
+  "venv311/share/jupyter/lab/static/third-party-licenses.json": {
+    "mtime": 1782020492.5525088,
+    "ast_hash": "35e6181d56f3efa0f31c2fea2129fd35",
+    "semantic_hash": "35e6181d56f3efa0f31c2fea2129fd35"
+  },
+  "venv311/share/jupyter/lab/themes/@jupyterlab/theme-dark-extension/index.js": {
+    "mtime": 1782020492.5527844,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "venv311/share/jupyter/lab/themes/@jupyterlab/theme-dark-high-contrast-extension/index.js": {
+    "mtime": 1782020492.553001,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "venv311/share/jupyter/lab/themes/@jupyterlab/theme-light-extension/index.js": {
+    "mtime": 1782020492.5532064,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-notebook/lab-extension/package.json": {
+    "mtime": 1782020492.6374333,
+    "ast_hash": "4ff548c2828381f63014c5865f0ed99a",
+    "semantic_hash": "4ff548c2828381f63014c5865f0ed99a"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-notebook/lab-extension/schemas/@jupyter-notebook/lab-extension/interface-switcher.json": {
+    "mtime": 1782020492.6376116,
+    "ast_hash": "e96c620a14d77a2fd491b3d94cff367c",
+    "semantic_hash": "e96c620a14d77a2fd491b3d94cff367c"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-notebook/lab-extension/schemas/@jupyter-notebook/lab-extension/launch-tree.json": {
+    "mtime": 1782020492.6376889,
+    "ast_hash": "907867d67f1b9ee0bac8fcd5d0807823",
+    "semantic_hash": "907867d67f1b9ee0bac8fcd5d0807823"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-notebook/lab-extension/static/148.69fc9844a15ddd92.js": {
+    "mtime": 1782020492.6378734,
+    "ast_hash": "c359b4db9e938b7dbf81aa56a7c75b55",
+    "semantic_hash": "c359b4db9e938b7dbf81aa56a7c75b55"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-notebook/lab-extension/static/232.e5496ffb26186f51.js": {
+    "mtime": 1782020492.6379917,
+    "ast_hash": "003a2d0049ff5b7ae28da275324388d0",
+    "semantic_hash": "003a2d0049ff5b7ae28da275324388d0"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-notebook/lab-extension/static/590.7b2c770f43164410.js": {
+    "mtime": 1782020492.638071,
+    "ast_hash": "38a792b20fe8aa3c58771ef771cca311",
+    "semantic_hash": "38a792b20fe8aa3c58771ef771cca311"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-notebook/lab-extension/static/800.68f27b88f2605791.js": {
+    "mtime": 1782020492.6381898,
+    "ast_hash": "6439beeffcb22ea8b5aecd803a890eec",
+    "semantic_hash": "6439beeffcb22ea8b5aecd803a890eec"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-notebook/lab-extension/static/remoteEntry.016fceb1d9e4f15b.js": {
+    "mtime": 1782020492.6383972,
+    "ast_hash": "5f7f446c9f76ed46b073926c7a05c936",
+    "semantic_hash": "5f7f446c9f76ed46b073926c7a05c936"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-notebook/lab-extension/static/style.js": {
+    "mtime": 1782020492.638472,
+    "ast_hash": "df26cc0f7a4b97dcad5a4eb0974c4de1",
+    "semantic_hash": "df26cc0f7a4b97dcad5a4eb0974c4de1"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-notebook/lab-extension/static/third-party-licenses.json": {
+    "mtime": 1782020492.6386175,
+    "ast_hash": "bfe853c66b5ea2270daf2e9f004a9af5",
+    "semantic_hash": "bfe853c66b5ea2270daf2e9f004a9af5"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/build_log.json": {
+    "mtime": 1782020488.8060467,
+    "ast_hash": "a51dc271a92f5ea8c39020470b786ff7",
+    "semantic_hash": "a51dc271a92f5ea8c39020470b786ff7"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/install.json": {
+    "mtime": 1782020488.811806,
+    "ast_hash": "a4f85f50195e52b9e773efc56a98db85",
+    "semantic_hash": "a4f85f50195e52b9e773efc56a98db85"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/package.json": {
+    "mtime": 1782020488.806133,
+    "ast_hash": "922cff3a9e214de546c9e526b3d88c0d",
+    "semantic_hash": "922cff3a9e214de546c9e526b3d88c0d"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/schemas/@jupyter-widgets/jupyterlab-manager/plugin.json": {
+    "mtime": 1782020488.8063872,
+    "ast_hash": "44cab5bfae17c7f362673e087c209681",
+    "semantic_hash": "44cab5bfae17c7f362673e087c209681"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/static/lib_index_js.56f37fb50492d0d63a45.js": {
+    "mtime": 1782020488.8066518,
+    "ast_hash": "0290080aa9dd1745e1083ffb01278ef8",
+    "semantic_hash": "0290080aa9dd1745e1083ffb01278ef8"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/static/packages_base-manager_lib_index_js.13941b475e5b5a1ab133.js": {
+    "mtime": 1782020488.8070107,
+    "ast_hash": "eabe6c1e2dadf7211f9e2390cfaaa16b",
+    "semantic_hash": "eabe6c1e2dadf7211f9e2390cfaaa16b"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/static/packages_base_lib_index_js-webpack_sharing_consume_default_jquery_jquery.5dd13f8e980fa3c50bfe.js": {
+    "mtime": 1782020488.8073177,
+    "ast_hash": "da3d927937ad46e78dc2dde430f03f64",
+    "semantic_hash": "da3d927937ad46e78dc2dde430f03f64"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/static/packages_controls_lib_index_js.6d5d05e0ec5e0c9f8185.js": {
+    "mtime": 1782020488.8077848,
+    "ast_hash": "b270932d887d171bc36dd1da61f96688",
+    "semantic_hash": "b270932d887d171bc36dd1da61f96688"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/static/packages_controls_lib_version_js.105c0edf5e497d01e132.js": {
+    "mtime": 1782020488.8082445,
+    "ast_hash": "1ccbb943839d33e1232872de9d130df6",
+    "semantic_hash": "1ccbb943839d33e1232872de9d130df6"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/static/packages_output_lib_index_js.49c9e4037a3b9e9e3b18.js": {
+    "mtime": 1782020488.8084004,
+    "ast_hash": "eeaa367e4512351d1a1195e11c1a5058",
+    "semantic_hash": "eeaa367e4512351d1a1195e11c1a5058"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/static/remoteEntry.9077b3d2deaffb329dfc.js": {
+    "mtime": 1782020488.8085852,
+    "ast_hash": "39db720eb20ec7232a6cefb3fd2f7c0a",
+    "semantic_hash": "39db720eb20ec7232a6cefb3fd2f7c0a"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/static/style.js": {
+    "mtime": 1782020488.8087862,
+    "ast_hash": "8259c5c9dd06dde49a5e3abaad871e37",
+    "semantic_hash": "8259c5c9dd06dde49a5e3abaad871e37"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/static/vendors-node_modules_backbone_backbone_js-node_modules_lodash_isEqual_js.ab532abfb6832a50f59e.js": {
+    "mtime": 1782020488.8091125,
+    "ast_hash": "e02e1d12557127448767b5e64ac00e70",
+    "semantic_hash": "e02e1d12557127448767b5e64ac00e70"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/static/vendors-node_modules_base64-js_index_js-node_modules_sanitize-html_index_js.c79fc2bcc3f69676beda.js": {
+    "mtime": 1782020488.809888,
+    "ast_hash": "3508b99e85dfa86a47472c14b889de92",
+    "semantic_hash": "3508b99e85dfa86a47472c14b889de92"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/static/vendors-node_modules_d3-color_src_color_js-node_modules_d3-format_src_defaultLocale_js-node_m-09b215.2643c43f22ad111f4f82.js": {
+    "mtime": 1782020488.8104596,
+    "ast_hash": "86558376047ab70ef1423a7073a13b2a",
+    "semantic_hash": "86558376047ab70ef1423a7073a13b2a"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/static/vendors-node_modules_jquery_dist_jquery_js.3afdf979a9caffdf15a7.js": {
+    "mtime": 1782020488.8110313,
+    "ast_hash": "eb31e437ab72e4a5821fde3ac8922826",
+    "semantic_hash": "eb31e437ab72e4a5821fde3ac8922826"
+  },
+  "venv311/share/jupyter/labextensions/@jupyter-widgets/jupyterlab-manager/static/vendors-node_modules_semver_index_js.7a90c08b9ce3dac425c6.js": {
+    "mtime": 1782020488.8115585,
+    "ast_hash": "bd8877113b289ff07b1c5a778e7c983b",
+    "semantic_hash": "bd8877113b289ff07b1c5a778e7c983b"
+  },
+  "venv311/share/jupyter/labextensions/jupyterlab-plotly/install.json": {
+    "mtime": 1782020487.956631,
+    "ast_hash": "07b12b034540dbfa808fa6cb3cd0a66a",
+    "semantic_hash": "07b12b034540dbfa808fa6cb3cd0a66a"
+  },
+  "venv311/share/jupyter/labextensions/jupyterlab-plotly/package.json": {
+    "mtime": 1782020487.9511063,
+    "ast_hash": "06fa9ed2e4c1b2ecd8b3e1f45107b5e1",
+    "semantic_hash": "06fa9ed2e4c1b2ecd8b3e1f45107b5e1"
+  },
+  "venv311/share/jupyter/labextensions/jupyterlab-plotly/static/1.747c8e0c8042a68fba0a.js": {
+    "mtime": 1782020487.9560606,
+    "ast_hash": "db005a74da552a98f737f4cd934fdc4b",
+    "semantic_hash": "db005a74da552a98f737f4cd934fdc4b"
+  },
+  "venv311/share/jupyter/labextensions/jupyterlab-plotly/static/remoteEntry.2a6392a40c19ad8383a0.js": {
+    "mtime": 1782020487.956409,
+    "ast_hash": "fc3067c1bd1f4474370524f25273be8f",
+    "semantic_hash": "fc3067c1bd1f4474370524f25273be8f"
+  },
+  "venv311/share/jupyter/labextensions/jupyterlab-plotly/static/style.js": {
+    "mtime": 1782020487.9564817,
+    "ast_hash": "8259c5c9dd06dde49a5e3abaad871e37",
+    "semantic_hash": "8259c5c9dd06dde49a5e3abaad871e37"
+  },
+  "venv311/share/jupyter/labextensions/jupyterlab-plotly/static/third-party-licenses.json": {
+    "mtime": 1782020487.956554,
+    "ast_hash": "d81b2495a0a1ee1a6c87fd7de8a0f43c",
+    "semantic_hash": "d81b2495a0a1ee1a6c87fd7de8a0f43c"
+  },
+  "venv311/share/jupyter/labextensions/jupyterlab_pygments/install.json": {
+    "mtime": 1782020488.8146734,
+    "ast_hash": "083cee177415b267db10251dc0f19862",
+    "semantic_hash": "083cee177415b267db10251dc0f19862"
+  },
+  "venv311/share/jupyter/labextensions/jupyterlab_pygments/package.json": {
+    "mtime": 1782020488.8141212,
+    "ast_hash": "45e3f8b6ea127c71a1b19539789af331",
+    "semantic_hash": "45e3f8b6ea127c71a1b19539789af331"
+  },
+  "venv311/share/jupyter/labextensions/jupyterlab_pygments/static/568.1e2faa2ba0bbe59c4780.js": {
+    "mtime": 1782020488.8142192,
+    "ast_hash": "04f31eba2917e8dfbde018bbce5f067c",
+    "semantic_hash": "04f31eba2917e8dfbde018bbce5f067c"
+  },
+  "venv311/share/jupyter/labextensions/jupyterlab_pygments/static/747.67662283a5707eeb4d4c.js": {
+    "mtime": 1782020488.814365,
+    "ast_hash": "f567b48208b26c538a195dbb45fd0f1e",
+    "semantic_hash": "f567b48208b26c538a195dbb45fd0f1e"
+  },
+  "venv311/share/jupyter/labextensions/jupyterlab_pygments/static/remoteEntry.5cbb9d2323598fbda535.js": {
+    "mtime": 1782020488.8144484,
+    "ast_hash": "ba723395a56dac8282080b3f48ec721a",
+    "semantic_hash": "ba723395a56dac8282080b3f48ec721a"
+  },
+  "venv311/share/jupyter/labextensions/jupyterlab_pygments/static/style.js": {
+    "mtime": 1782020488.8145266,
+    "ast_hash": "a5418b6b61c52dafb5abd360a45af1e8",
+    "semantic_hash": "a5418b6b61c52dafb5abd360a45af1e8"
+  },
+  "venv311/share/jupyter/labextensions/jupyterlab_pygments/static/third-party-licenses.json": {
+    "mtime": 1782020488.8145964,
+    "ast_hash": "12608252d7401971d48d13858e551589",
+    "semantic_hash": "12608252d7401971d48d13858e551589"
+  },
+  "venv311/share/jupyter/nbconvert/templates/asciidoc/conf.json": {
+    "mtime": 1782020492.276793,
+    "ast_hash": "b831ce48114f4fe9b408da5d38e43a69",
+    "semantic_hash": "b831ce48114f4fe9b408da5d38e43a69"
+  },
+  "venv311/share/jupyter/nbconvert/templates/basic/conf.json": {
+    "mtime": 1782020492.2774625,
+    "ast_hash": "155683b9d088177648adff5f3c2a6bcc",
+    "semantic_hash": "155683b9d088177648adff5f3c2a6bcc"
+  },
+  "venv311/share/jupyter/nbconvert/templates/classic/conf.json": {
+    "mtime": 1782020492.2777927,
+    "ast_hash": "1001b3f2c0ae32f8fae94d88c1abd772",
+    "semantic_hash": "1001b3f2c0ae32f8fae94d88c1abd772"
+  },
+  "venv311/share/jupyter/nbconvert/templates/lab/conf.json": {
+    "mtime": 1782020492.2785535,
+    "ast_hash": "7abb00861beb3899228eaf469039f3c2",
+    "semantic_hash": "7abb00861beb3899228eaf469039f3c2"
+  },
+  "venv311/share/jupyter/nbconvert/templates/latex/conf.json": {
+    "mtime": 1782020492.2797356,
+    "ast_hash": "05cba9bc60d2eb879e1fad0aaa514c0b",
+    "semantic_hash": "05cba9bc60d2eb879e1fad0aaa514c0b"
+  },
+  "venv311/share/jupyter/nbconvert/templates/markdown/conf.json": {
+    "mtime": 1782020492.2806084,
+    "ast_hash": "51c3211171decfb14cf81436bee875ff",
+    "semantic_hash": "51c3211171decfb14cf81436bee875ff"
+  },
+  "venv311/share/jupyter/nbconvert/templates/python/conf.json": {
+    "mtime": 1782020492.280768,
+    "ast_hash": "26095f54a77f952d237a78848179d940",
+    "semantic_hash": "26095f54a77f952d237a78848179d940"
+  },
+  "venv311/share/jupyter/nbconvert/templates/reveal/conf.json": {
+    "mtime": 1782020492.281062,
+    "ast_hash": "86df750e7f14ba21430aaa631c15d59e",
+    "semantic_hash": "86df750e7f14ba21430aaa631c15d59e"
+  },
+  "venv311/share/jupyter/nbconvert/templates/rst/conf.json": {
+    "mtime": 1782020492.281354,
+    "ast_hash": "777cbdbf24dc19fe5febeb0f6ff40607",
+    "semantic_hash": "777cbdbf24dc19fe5febeb0f6ff40607"
+  },
+  "venv311/share/jupyter/nbconvert/templates/script/conf.json": {
+    "mtime": 1782020492.2815304,
+    "ast_hash": "51cf09216a656b00fe8e941cdce5c4b6",
+    "semantic_hash": "51cf09216a656b00fe8e941cdce5c4b6"
+  },
+  "venv311/share/jupyter/nbconvert/templates/webpdf/conf.json": {
+    "mtime": 1782020492.281706,
+    "ast_hash": "bb29d9a1206439b995a8b706f3913ca9",
+    "semantic_hash": "bb29d9a1206439b995a8b706f3913ca9"
+  },
+  "venv311/share/jupyter/nbextensions/jupyter-js-widgets/extension.js": {
+    "mtime": 1782020487.432395,
+    "ast_hash": "cc5fa3ff31f854840c3ad5a63ad35f46",
+    "semantic_hash": "cc5fa3ff31f854840c3ad5a63ad35f46"
+  },
+  "venv311/share/jupyter/nbextensions/pydeck/extensionRequires.js": {
+    "mtime": 1782020489.7947693,
+    "ast_hash": "917fa0380eae8e2b2da69914eebc9eac",
+    "semantic_hash": "917fa0380eae8e2b2da69914eebc9eac"
+  },
+  "venv311/share/jupyter/nbextensions/pydeck/index.js": {
+    "mtime": 1782020489.7990608,
+    "ast_hash": "1dfb48a117134f6b5ba509f9d85b5057",
+    "semantic_hash": "1dfb48a117134f6b5ba509f9d85b5057"
+  },
+  "videos/kineticgraph-layer-stack/.media/preferences.json": {
+    "mtime": 1784981823.0751562,
+    "ast_hash": "1e7dbe2098a26104b15031350c17e584",
+    "semantic_hash": "1e7dbe2098a26104b15031350c17e584"
+  },
+  "videos/kineticgraph-layer-stack/hyperframes.json": {
+    "mtime": 1784981823.0782726,
+    "ast_hash": "9aba7af72c9a867a940b5ea847eb18da",
+    "semantic_hash": "9aba7af72c9a867a940b5ea847eb18da"
+  },
+  "videos/kineticgraph-layer-stack/meta.json": {
+    "mtime": 1784981823.0785873,
+    "ast_hash": "8eafb9fb66a862d6ea70cfc0756d2ed6",
+    "semantic_hash": "8eafb9fb66a862d6ea70cfc0756d2ed6"
+  },
+  "videos/kineticgraph-layer-stack/package.json": {
+    "mtime": 1784981823.0787501,
+    "ast_hash": "8f7117261a52b6836d9ca475bc6e9fe5",
+    "semantic_hash": "8f7117261a52b6836d9ca475bc6e9fe5"
+  }
+}

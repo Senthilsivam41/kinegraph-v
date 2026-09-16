@@ -44,7 +44,7 @@ class MultiHopGraphRetriever:
 
     @staticmethod
     def _validate_max_hops(max_hops: int) -> int:
-        if not 1 <= max_hops <= 5:
+        if type(max_hops) is not int or not 1 <= max_hops <= 5:
             raise ValueError("max_hops must be between 1 and 5")
         return max_hops
 
@@ -195,7 +195,7 @@ class MultiHopGraphRetriever:
         community_id: Optional[str] = None,
         diagnostics: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
-        hops = self._validate_max_hops(max_hops or self.max_hops)
+        hops = self._validate_max_hops(self.max_hops if max_hops is None else max_hops)
         selected_strategy = TraversalStrategy(strategy or self.strategy)
         trace = diagnostics if diagnostics is not None else {}
         trace.update({

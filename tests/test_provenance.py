@@ -129,6 +129,47 @@ def test_graph_paths_and_retriever_behavior_are_audited():
     assert audit["retriever_diagnostics"]["cycle_prevention_count"] == 2
 
 
+@pytest.mark.parametrize("fault", ["cycle", "disconnected", "seed", "direction", "weight", "blank_evidence", "depth", "hops"])
+def test_path_audit_rejects_invalid_evidence_and_topology(fault):
+    result = _result()
+    edges = [
+        {"from_node_id": "A", "to_node_id": "B", "relationship_type": "USES", "direction": "OUTGOING", "weight": 0.8, "evidence_text": "A uses B"},
+        {"from_node_id": "B", "to_node_id": "C", "relationship_type": "USES", "direction": "INCOMING", "weight": 0.7, "evidence_text": "C uses B"},
+    ]
+    metadata = {"seed_node_id": "A", "traversal_depth": 2, "max_hops": 2, "traversal_strategy": "bfs", "relationship_path": edges}
+    if fault == "cycle":
+        edges[1]["to_node_id"] = "A"
+    elif fault == "disconnected":
+        edges[1]["from_node_id"] = "X"
+    elif fault == "seed":
+        metadata["seed_node_id"] = "X"
+    elif fault == "direction":
+        edges[0]["direction"] = "SIDEWAYS"
+    elif fault == "weight":
+        edges[0]["weight"] = float("nan")
+    elif fault == "blank_evidence":
+        edges[0]["evidence_text"] = "  "
+    elif fault == "depth":
+        metadata["traversal_depth"] = "invalid"
+    else:
+        metadata["max_hops"] = 1
+    result["trace"]["channel_candidates"]["graph"] = [{"source": "graph_traversal", "metadata": metadata}]
+    audit = _record(result=result)["retrieval"]["graph_path_audit"]
+    assert audit["all_paths_complete"] is False
+    assert audit["complete_path_count"] == 0
+
+
+def test_complete_candidate_provenance_requires_every_query_in_report():
+    import pandas as pd
+    from eval.ragas_evaluator import RAGASEvaluator
+
+    rows = [dict(SCORES, question="A", provenance=_record()), dict(SCORES, question="B", provenance=_record())]
+    rows[0]["provenance"]["retrieval"]["candidate_provenance_completeness"] = 1.0
+    rows[1]["provenance"]["retrieval"].pop("candidate_provenance_completeness", None)
+    report = RAGASEvaluator.__new__(RAGASEvaluator).generate_report(pd.DataFrame(rows))
+    assert report["retrieval_diagnostics"]["candidate_provenance_samples"] == 1
+
+
 @pytest.mark.parametrize(
     ("result", "scores", "workflow_error", "expected_stage"),
     [
