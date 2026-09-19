@@ -1,6 +1,6 @@
 {
   "accepted_for_evaluation": true,
-  "audit_content_sha256": "b562bfd4fa186fddbb7d0914c7ece70a025c3a228e124c419c57f8e051cad8a8",
+  "audit_content_sha256": "3b0ccb784b9f1f56267c2ac3661e0ca5de95a0f81ce3f9102eb0698b7b960918",
   "dataset_version": "1.1.0",
   "rows": [
     {
@@ -458,7 +458,7 @@
           "evidence_excerpt": "# KineticGraph-Vectra\n\n<div align=\"center\">\n\n**A Production-Ready Hybrid RAG System**\n\n*Combining Vector Search (ChromaD",
           "evidence_excerpt_sha256": "7521e89c09b57dcd828428547e6737c447beb5a3bbb23f9e3e33dd55636cee4f",
           "source_path": "README.md",
-          "source_sha256": "9d0ac645f5fc5be8ac1505e80a0535efdc6ccdfa7d63c2e351edec6557ed1091",
+          "source_sha256": "89dc7b708d4eaf588eb0e9b54a81e0a981236ae868d254a12f5c0d049743d381",
           "supporting_chunk_ids": [
             "README.md#sha256:7521e89c09b57dcd828428547e6737c447beb5a3bbb23f9e3e33dd55636cee4f"
           ],

@@ -59,6 +59,7 @@ data/chunks/
 data/documents/
 
 # Evaluation results & caches
+reports/traversal_sweeps/
 eval_results.csv
 *eval_results.csv
 *mode_comparison_results.csv
