@@ -1,4 +1,6 @@
 import asyncio
+import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -164,6 +166,27 @@ def test_graph_search_uses_read_access_and_parameterized_limit():
         "MATCH (d:Document) RETURN d\nLIMIT $result_limit",
         result_limit=7,
     )
+
+
+def test_settings_load_env_without_deprecated_config(tmp_path):
+    (tmp_path / ".env").write_text(
+        "OPENAI_API_KEY=test-key\nNEO4J_PASSWORD=a-secure-test-password\n"
+        "APP_NAME=dotenv-name\nAPI_PORT=8123\nlog_level=DEBUG\nUNRELATED=value\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-W", "error::DeprecationWarning", "-c", (
+            f"import sys; sys.path.insert(0, {str(REPO_ROOT)!r}); "
+            "from backend.core.config import Settings; configured = Settings(); "
+            "assert configured.APP_NAME == 'environment-name'; "
+            "assert configured.API_PORT == 8123; "
+            "assert configured.LOG_LEVEL == 'INFO'"
+        )],
+        cwd=tmp_path,
+        env={"APP_NAME": "environment-name"},
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_security_settings_reject_credentialed_wildcard_cors():
