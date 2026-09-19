@@ -1447,6 +1447,24 @@ class HybridRAGWorkflow:
         """Convert reranked chunks to DocumentChunk objects."""
         formatted = []
         for result in state["reranked_results"]:
+            source = result.get("source", "unknown")
+            source_channels = list(result.get("source_channels") or [source])
+            explanation = {
+                "candidate_id": result.get("candidate_id"),
+                "source_channels": source_channels,
+                "channel_ranks": dict(result.get("channel_ranks") or {}),
+                "original_scores": dict(result.get("original_scores") or {}),
+                "rrf_contributions": dict(result.get("rrf_contributions") or {}),
+                "reranking": {
+                    "mode": result.get("rerank_mode", "unknown"),
+                    "score": result.get("rerank_score", 0.0),
+                    "semantic_score": result.get("semantic_score", 0.0),
+                    "graph_signal_score": result.get("graph_signal_score"),
+                    "graph_signals_applied": result.get("graph_signals_applied", False),
+                    "components": dict(result.get("rerank_components") or {}),
+                },
+                "graph_paths": dict(result.get("graph_paths") or {}),
+            }
             chunk = DocumentChunk(
                 content=result.get("content", ""),
                 metadata={
@@ -1468,7 +1486,8 @@ class HybridRAGWorkflow:
                     "intent": state.get("intent", ""),
                 },
                 score=result.get("score", 0.0),
-                source=result.get("source", "unknown"),
+                source=source,
+                explanation=explanation,
             )
             formatted.append(chunk)
         state["final_results"] = formatted

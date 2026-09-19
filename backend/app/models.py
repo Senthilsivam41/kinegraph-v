@@ -114,6 +114,13 @@ class DocumentChunk(BaseModel):
     metadata: Dict[str, Any]
     score: float
     source: str  # 'vector' or 'graph'
+    explanation: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description=(
+            "Deterministic selection provenance from retrieval, fusion, and "
+            "reranking; no additional model call is used."
+        ),
+    )
 
 
 class QueryResponse(BaseModel):
