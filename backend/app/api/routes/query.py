@@ -27,73 +27,76 @@ async def query_system(query_request: QueryRequest, request: Request):
     start_time = time.perf_counter()
     query_id = str(uuid.uuid4())
 
-    try:
-        workflow = HybridRAGWorkflow(
-            chroma_service=request.app.state.chroma,
-            neo4j_service=request.app.state.neo4j,
-        )
+    telemetry = request.app.state.telemetry
+    with telemetry.observe(query_id, query_request.mode.value) as observation:
+        try:
+            workflow = HybridRAGWorkflow(
+                chroma_service=request.app.state.chroma,
+                neo4j_service=request.app.state.neo4j,
+            )
 
-        result = await workflow.execute_with_answer(
-            query=query_request.query,
-            mode=query_request.mode,
-            max_results=query_request.max_results,
-            candidate_pool_size=query_request.candidate_pool_size,
-            max_hops=query_request.max_hops,
-            traversal_strategy=query_request.traversal_strategy,
-            community_id=query_request.community_id,
-            enable_conditional_recovery=query_request.enable_conditional_recovery,
-            enable_hyde_fallback=query_request.enable_hyde_fallback,
-            enable_grounding_critique=query_request.enable_grounding_critique,
-            enable_verification_framework=query_request.enable_verification_framework,
-            enable_retrieval_orchestration=query_request.enable_retrieval_orchestration,
-            enable_cross_encoder_reranking=query_request.enable_cross_encoder_reranking,
-            context_max_per_source=query_request.context_max_per_source,
-            context_max_per_community=query_request.context_max_per_community,
-            enable_lexical_fusion=query_request.enable_lexical_fusion,
-            enable_adaptive_routing=query_request.enable_adaptive_routing,
-            enable_conservative_routing=query_request.enable_conservative_routing,
-            allow_mode_downgrade=query_request.allow_mode_downgrade,
-            allow_vectorless_auto_route=query_request.allow_vectorless_auto_route,
-            vector_fusion_weight=query_request.vector_fusion_weight,
-            graph_fusion_weight=query_request.graph_fusion_weight,
-            lexical_fusion_weight=query_request.lexical_fusion_weight,
-            filters=query_request.filters,
-            attachment_content=query_request.attachment_content,
-            attachment_name=query_request.attachment_name,
-        )
-        execution_time = round((time.perf_counter() - start_time) * 1000, 2)
-        chunks = result["chunks"]
+            result = await workflow.execute_with_answer(
+                query=query_request.query,
+                mode=query_request.mode,
+                max_results=query_request.max_results,
+                candidate_pool_size=query_request.candidate_pool_size,
+                max_hops=query_request.max_hops,
+                traversal_strategy=query_request.traversal_strategy,
+                community_id=query_request.community_id,
+                enable_conditional_recovery=query_request.enable_conditional_recovery,
+                enable_hyde_fallback=query_request.enable_hyde_fallback,
+                enable_grounding_critique=query_request.enable_grounding_critique,
+                enable_verification_framework=query_request.enable_verification_framework,
+                enable_retrieval_orchestration=query_request.enable_retrieval_orchestration,
+                enable_cross_encoder_reranking=query_request.enable_cross_encoder_reranking,
+                context_max_per_source=query_request.context_max_per_source,
+                context_max_per_community=query_request.context_max_per_community,
+                enable_lexical_fusion=query_request.enable_lexical_fusion,
+                enable_adaptive_routing=query_request.enable_adaptive_routing,
+                enable_conservative_routing=query_request.enable_conservative_routing,
+                allow_mode_downgrade=query_request.allow_mode_downgrade,
+                allow_vectorless_auto_route=query_request.allow_vectorless_auto_route,
+                vector_fusion_weight=query_request.vector_fusion_weight,
+                graph_fusion_weight=query_request.graph_fusion_weight,
+                lexical_fusion_weight=query_request.lexical_fusion_weight,
+                filters=query_request.filters,
+                attachment_content=query_request.attachment_content,
+                attachment_name=query_request.attachment_name,
+            )
+            execution_time = round((time.perf_counter() - start_time) * 1000, 2)
+            chunks = result["chunks"]
+            observation.record_success(result, execution_time)
 
-        return QueryResponse(
-            query=query_request.query,
-            mode=query_request.mode,
-            requested_mode=QueryMode(result["requested_mode"]),
-            effective_mode=QueryMode(result["effective_mode"]),
-            results=chunks,
-            total_results=len(chunks),
-            execution_time_ms=execution_time,
-            generated_answer=result["answer"],
-            answer_confidence=result["confidence"],
-            intent=result["intent"],
-            latency_breakdown=result["latency"],
-            recovery_triggered=result["recovery_triggered"],
-            recovery_details=result["recovery"],
-            fusion_details=result["fusion"],
-            grounded_claims=result["grounded_claims"],
-            citation_validation=result["citation_validation"],
-            grounding_critique=result["grounding_critique"],
-            answer_relevancy=result["answer_relevancy"],
-            routing_details=result["routing"],
-            retrieval_orchestration=result["retrieval_orchestration"],
-            verification_outcome=result["verification_outcome"],
-            kinetic_score=result["kinetic_score"],
-        )
+            return QueryResponse(
+                query=query_request.query,
+                mode=query_request.mode,
+                requested_mode=QueryMode(result["requested_mode"]),
+                effective_mode=QueryMode(result["effective_mode"]),
+                results=chunks,
+                total_results=len(chunks),
+                execution_time_ms=execution_time,
+                generated_answer=result["answer"],
+                answer_confidence=result["confidence"],
+                intent=result["intent"],
+                latency_breakdown=result["latency"],
+                recovery_triggered=result["recovery_triggered"],
+                recovery_details=result["recovery"],
+                fusion_details=result["fusion"],
+                grounded_claims=result["grounded_claims"],
+                citation_validation=result["citation_validation"],
+                grounding_critique=result["grounding_critique"],
+                answer_relevancy=result["answer_relevancy"],
+                routing_details=result["routing"],
+                retrieval_orchestration=result["retrieval_orchestration"],
+                verification_outcome=result["verification_outcome"],
+                kinetic_score=result["kinetic_score"],
+            )
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Query execution failed: {str(e)}",
-        )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Query execution failed: {str(e)}",
+            )
 
 
 @router.get("/test")

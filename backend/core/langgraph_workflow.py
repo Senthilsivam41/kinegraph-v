@@ -215,6 +215,7 @@ class WorkflowState(TypedDict):
     generated_answer: str
     answer_confidence: float
     latency_breakdown: Dict[str, float]
+    llm_usage: List[Dict[str, Any]]
     final_results: List[DocumentChunk]
     attachment_content: Optional[str]
     attachment_name: Optional[str]
@@ -1254,6 +1255,7 @@ class HybridRAGWorkflow:
                 ),
             }
             response = await self._invoke_prompt(GENERATION_PROMPT, self.llm, payload)
+            self._record_llm_usage(state, response, operation="generation", model=settings.LLM_MODEL)
             claims, confidence, validation = validate_grounded_response(
                 str(response.content), valid_ids
             )
@@ -1278,6 +1280,7 @@ class HybridRAGWorkflow:
                     + json.dumps(sorted(valid_ids), ensure_ascii=False)
                 )
                 response = await self._invoke_prompt(GENERATION_PROMPT, self.llm, payload)
+                self._record_llm_usage(state, response, operation="generation_repair", model=settings.LLM_MODEL)
                 claims, confidence, validation = validate_grounded_response(
                     str(response.content), valid_ids
                 )
@@ -1397,6 +1400,7 @@ class HybridRAGWorkflow:
                 "question": state["query"],
                 "claims_json": json.dumps(critic_claims, ensure_ascii=False),
             })
+            self._record_llm_usage(state, response, operation="grounding_critique", model=settings.FAITHFULNESS_CRITIC_MODEL)
             retained, critique = apply_critic_response(claims, str(response.content))
             state["grounded_claims"] = retained
             state["grounding_critique"] = critique
@@ -1438,6 +1442,17 @@ class HybridRAGWorkflow:
             (time.perf_counter() - t0) * 1000, 2
         )
         return self._finalize_verification(state)
+
+    @staticmethod
+    def _record_llm_usage(
+        state: WorkflowState, response: Any, *, operation: str, model: str
+    ) -> None:
+        """Preserve provider-reported aggregate usage only; never retain content."""
+        usage = getattr(response, "usage_metadata", None)
+        if not usage:
+            metadata = getattr(response, "response_metadata", {}) or {}
+            usage = metadata.get("token_usage") or metadata.get("usage")
+        state.setdefault("llm_usage", []).append({"operation": operation, "model": model, **dict(usage or {})})
 
     # ------------------------------------------------------------------
     # Node: format_results
@@ -1635,6 +1650,7 @@ class HybridRAGWorkflow:
             generated_answer="",
             answer_confidence=0.0,
             latency_breakdown={},
+            llm_usage=[],
             final_results=[],
             attachment_content=attachment_content,
             attachment_name=attachment_name,
@@ -1744,6 +1760,7 @@ class HybridRAGWorkflow:
             generated_answer="",
             answer_confidence=0.0,
             latency_breakdown={},
+            llm_usage=[],
             final_results=[],
             attachment_content=attachment_content,
             attachment_name=attachment_name,
@@ -1758,6 +1775,7 @@ class HybridRAGWorkflow:
             "effective_mode": final_state["mode"].value,
             "routing": final_state["routing_details"],
             "latency":    final_state["latency_breakdown"],
+            "llm_usage": final_state["llm_usage"],
             "recovery_triggered": final_state["recovery_triggered"],
             "recovery": final_state["recovery_details"],
             "grounded_claims": final_state["grounded_claims"],

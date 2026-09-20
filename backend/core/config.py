@@ -88,6 +88,12 @@ class Settings(BaseSettings):
     FAITHFULNESS_CRITIC_TEMPERATURE: float = Field(default=0.0, ge=0.0, le=0.2)
     VERIFICATION_FRAMEWORK_ENABLED: bool = False
 
+    # OpenTelemetry query metrics/tracing. Export configuration is deliberately
+    # environment-owned; the app never stores collector credentials.
+    OTEL_EXPORTER_OTLP_ENDPOINT: Optional[str] = None
+    LLM_INPUT_COST_PER_MILLION_TOKENS: Optional[float] = Field(default=None, ge=0)
+    LLM_OUTPUT_COST_PER_MILLION_TOKENS: Optional[float] = Field(default=None, ge=0)
+
     # LangSmith (optional — leave blank to disable remote tracing)
     LANGSMITH_API_KEY: Optional[str] = None
     LANGSMITH_PROJECT: str = "kinegraph-vectra"
