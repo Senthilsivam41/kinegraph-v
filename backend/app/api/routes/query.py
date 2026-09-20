@@ -96,7 +96,7 @@ async def query_system(query_request: QueryRequest, request: Request):
             raise HTTPException(
                 status_code=500,
                 detail=f"Query execution failed: {str(e)}",
-            )
+            ) from e
 
 
 @router.get("/test")
