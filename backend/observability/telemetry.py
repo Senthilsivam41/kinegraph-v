@@ -105,7 +105,8 @@ class QueryObservation(AbstractContextManager["QueryObservation"]):
         )
 
     def record_failure(self, error: BaseException) -> None:
-        error_type = type(error).__name__
+        root_cause = error.__cause__ or error
+        error_type = type(root_cause).__name__
         attrs = {"http.route": ROUTE, "error.type": error_type}
         self.telemetry.query_failures.add(1, attrs)
         self.telemetry.query_requests.add(
@@ -118,7 +119,7 @@ class QueryObservation(AbstractContextManager["QueryObservation"]):
             },
         )
         self._span.set_attribute("kinegraph.query.outcome", "failure")
-        self._span.record_exception(error)
+        self._span.record_exception(root_cause)
         self._span.set_status(trace.Status(trace.StatusCode.ERROR, error_type))
 
 

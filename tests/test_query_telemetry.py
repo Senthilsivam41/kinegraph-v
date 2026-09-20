@@ -23,6 +23,24 @@ def test_usage_normalization_does_not_retain_provider_payload_fields():
     }
 
 
+def test_failure_metric_uses_the_wrapped_root_cause():
+    telemetry = QueryTelemetry(service_name="test", service_version="1", environment="test")
+    telemetry.query_requests = _Capture()
+    telemetry.query_failures = _Capture()
+    observation = telemetry.observe("query-123", "hybrid")
+    wrapper = RuntimeError("public error")
+    wrapper.__cause__ = ValueError("provider failure")
+
+    observation.record_failure(wrapper)
+
+    assert telemetry.query_failures.calls == [(1, {
+        "http.route": "/api/v1/query",
+        "error.type": "ValueError",
+    })]
+    observation.__exit__(None, None, None)
+    telemetry.shutdown()
+
+
 class _Capture:
     def __init__(self):
         self.calls = []
