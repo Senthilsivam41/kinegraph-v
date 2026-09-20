@@ -39,6 +39,9 @@ tenacity==8.2.3
 
 # Logging and Monitoring
 python-json-logger==2.0.7
+opentelemetry-api>=1.28.0,<2.0.0
+opentelemetry-sdk>=1.28.0,<2.0.0
+opentelemetry-exporter-otlp-proto-http>=1.28.0,<2.0.0
 
 # Testing (optional but recommended)
 pytest==7.4.4

@@ -10,6 +10,7 @@ from backend.app.api.routes import query, ingest, health
 from backend.core.config import settings
 from backend.services.chroma_service import ChromaService
 from backend.services.neo4j_service import Neo4jService
+from backend.observability.telemetry import QueryTelemetry
 
 
 @asynccontextmanager
@@ -18,6 +19,14 @@ async def lifespan(app: FastAPI):
     # Core services
     app.state.chroma = ChromaService()
     app.state.neo4j = Neo4jService()
+    app.state.telemetry = QueryTelemetry(
+        service_name=settings.APP_NAME,
+        service_version=settings.APP_VERSION,
+        environment=settings.ENVIRONMENT,
+        input_cost_per_million=settings.LLM_INPUT_COST_PER_MILLION_TOKENS,
+        output_cost_per_million=settings.LLM_OUTPUT_COST_PER_MILLION_TOKENS,
+        otlp_endpoint=settings.OTEL_EXPORTER_OTLP_ENDPOINT,
+    )
 
     yield
 
@@ -25,7 +34,10 @@ async def lifespan(app: FastAPI):
     try:
         app.state.neo4j.close()
     finally:
-        app.state.chroma.close()
+        try:
+            app.state.chroma.close()
+        finally:
+            app.state.telemetry.shutdown()
 
 
 app = FastAPI(
