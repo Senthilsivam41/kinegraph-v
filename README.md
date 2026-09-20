@@ -15,378 +15,148 @@
 
 ---
 
-## 🎯 Overview
+## Overview
 
-**KineticGraph-Vectra** is a lean, highly optimized hybrid RAG (Retrieval-Augmented Generation) system that coordinates searches across:
+KineticGraph-Vectra answers questions from your documents while showing the
+evidence used for each answer. It combines three complementary search methods:
 
-- **Vector Database (ChromaDB):** Fast semantic similarity search on document embeddings.
-- **Graph Database (Neo4j):** Deep relational reasoning with entities and relationships.
-- **Vectorless Search (BM25 Local Cache):** Ultra-fast lexical retrieval directly from disk.
-- **Fusion Layer (RRF):** Reciprocal Rank Fusion to intelligently merge results from all active retrieval pathways.
+- **Semantic search** finds passages with similar meaning, even when the wording differs.
+- **Graph search** follows named entities and relationships stored in Neo4j.
+- **Keyword search** finds exact names, identifiers, and phrases in a local index.
 
-The system uses **LangGraph** to orchestrate complex query workflows and **Celery** for asynchronous document processing.
+Most requests use semantic and graph search together. The system merges the
+results, removes duplicates, ranks the strongest evidence, and asks a configured
+language model to answer only from that evidence.
 
-Development is guided by the evidence-first [Kinegraph Architecture Principles](docs/ARCHITECTURE_PRINCIPLES.md), including explicit product vision, measurable goals, and a decision gate for new retrieval features.
-Deployment secrets, read-only Cypher controls, and CORS configuration are documented in [Security Configuration](docs/SECURITY.md).
+### What users get
 
----
+- Answers with stable source identifiers such as `[chunk-42]`.
+- The exact evidence chunks sent to the language model.
+- A plain data record explaining how each chunk was selected.
+- Visible routing, recovery, citation checks, and processing time.
+- An explicit fallback response when the available evidence is insufficient.
 
-## ✨ Codebase Highlights & Optimization
+## Architecture
 
-### 1. Kinetic-V v3 Context-Enriched Graph Nodes
+![KineticGraph-Vectra ingestion and query architecture](architecture.png)
 
-Kinetic-V v3 closes a key grounding gap in the graph retrieval path: entity results now carry the source chunks needed to support and cite their claims. The additive v2 → v3 migration enriches existing Neo4j entities with:
+The top half shows how uploaded documents become vector, graph, and keyword
+indexes. The bottom half shows how a question travels through those indexes to
+a grounded answer. The language model is configurable; the `GPT-4` label in the
+diagram represents the generation step, not a required vendor or model.
 
-- A concise `description` generated from existing graph evidence.
-- Stable `parent_context_chunk_ids` linking graph entities to their source chunks.
-- A compact JSON evidence snapshot for retrieval-time grounding while ChromaDB remains the authoritative store for embeddings and full vector content.
-- Relationship evidence and graph-positioning fields (`community_id`, `centrality_score`, and `depth_from_root`).
-- A `schema_version` marker so migrated nodes can be audited safely.
-
-Neo4j cannot store nested maps as native properties, so context links and relationship evidence are serialized while stable chunk IDs remain directly queryable. Graph retrieval expands these persisted evidence chunks into the generation context with chunk IDs such as `[chunk_id]`, making answers easier to ground and cite.
-
-The migration is additive and idempotent: it updates entities with existing `MENTIONS` links, reports entities without source context, and does not delete or re-embed data. See [`docs/v3_schema_audit.md`](docs/v3_schema_audit.md) for the schema-gap audit and design rationale.
-
-### Kinegraph v3 ADR-001 Adaptive Routing
-
-The experimental ADR-001 router builds a deterministic, versioned execution
-plan instead of silently applying a classifier label. With
-`enable_adaptive_routing=true`, each request records route confidence, facets,
-exact tokens, entity hints, attachment eligibility, required channels,
-rejected alternatives, and rationale.
-
-Compound, comparison, exact-token, tied-intent, and low-confidence questions
-remain Hybrid. A high-confidence single-facet query may use Vector or Graph,
-but measurable initial weakness escalates it back to Hybrid before RRF.
-Eligible bounded attachments may use Vectorless. Legacy routing remains the
-default until the adaptive benchmark profile passes its precision, recall, and
-latency gates. See [ADR-001](docs/architecture/ADR-001-Adaptive-Routing.md).
-
-### Kinegraph v3 ADR-002 Adaptive Chunking
-
-The experimental ADR-002 chunker replaces one-size-fits-all recursive splits
-with a versioned structural-first contract (`kinegraph.adaptive-chunking.v1`).
-With `ADAPTIVE_CHUNKING_ENABLED=true`, ingestion prefers section, table, and
-image/OCR chunks, falls back to recursive splits only for oversized or
-unstructured regions, and stamps every chunk with stable SHA-256 IDs plus
-policy provenance. Incomplete enrichment is reported rather than invented.
-Recursive chunking remains the production default until a frozen-corpus
-benchmark gate accepts the adaptive policy. See
-[ADR-002](docs/architecture/ADR-002-Adaptive-Chunking.md).
-
-### 2. Robust RAGAS Evaluation & Diagnostics
-- **Live Failure Interception**: [`RAGASEvaluator`](eval/ragas_evaluator.py) records evaluation failures and may compute keyword heuristics for diagnostics, but the benchmark gate rejects any row with `ragas_failed=True`. Fallback scores cannot be reported as RAGAS.
-- **Concurrent Batch Eval**: Added `evaluate_live_workflow` and `evaluate_live_single` supporting concurrent, rate-limited live workflow evaluations asynchronously, resulting in faster and safer benchmark runs.
-- **Model-Agnostic Critic Settings**: Configures separate evaluation LLMs (critic/judge) via the `critic_model` parameter, enabling stable benchmark tracking (e.g., using Claude Haiku) even while testing various generation engines.
-- **OpenRouter Compatibility**: Detects OpenRouter environments and automatically configures base URLs accordingly, enabling direct usage of stable and extremely cheap paid OpenRouter endpoints (e.g., `gpt-4o-mini` or `meta-llama/llama-3.3-70b-instruct`) without hitting free-tier congestion or 429 rate-limiting.
-
-### 3. "Ponytail" YAGNI Optimization
-- **Purged Over-Engineering**: Cleaned up the repository by deleting speculative Kubernetes manifests, custom telemetry databases, Streamlit dashboard instances, and LangSmith tracing wrappers.
-- **Pruned Dependencies & Vulnerabilities**: Removed unused heavy libraries (`streamlit`, `plotly`, `langsmith`, `psycopg2-binary`) from `requirements.txt` to minimize codebase bloat, dependency conflicts, and security vulnerability surface areas.
-- **Ingestion Streamlining**: Replaced Celery's billiard-based parallel PDF text extraction pool with a fast, sequential PyMuPDF (fitz) iteration loop inside `document_processor.py`, eliminating process-forking overhead and file-locking bottlenecks.
-
-### 4. Decoupled PropertyGraphIndex Dual-Store (Neo4j + ChromaDB)
-KineticGraph-Vectra features a **state-of-the-art decoupled Graph RAG index** using LlamaIndex's `PropertyGraphIndex` but uniquely engineered to maintain **strict storage isolation** between the relational graph database (**Neo4j**) and the dense vector database (**ChromaDB**). 
-
-Unlike default implementations that collapse both vectors and graph entities into Neo4j's native vector indices, this decoupled architecture guarantees:
-- **Independent Scaling**: Scale your vector query capacity (ChromaDB memory/nodes) independently from your graph traversal complexity (Neo4j memory/CPU).
-- **Vendor Lock-in Avoidance**: Swap out ChromaDB or Neo4j for other specialized engines without rebuilding the entire extraction or ingestion pipelines.
-- **Granular Embedding Fusing**: Compute and store embeddings for chunks, entities, and relationship summaries, enabling precise Reciprocal Rank Fusion (RRF) at query time.
-
-The [medium-priority Neo4j hybrid-search experiment](docs/architecture/NEO4J-HYBRID-EXPERIMENT.md) defines the evidence needed to reconsider this separation. It remains proposed; no storage migration or ADR promotion has occurred.
-
-#### Ingestion Flow & Extractor Stack
-Every ingested document goes through a pipeline of concurrent, specialized extractors aligned with a constrained ontology schema:
-
-```mermaid
-flowchart LR
-    Doc["PDF, Markdown, or text"] --> Parse{"PDF?"}
-    Parse -->|"yes"| LiteParse["LiteParse: layout-aware Markdown"]
-    LiteParse -.->|"unavailable or failed"| PyMuPDF["PyMuPDF fallback"]
-    Parse -->|"no"| SourceText["Source text"]
-    LiteParse --> Chunking["ADR-002 structural-first or recursive chunking + SHA-256 IDs"]
-    PyMuPDF --> Chunking
-    SourceText --> Chunking
-    Chunking --> Idempotency{"Chunk already in Neo4j?"}
-    Idempotency -->|"yes"| Skip["Skip duplicate"]
-    Idempotency -->|"no"| Extractors["Schema + tagged + resolution + implicit-path extractors"]
-    Extractors --> PGI["LlamaIndex PropertyGraphIndex"]
-    PGI --> GraphStore[("Neo4j graph + MENTIONS links")]
-    PGI --> VectorStore[("ChromaDB embeddings")]
-    GraphStore --> Enricher["NodeEnricher for touched entities"]
-    VectorStore --> Verify["Exact-ID / provenance verification"]
-    Verify --> Enricher
-    Enricher -->|"verified context IDs, descriptions, relationship evidence, positioning"| GraphStore
-    Enricher --> Audit["Complete / incomplete enrichment report"]
-```
-
-1. **`SchemaLLMPathExtractor`**: Constrains extraction to a strict YAML-defined ontology (e.g., `Component`, `Service`, `Command`, `Status`) and relations (e.g., `Uses`, `Implements`, `Minimizes`).
-2. **`TaggedSimpleLLMPathExtractor`**: Serves as a high-recall fallback extractor to capture open-domain facts when schema constraints are too narrow.
-3. **`EntityResolutionExtractor`**: Runs inline semantic deduplication (using exact token match and high-similarity Levenshtein/Rau-de-Smet clustering) to collapse alias nodes (e.g. `LangGraph` and `LangGraph orchestrator`) before write time.
-4. **`ImplicitPathExtractor`**: Injects structural knowledge paths (e.g., `Chunk` nodes linked via `MENTIONS` to their extracted entities) to preserve local source context.
-
-### 5. Configurable Multi-Hop Graph Traversal
-
-Graph and hybrid queries can expand from matched entities across one to five relationship hops. The rollback/default setting remains a bounded two-hop breadth-first traversal; depth-first and community-restricted traversal are also available. Every traversal result includes `relationship_path`, `traversal_depth`, `traversal_strategy`, `max_hops`, `seed_node_id`, and `community_id` metadata, together with directional relationship evidence.
-
-```json
-{
-  "query": "How are LangGraph, Neo4j, and RRF connected?",
-  "mode": "graph",
-  "max_results": 10,
-  "max_hops": 2,
-  "traversal_strategy": "bfs",
-  "community_id": null
-}
-```
-
-Use `"dfs"` to prioritize deep paths or `"community"` to restrict expansion to the seed entity's computed community. Traversal rejects cycles and enforces a maximum of five hops.
-
-### 6. Semantic-First Graph-Aware Reranking
-
-After RRF, candidates pass through a relevance gate based on the original user query. Surviving graph results receive bounded secondary signals from node centrality, community support, relationship weight, and traversal distance. Semantic relevance retains 70% of the configured weight, so a highly connected but irrelevant node cannot displace directly relevant evidence.
-
-The precision path retrieves a wide per-channel candidate pool (25 by default), applies RRF, removes near-identical chunks at cosine similarity ≥ 0.95, reranks the survivors, and sends at most 6 contexts to generation. The graph traversal default is two hops, while one to five hops remain request-configurable for evaluation.
-
-The reranker preserves `score`, `rrf_score`, `original_score`, and source provenance. It adds `semantic_score`, `graph_signal_score`, `rerank_score`, `rerank_components`, and `rerank_mode` for observability. Keyword scoring remains the normal workflow default (`CROSS_ENCODER_RERANK_ENABLED=false`). Cross-encoder scoring is a controlled experiment: opt in per request with `enable_cross_encoder_reranking: true`, or set `CROSS_ENCODER_RERANK_ENABLED=true` for an experiment environment. The model and relevance floor are configured through `RERANKER_MODEL` and `RERANKER_MIN_RELEVANCE`. `cross-encoder/ms-marco-MiniLM-L-6-v2` remains the configured default model; `BAAI/bge-reranker-v2-m3` is another selectable model. If the optional dependency or model cannot load, provenance reports the fallback reason and `graph_aware_keyword` mode. Promotion remains subject to the accepted comparison in [issue #48](https://github.com/Senthilsivam41/kinegraph-v/issues/48).
-
-### 7. Conditional Query Recovery Before RRF
-
-Kinegraph evaluates ordinary vector and graph retrieval before fusion. Recovery runs only when observable signals indicate weak results, such as too few candidates, low top score, no graph seed/path, or low source diversity.
-
-The recovery order is deliberately conservative:
+### Query path
 
 ```text
-Normal retrieval
-    → weakness assessment
-    → query decomposition + subquery execution
-    → structured vocabulary expansion (vector only)
-    → reassessment
-    → optional constrained HyDE (vector only)
-    → subquery-result fusion
-    → cross-channel RRF
+Question received by the API
+  -> choose semantic, graph, combined, or direct-document search
+  -> search the selected indexes
+  -> retry with safe query expansion only when the first search is weak
+  -> merge rankings and remove duplicate evidence
+  -> rank the most relevant chunks against the original question
+  -> generate claims that cite exact chunk IDs
+  -> reject unknown citations and unsupported claims
+  -> return the answer, evidence, explanations, and timing
 ```
 
-The original query remains authoritative for final reranking. Generated vocabulary never becomes graph seed input. A HyDE hypothesis is an opt-in search probe (`enable_hyde_fallback: true`), is never added to answer context, and is explicitly marked `hypothesis_is_evidence: false`. Recovery metadata reports its trigger reasons, subqueries, vocabulary, hypothesis usage, assessments, and latency.
+### Ingestion path
 
-```json
-{
-  "query": "How do Neo4j and ChromaDB work together?",
-  "mode": "hybrid",
-  "enable_conditional_recovery": true,
-  "enable_hyde_fallback": false
-}
-```
+PDFs are parsed locally by LiteParse. If LiteParse is unavailable, the system
+falls back to PyMuPDF. Text is split into chunks, embedded into ChromaDB, and
+used to extract entities and relationships for Neo4j. Stable chunk IDs connect
+the two stores so graph results can be traced back to source text.
 
-### 8. Recall Controls and Schema Coverage
+### Components
 
-Weak compound and multi-hop queries are decomposed before RRF. Each validated subquery retrieves independently from the active vector and graph channels, then per-channel results are fused before cross-channel fusion. Strong initial retrieval skips decomposition, preserving the evidence-first recovery gate.
+| Component | Responsibility |
+|---|---|
+| FastAPI | Versioned query, ingestion, health, and Swagger endpoints |
+| LangGraph | Routing and end-to-end query orchestration |
+| ChromaDB | Chunk embeddings and semantic retrieval |
+| Neo4j | Entities, relationships, and bounded multi-hop traversal |
+| Local BM25 cache | Vectorless and opt-in lexical retrieval |
+| LiteParse / PyMuPDF | Local PDF parsing with a resilient fallback |
+| Celery / Redis | Asynchronous document processing |
+| RAGAS | Optional quality evaluation for maintainers |
 
-Hybrid RRF weights are request-tunable and expose per-result `rrf_contributions`. Vector and graph remain equally weighted by default. Local BM25 participation is opt-in so lexical expansion can be measured without silently changing normal hybrid behavior.
+## Current capabilities and defaults
 
-```json
-{
-  "query": "How do graph traversal and vector retrieval contribute to Kinegraph?",
-  "mode": "hybrid",
-  "vector_fusion_weight": 1.0,
-  "graph_fusion_weight": 1.2,
-  "enable_lexical_fusion": true,
-  "lexical_fusion_weight": 0.6
-}
-```
+| Setting | Default behavior |
+|---|---|
+| Search mode | Combined semantic and graph search (`hybrid`) |
+| Retrieval pool | Up to 25 candidates from each active search channel |
+| Answer context | The best 6 chunks after merging, deduplication, and ranking |
+| Graph depth | Breadth-first traversal up to 2 relationships; requests may choose 1-5 |
+| Search recovery | Enabled only when the first retrieval is weak |
+| Keyword channel | Off for normal Hybrid requests; available explicitly |
+| Reranking | Lightweight keyword and graph-signal ranking |
+| Answer checks | Exact citation validation and grounded-claim review enabled |
+| Chunking | Recursive text splitting |
 
-Audit strict ontology coverage, recurring fallback relation types, and golden questions without graph entity mentions using:
+Optional research controls—adaptive routing, structural chunking, HyDE,
+cross-encoder reranking, lexical fusion, and experimental confidence scoring—
+are disabled by default. They are not required to run the normal system.
 
-```bash
-PYTHONPATH=. python scripts/audit_schema_coverage.py
-```
+### Project status
 
-The audit is diagnostic rather than an automatic schema mutation. Entity-mention coverage is not a RAGAS score; repeated fallback types and uncovered golden questions must be reviewed before expanding `config/ontology_schema.yaml`.
+The ingestion, retrieval, explanation, and citation-validation paths are
+implemented and covered by automated tests. The repository also contains a
+20-question quality benchmark, but there is currently no accepted post-v3 run
+proving that one experimental configuration is better than the defaults. The
+README therefore describes implemented behavior without claiming benchmark
+superiority.
 
-### 9. Citation-Constrained Generation and Grounding Critique
-
-The synthesis node now returns atomic claims as structured JSON, with every claim carrying one or more exact IDs from the reranked context. Chroma result IDs and graph node IDs are preserved through retrieval; a deterministic validator rejects claims with missing or unknown citations before any answer text is returned. Accepted claims are rendered with their verified IDs, such as `[vec_0452]`.
-
-A separate temperature-0 critic then checks each accepted claim against only its cited chunk text and the literal user question. A claim survives only when it is both grounded and directly answers the question (or an explicit component of a compound question); grounded background and broad context summaries are removed. The critic may retain or remove existing claims, but cannot rewrite them, add facts, or introduce citations. If the critic is unavailable, Kinegraph visibly reports the failure and returns only the claims that passed deterministic citation validation. Set `enable_grounding_critique: false` only for controlled benchmark comparisons.
-
-Both synthesis and critique default to temperature `0.0`. Configure them with `GENERATION_TEMPERATURE`, `FAITHFULNESS_CRITIC_MODEL`, and `FAITHFULNESS_CRITIC_TEMPERATURE`. API responses expose `citation_validation`, `grounding_critique`, `answer_relevancy`, and per-stage critique latency. Relevancy metadata distinguishes unsupported claims from supported-but-irrelevant claims and reports complete, partial, or missing question coverage.
-
-```json
-{
-  "query": "How are Neo4j and ChromaDB connected?",
-  "mode": "hybrid",
-  "enable_grounding_critique": true
-}
-```
-
----
-
-## 🏗️ Architecture
-
-### System Components
-
-```mermaid
-flowchart TD
-    User(["User query"]) --> API["FastAPI query endpoint"]
-    API --> Router{"Intent classification + query rewrite"}
-
-    Router -->|"vector"| VA["Vector agent"]
-    Router -->|"graph"| GA["Graph agent"]
-    Router -->|"hybrid"| PF["Parallel vector + graph fetch"]
-    Router -->|"vectorless"| VLA["Vectorless agent"]
-
-    VA --> Chroma[("ChromaDB")]
-    GA --> GraphRetriever["PropertyGraph retrieval + bounded multi-hop traversal"]
-    GraphRetriever --> Neo4j[("Neo4j")]
-    PF --> Chroma
-    PF --> GraphRetriever
-    VLA --> BM25["Local BM25 / attachment search"]
-    PF -.->|"optional lexical channel"| BM25
-
-    Chroma --> Recovery{"Retrieval weak?"}
-    Neo4j --> Recovery
-    BM25 --> Recovery
-    Recovery -->|"no"| RRF["Weighted reciprocal-rank fusion"]
-    Recovery -->|"yes"| Structured["Query decomposition + vocabulary expansion"]
-    Structured --> Subqueries["Per-subquery vector / graph retrieval"]
-    Subqueries --> Recovery
-    Recovery -.->|"still weak + opt-in"| HyDE["Constrained HyDE search probe"]
-    HyDE --> Chroma
-
-    RRF --> Dedup["Stable-ID + near-duplicate filtering"]
-    Dedup --> Rerank["Semantic-first graph-aware reranker"]
-    Rerank --> Context["Top contexts with stable citation IDs"]
-    Context --> Generate["Temperature-0 structured atomic claims"]
-    Generate --> Validate{"All cited IDs exist in supplied context?"}
-    Validate -->|"reject invalid claims"| NoEvidence["Supported-evidence fallback"]
-    Validate -->|"valid claims"| Critic["Grounding + literal-question critic"]
-    Critic -->|"remove unsupported / irrelevant claims"| Format["Verified answer + observability metadata"]
-    NoEvidence --> Format
-    Format --> Output(["API response"])
-
-    style User fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff
-    style Router fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
-    style Recovery fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
-    style RRF fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff
-    style Validate fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
-    style Output fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff
-```
-
-### Infrastructure Stack
-
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| **API Framework** | FastAPI | Asynchronous REST API |
-| **Orchestration** | LangGraph | Intent routing, parallel retrieval, rerank, generate |
-| **Vector DB** | ChromaDB | Semantic search |
-| **Graph DB** | Neo4j | Entity relationships |
-| **Task Queue** | Celery + Redis | Async document processing |
-| **Document Parser** | LiteParse (self-hosted) | Layout-aware PDF → Markdown (tables, multi-column) |
-| **Containerization** | Docker Compose | Local deployment and testing |
-| **Evaluation** | RAGAS | Offline/live evaluation (faithfulness, relevancy, recall, correctness) |
-
-### 📄 LiteParse — Local Document Parsing Service
-
-KineticGraph-Vectra uses a **self-hosted [LiteParse](https://github.com/run-llama/liteparse-server) container** as its primary PDF extraction engine. Unlike traditional text-extraction libraries (PyMuPDF, pypdf) that flatten multi-column layouts and drop table formatting, LiteParse uses PDFium coordinate-aware layout analysis and embedded OCR to produce clean, structure-preserving **Markdown**.
-
-**Why this matters for GraphRAG:**
-- **Table Context Isolation:** Tables output as `| Entity | Relation | Entity |` syntax — column values map directly to their header semantic bounds during entity extraction.
-- **Multi-column Rectification:** Absolute bounding-box tracing prevents unrelated paragraphs from being joined across columns.
-- **Zero Data Egress:** Processing runs entirely within the local Docker network — no cloud API calls, no per-page costs.
-
-**Resilient Fallback:** If the LiteParse container is unavailable, `extract_text_from_pdf` silently falls back to PyMuPDF and logs a warning — ingestion never hard-fails due to parser availability.
-
-```mermaid
-flowchart LR
-    PDF["Local PDF"] --> LP["LiteParse container :5707"]
-    LP -->|"success"| Markdown["Layout-aware Markdown"]
-    LP -.->|"unavailable or parse error"| Fallback["Sequential PyMuPDF extraction"]
-    Fallback --> Plain["Plain text"]
-    Markdown --> Ingestion["Shared chunking and ingestion pipeline"]
-    Plain --> Ingestion
-```
-
-**Key files:**
-- [`backend/graph_ingestion/lite_parser.py`](backend/graph_ingestion/lite_parser.py) — `LiteParseClient` HTTP wrapper
-- [`backend/workers/document_processor.py`](backend/workers/document_processor.py) — `extract_text_from_pdf` with LiteParse-first strategy
-- [`infra/docker-compose.yml`](infra/docker-compose.yml) — `liteparse` service definition
-
----
-
-## 🚀 Quick Start
+## Quick start
 
 ### Prerequisites
 
-- **Docker** and **Docker Compose**
-- **OpenAI API Key**
+- Python 3.11+
+- Docker and Docker Compose
+- An OpenAI-compatible API key; OpenRouter is supported
+- A unique Neo4j password of at least 16 characters
 
-### 1. Clone and Setup
+### Configure and start
 
 ```bash
-# Clone the repository and copy environment template
 cp .env.example .env
-
-# Edit .env and add your OpenAI API key and a unique Neo4j password
-# PARSER_URL is pre-configured to http://liteparse:5707 inside Docker
-# For local dev outside Docker, set PARSER_URL=http://localhost:5707
-nano .env
-```
-
-### 2. Start Services
-
-```bash
-# Build and start all services with the repository .env loaded explicitly
+# In .env, set:
+# OPENAI_API_KEY=<OpenAI key or OpenRouter key used by the application>
+# NEO4J_PASSWORD=<unique password with at least 16 characters>
 ./scripts/start_services.sh
 ```
 
-The launcher can be called from any directory and fails early if
-`NEO4J_PASSWORD` is not set in `.env`. The equivalent direct command is:
+The launcher reads the repository `.env`, validates the Neo4j password, and
+starts the stack from [`infra/docker-compose.yml`](infra/docker-compose.yml).
+The equivalent direct command is:
 
 ```bash
 docker compose --env-file .env -f infra/docker-compose.yml up --build -d
 ```
 
-### 3. Verify Health
+### Service endpoints
 
-| Service | URL | Notes |
-|---------|-----|-------|
-| **Swagger UI** | http://localhost:8000/docs | FastAPI API docs |
-| **Neo4j Browser** | http://localhost:7474 | user: `neo4j`, password: see `.env` |
-| **ChromaDB API** | http://localhost:8001 | Heartbeat: `/api/v1/heartbeat` |
-| **LiteParse** | http://localhost:5707 | Liveness: `POST /parse` → `400` = alive |
-| **Chat UI** | http://localhost:8080 | Start via `cd frontend && python3 serve.py` |
+| Service | URL |
+|---|---|
+| Swagger UI | <http://localhost:8000/docs> |
+| Neo4j Browser | <http://localhost:7474> |
+| ChromaDB heartbeat | <http://localhost:8001/api/v1/heartbeat> |
+| LiteParse | <http://localhost:5707> |
+| Chat UI | <http://localhost:8080> |
 
-```bash
-# Quick LiteParse liveness check
-curl -s -o /dev/null -w "LiteParse: %{http_code}\n" -X POST http://localhost:5707/parse
-# Expected: LiteParse: 400
-```
-
-### 4. Enrich Existing Graph Nodes for v3
-
-After upgrading an existing v2 deployment, preview the migration before applying it:
+Start the separate chat UI with:
 
 ```bash
-# Report migration candidates without changing Neo4j
-PYTHONPATH=. python scripts/enrich_kinetic_v_nodes.py --dry-run --batch-size 200
-
-# Apply the additive v3 enrichment
-PYTHONPATH=. python scripts/enrich_kinetic_v_nodes.py
+cd frontend
+python3 serve.py
 ```
 
-Example result:
+Open <http://localhost:8000/docs> to try the API interactively. A healthy stack
+does not mean documents have been indexed; ingest at least one document before
+expecting query results.
 
-```text
-{'enriched': 128, 'skipped_without_verified_context': 7, 'scanned': 135, 'verified_vector_links': 384, 'missing_vector_links': 7, 'complete': False}
-```
+## Usage
 
-New ingestion remains idempotent across both `Chunk` and legacy `__Chunk__` Neo4j labels and runs enrichment automatically. Links missing from ChromaDB—or present without an embedding—are rejected and counted. Existing entities without verified source chunks are deliberately skipped so the migration never invents supporting evidence.
-
----
-
-## 📚 Usage
-
-### Document Ingestion
+### Ingest a document
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/ingest/document" \
@@ -394,119 +164,151 @@ curl -X POST "http://localhost:8000/api/v1/ingest/document" \
   -F "file=@/path/to/document.pdf"
 ```
 
-### Querying the System (Hybrid Search)
+### Query the system
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/query" \
   -H "Content-Type: application/json" \
   -d '{
-    "query": "What are the main findings about Reciprocal Rank Fusion?",
+    "query": "How do Neo4j and ChromaDB work together?",
     "mode": "hybrid",
-    "max_results": 5
+    "max_results": 6,
+    "candidate_pool_size": 25,
+    "max_hops": 2
   }'
 ```
 
----
+The response includes the generated answer, requested and effective modes,
+grounded claims, citation validation, grounding critique, relevancy coverage,
+recovery details, fusion settings, stage latency, and retrieved chunks. Each
+chunk includes a deterministic `explanation` object:
 
-## 🔬 Evaluation & Diagnostics
-
-The evaluation layer is built around [RAGAS](https://docs.ragas.io) to monitor system performance offline and live. The checked-in benchmark is [`eval/kinegraph_benchmark_v1.csv`](eval/kinegraph_benchmark_v1.csv); it has **20 queries** with the generated schema `user_input`, `reference_contexts`, `reference`, `persona_name`, `query_style`, `query_length`, and `synthesizer_name`.
-
-- **Synthetic Testset Generation**: Create rich multi-hop and specific factual benchmark questions directly from the project's documentation using:
-  ```bash
-  PYTHONPATH=. python scripts/generate_testset.py --size 20 --output eval/kinegraph_benchmark_v1.csv
-  ```
-- **Direct Database Ingestion**: Populate ChromaDB and Neo4j locally with documentation:
-  ```bash
-  PYTHONPATH=. python scripts/ingest_docs.py
-  ```
-- **Qwen 3.6 judge preflight**: Validate the OpenRouter client, exact model
-  slug, local embedding cache, and all five metric registrations without
-  starting databases or making a paid judge call:
-  ```bash
-  PYTHONPATH=. venv/bin/python scripts/run_ragas_evaluation.py --model qwen/qwen3.6-27b --judge-provider openrouter --preflight-only
-  ```
-- **Live Pipeline Benchmarking**: Execute the live RAG pipeline on the checked-in benchmark questions and compute RAGAS metrics:
-  ```bash
-  PYTHONPATH=. venv/bin/python scripts/run_ragas_evaluation.py --profile hybrid --max-hops 2 --max-results 6 --candidate-pool-size 25 --model qwen/qwen3.6-27b --run-label v1-qwen36
-  ```
-- **Bounded hop-depth sweep**: After the reference audit is accepted, run hops 1, 2, and 3 sequentially with every other lever frozen:
-  ```bash
-  PYTHONPATH=. venv/bin/python scripts/run_traversal_sweep.py --baseline-hop 2 --run-label bounded-hops
-  ```
-- **Reference audit gate**: [`eval/kinegraph_benchmark_v1.audit.json`](eval/kinegraph_benchmark_v1.audit.json) assigns all 20 rows stable IDs, categories, source hashes, technical-review tags, reviewer state, and change rationale. The initial `1.1.0-draft` audit deliberately fails closed: 13 references need correction, 5 remain pending, and 2 are ambiguous. Run `PYTHONPATH=. venv/bin/python scripts/audit_benchmark_references.py` to validate it. See [Benchmark Reference Audit](docs/BENCHMARK_REFERENCE_AUDIT.md).
-- **Fusion recall experiment**: Sweep weights while preserving separate accepted outputs:
-  ```bash
-  PYTHONPATH=. python eval/ragas_evaluator.py --vector-weight 1.0 --graph-weight 1.2 --run-label graph12
-  PYTHONPATH=. python eval/ragas_evaluator.py --profile hybrid_lexical --vector-weight 1.0 --graph-weight 1.0 --lexical-weight 0.6 --run-label lexical06
-  ```
-- **Explicit Mode Slices**: `--profile hybrid`, `hybrid_lexical`, and `vectorless` produce separate artifacts. Hybrid profiles pin Hybrid execution; the Vectorless profile uses one deterministic corpus assembled from the frozen reference contexts and never calls Chroma or Neo4j. No profile changes the production default.
-- **Routing Experiment**: `--profile adaptive_hybrid --enable-adaptive-routing` evaluates the versioned ADR-001 execution-plan policy as one reversible lever. Weak single-channel plans can escalate to Hybrid before RRF; the legacy router remains the production default until an accepted manifest passes the architecture gate.
-- **Live Diagnostics**: Single-query and concurrent live execution are implemented by `evaluate_live_single` and `evaluate_live_workflow`. Every row persists a redacted `kinegraph.eval.provenance.v1` trace with routing rationale, channel candidates, recovery, fusion/reranking drops, candidate survival, complete graph-path audits, traversal failure behavior, citations, critic output, and channel/stage latency.
-- **Acceptance Gate**: The CLI fails before retrieval when judge or local
-  embedding setup is invalid. Diagnostic keyword fallbacks remain available to
-  library callers only by explicit opt-in; any such row has
-  `ragas_failed=True`, so the benchmark refuses to update its accepted report,
-  manifest, or chart.
-- **Controlled Experiment Gate**: Accepted runs record the dataset SHA-256, Git revision, complete retrieval configuration, generation and judge models, and a weighted composite with a deterministic 95% bootstrap interval. An optional baseline manifest enforces one changed lever, a ±0.01 tie tolerance, and a maximum 0.05 regression for any individual metric. See [Controlled Benchmark Experiments](docs/EXPERIMENT_VALIDATION.md).
-- **Result Contract**: Evaluation consumes the workflow's `answer` and retrieved `chunks`; requested/effective mode and full retrieval diagnostics are stored in the per-query provenance JSONL. Diagnostic provenance is written even when the RAGAS acceptance gate rejects a run.
-
-### Benchmark Status
-
-There is currently **no accepted post-v3 result proving improvement**. The
-accepted-comparison gap remains even though a 20-query Qwen 3.6 diagnostic run
-is now persisted under [`reports/1.0`](reports/1.0/README.md): all 20 rows have
-`ragas_failed=True`, the fixed-Hybrid profile was violated by 6 rows, and the
-reference audit remains unaccepted. Its fallback scores are useful for
-diagnostics but are not a RAGAS baseline.
-
-The table below therefore retains the two historical pre-v3 series and the
-complete v3 target set; it must not be read as a current v3 evaluation.
-
-| Metric | Recorded baseline | Recorded composed | v3 target | Composed vs target |
-| :--- | :---: | :---: | :---: | :---: |
-| **Faithfulness** | 0.3292 | 0.6000 | ≥ 0.75 | **Fail** |
-| **Answer Relevancy** | 0.1016 | 0.5659 | ≥ 0.65 | **Fail** |
-| **Context Precision** | 1.0000 | 0.4500 | ≥ 0.90 | **Fail** |
-| **Context Recall** | 0.3476 | 0.6000 | ≥ 0.65 | **Fail** |
-| **Answer Correctness** | 0.3745 | 0.4082 | ≥ 0.60 | **Fail** |
-
-Recorded overall composites are **0.4306 baseline** and **0.5248 composed**. A post-v3 run is accepted only when all 20 intended benchmark rows execute against the live hybrid workflow, every required metric is finite, no workflow error occurs, and every row explicitly reports `ragas_failed=False`.
-
-The Qwen 3.6 diagnostic run recorded fallback means of faithfulness `0.2035`,
-answer relevancy `0.0294`, context precision `0.7500`, context recall `0.3454`,
-and answer correctness `0.0292`. See the
-[`v1.0 baseline status`](reports/1.0/README.md) for provenance, failure reasons,
-and the gate required before creating the architecture implementation branch.
-
-#### Benchmark Spider Graph
-
-![Kinegraph pre-v3 benchmark scores compared with v3 targets](reports/spider_graph_ragas_score.png)
-
-The chart is reproducible with `PYTHONPATH=. python scripts/generate_benchmark_spider.py`. It visualizes persisted pre-v3 evidence and targets only; a future accepted post-v3 run may replace the recorded series.
-
----
-
-## 🛠️ Local Development
-
-```bash
-# Create and activate virtual environment
-python -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run FastAPI app locally
-uvicorn backend.app.main:app --reload --port 8000
-
-# Run Celery worker
-celery -A backend.workers.celery_app worker --loglevel=info
-
-# Run the v3 enrichment and retrieval regression tests
-PYTHONPATH=. pytest -q tests/test_enrichment.py tests/test_retrievers.py tests/test_ingest_idempotency.py tests/test_stores.py
+```json
+{
+  "candidate_id": "chunk-42",
+  "source_channels": ["vector", "graph"],
+  "channel_ranks": {"vector": 1, "graph": 3},
+  "original_scores": {"vector": 0.91, "graph": 0.78},
+  "rrf_contributions": {"vector": 0.0164, "graph": 0.0159},
+  "reranking": {
+    "mode": "graph_aware_keyword",
+    "score": 0.89,
+    "semantic_score": 0.84,
+    "graph_signal_score": 0.2,
+    "graph_signals_applied": true,
+    "components": {}
+  },
+  "graph_paths": {}
+}
 ```
 
+The explanation fields mean:
+
+| Field | Meaning |
+|---|---|
+| `source_channels` | Search methods that found this chunk |
+| `channel_ranks` | Position within each search method before results were merged |
+| `original_scores` | Relevance score reported by each source |
+| `rrf_contributions` | How much each source contributed to the merged ranking |
+| `reranking` | Final ranking mode and component scores |
+| `graph_paths` | Relationship path evidence when the graph contributed |
+
+These values come directly from the retrieval pipeline; no extra LLM call is
+used to invent an explanation. Full schemas are available in Swagger and
+[`docs/API.md`](docs/API.md).
+
+### Upgrade an existing v2 graph
+
+New installations do not need this step. Existing deployments can preview the
+additive graph enrichment before applying it:
+
+```bash
+# Preview without changing Neo4j.
+PYTHONPATH=. venv311/bin/python scripts/enrich_kinetic_v_nodes.py --dry-run --batch-size 200
+
+# Apply the additive migration.
+PYTHONPATH=. venv311/bin/python scripts/enrich_kinetic_v_nodes.py
+```
+
+## Local development
+
+```bash
+python3.11 -m venv venv311
+source venv311/bin/activate
+pip install -r requirements.txt
+
+uvicorn backend.app.main:app --reload --port 8000
+celery -A backend.workers.celery_app worker --loglevel=info
+
+PYTHONPATH=. venv311/bin/pytest -q
+```
+
+Useful focused checks:
+
+```bash
+PYTHONPATH=. venv311/bin/pytest -q \
+  tests/test_query_explanations.py \
+  tests/test_traversal_sweep.py \
+  tests/test_provenance.py
+
+PYTHONPATH=. venv311/bin/python scripts/audit_schema_coverage.py
+```
+
+## Quality evaluation for contributors
+
+Evaluation is separate from normal application use. The checked-in dataset has
+20 reviewed questions and expected answers. Validation fails closed: a run is
+not accepted when model judging fails, a metric is missing or non-finite, the
+code or dataset changed unexpectedly, or retrieval provenance is incomplete.
+
+The following checks do not run the full provider-backed benchmark:
+
+```bash
+# Validate the reviewed benchmark sources.
+PYTHONPATH=. venv311/bin/python scripts/audit_benchmark_references.py
+
+# Validate judge configuration and the local embedding cache without a paid call.
+PYTHONPATH=. venv311/bin/python scripts/run_ragas_evaluation.py \
+  --model qwen/qwen3.6-27b \
+  --judge-provider openrouter \
+  --preflight-only
+```
+
+Full benchmarks and graph-depth comparisons require working databases, model
+capacity, and explicit provider usage. They are intentionally not part of the
+quick start. See [experiment validation](docs/EXPERIMENT_VALIDATION.md), the
+[regression gate](docs/REGRESSION_GATE.md), and the persisted
+[benchmark status](reports/1.0/README.md).
+
+## Troubleshooting
+
+| Symptom | Check |
+|---|---|
+| API fails during startup | Confirm `.env` contains `OPENAI_API_KEY` and a 16+ character `NEO4J_PASSWORD` |
+| Query returns no evidence | Ingest a document and confirm ChromaDB and Neo4j are reachable |
+| PDF parsing falls back | Check the LiteParse container at port `5707`; PyMuPDF fallback is expected when it is unavailable |
+| Graph results are missing | Check Neo4j at port `7687` and verify graph ingestion completed |
+| Semantic results are missing | Check the ChromaDB heartbeat at port `8001` and the configured collection name |
+| A model request fails | Verify the key, model name, base URL, and provider quota configured in `.env` |
+
+## Learn more
+
+For application users:
+
+- [API requests and responses](docs/API.md)
+- [Security and deployment settings](docs/SECURITY.md)
+- [Detailed local setup](docs/QUICKSTART.md)
+
+For contributors evaluating architecture changes:
+
+- [Architecture principles](docs/ARCHITECTURE_PRINCIPLES.md)
+- [Architecture roadmap](docs/architecture/ROADMAP.md)
+- [Adaptive routing decision](docs/architecture/ADR-001-Adaptive-Routing.md)
+- [Adaptive chunking decision](docs/architecture/ADR-002-Adaptive-Chunking.md)
+- [Retrieval orchestration decision](docs/architecture/ADR-003-Retrieval-Orchestration.md)
+- [Controlled experiment policy](docs/EXPERIMENT_VALIDATION.md)
+- [Benchmark reference audit](docs/BENCHMARK_REFERENCE_AUDIT.md)
+
 ---
 
-**Built with ❤️ for lean, highly performant hybrid RAG systems**
+**Built for evidence-first, explainable hybrid retrieval.**
