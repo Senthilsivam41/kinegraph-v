@@ -13,3 +13,5 @@ use-cases/<use-case>/
 
 Use cases may add a focused test under `tests/`. They must not change core
 retrieval defaults, production configuration, or service implementation.
+
+MCP clients follow the versioned [use-case MCP contract](MCP_CONTRACT.md).
