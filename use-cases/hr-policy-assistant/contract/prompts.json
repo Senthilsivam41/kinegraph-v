@@ -1,0 +1,49 @@
+{
+  "schema_version": "kinegraph.demo.hr-policy.v1",
+  "corpus": "../data/northwind-analytics-employee-handbook.md",
+  "corpus_sha256": "95119b5dab08c01ea39adbd5bb8a2987f4b0153f278ce7ead37898d7f41504a8",
+  "cases": [
+    {
+      "id": "HR-001",
+      "question": "I'm on the Data Science team and want to transfer to Customer Success. Whose approval do I need?",
+      "expected_facts": ["Marcus Oyelaran", "Dana Whitfield", "Sam Torres", "Naomi Fields"],
+      "source_sections": ["2", "4.1"],
+      "outcome": "answer"
+    },
+    {
+      "id": "HR-002",
+      "question": "Can I take PTO while serving my resignation notice, and who signs off?",
+      "expected_facts": ["Department Head approval", "overrides the normal Team Lead approval rule"],
+      "source_sections": ["3.4", "4.2"],
+      "outcome": "answer"
+    },
+    {
+      "id": "HR-003",
+      "question": "I am moving from part-time to FTE mid-quarter. Can my 401(k) waiting period be waived?",
+      "expected_facts": ["4% 401(k) match after 90 days", "Team Lead approval only"],
+      "source_sections": ["1", "4.2", "5.1", "5.3"],
+      "outcome": "answer"
+    },
+    {
+      "id": "HR-004",
+      "question": "A Sales representative has a $700 client dinner. Who approves it?",
+      "expected_facts": ["Sales is client-facing", "Team Lead approval"],
+      "source_sections": ["6.1", "7.2"],
+      "outcome": "answer"
+    },
+    {
+      "id": "HR-005",
+      "question": "A Customer Success employee wants permanent remote status. Who approves it?",
+      "expected_facts": ["Team Lead", "Department Head"],
+      "source_sections": ["4.3", "6.1"],
+      "outcome": "answer"
+    },
+    {
+      "id": "HR-006",
+      "question": "What PTO policy applies to contractors?",
+      "expected_facts": ["not eligible for PTO under this handbook", "external addendum is not included in this corpus"],
+      "source_sections": ["1"],
+      "outcome": "partial_refusal"
+    }
+  ]
+}
