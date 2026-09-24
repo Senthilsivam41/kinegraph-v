@@ -1,6 +1,6 @@
 {
   "schema_version": "kinegraph.demo.hr-policy.v1",
-  "corpus": "northwind-analytics-employee-handbook.md",
+  "corpus": "../data/northwind-analytics-employee-handbook.md",
   "corpus_sha256": "95119b5dab08c01ea39adbd5bb8a2987f4b0153f278ce7ead37898d7f41504a8",
   "cases": [
     {

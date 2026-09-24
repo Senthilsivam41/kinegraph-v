@@ -3,14 +3,18 @@
 This is fictional data for a five-minute retrieval demo. It is not HR advice
 and it must not be used for real workplace decisions.
 
+`client.py` is a standalone standard-library HTTP client for Kinegraph's public
+`POST /api/v1/query/` API. It does not import or modify the core service.
+
 ## Run it
 
-1. Convert `northwind-analytics-employee-handbook.md` to a PDF with a local
+1. Convert `data/northwind-analytics-employee-handbook.md` to a PDF with a local
    tool you trust. The document-ingest endpoint accepts PDFs only.
 2. Start Kinegraph with the Hybrid route enabled, then upload that PDF through
    the UI or `POST /api/v1/ingest/document`. Wait for the queued ingestion task
    to complete.
-3. Ask the six questions in `prompts.json`. Check every answer against its
+3. Run `python client.py --case HR-001` (or use its API request as a template)
+   for the six questions in `contract/prompts.json`. Check every answer against its
    `expected_facts` and `source_sections`; `HR-006` should state the handbook
    limit and decline details that are only in the missing addendum.
 4. For a comparison, ingest the same PDF into an isolated Vector-only run and
