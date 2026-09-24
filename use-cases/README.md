@@ -6,7 +6,8 @@ of its core service. Keep this layout:
 ```text
 use-cases/<use-case>/
   README.md        # setup and evidence required to make a claim
-  client.py        # API or MCP client; stdlib where practical
+  client.py        # API client; stdlib where practical
+  mcp_client.py    # optional MCP adapter when the use case needs one
   data/            # synthetic or redistributable source material only
   contract/        # prompts and expected grounded facts
 ```

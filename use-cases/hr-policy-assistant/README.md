@@ -5,6 +5,7 @@ and it must not be used for real workplace decisions.
 
 `client.py` is a standalone standard-library HTTP client for Kinegraph's public
 `POST /api/v1/query/` API. It does not import or modify the core service.
+`mcp_client.py` is the optional MCP `2026-07-28` Streamable HTTP adapter.
 
 ## Run it
 
@@ -38,3 +39,21 @@ The contract pins the input corpus with SHA-256
 rule. `HR-002` resolves a named exception over a general rule. `HR-006` is an
 evidence-quality check: a grounded partial refusal, not a hallucination-rate
 claim.
+
+## Optional MCP transport
+
+Point the adapter at a server implementing the repository's
+[`kinegraph.query` and `kinegraph.ingest_document` contract](../MCP_CONTRACT.md):
+
+```shell
+python mcp_client.py --endpoint http://localhost:9000/mcp \
+  query --case HR-001 --mode hybrid
+
+python mcp_client.py --endpoint http://localhost:9000/mcp \
+  ingest --pdf northwind-handbook.pdf
+```
+
+The adapter records JSON-RPC failures and normalized query evidence. Its local
+tests use a deterministic fake server; they do not prove compatibility with a
+live Kinegraph MCP server. Retain a live smoke-test response before claiming
+runtime compatibility.
