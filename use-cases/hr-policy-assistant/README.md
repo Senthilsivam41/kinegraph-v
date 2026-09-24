@@ -13,14 +13,21 @@ and it must not be used for real workplace decisions.
 2. Start Kinegraph with the Hybrid route enabled, then upload that PDF through
    the UI or `POST /api/v1/ingest/document`. Wait for the queued ingestion task
    to complete.
-3. Run `python client.py --case HR-001` (or use its API request as a template)
-   for the six questions in `contract/prompts.json`. Check every answer against its
-   `expected_facts` and `source_sections`; `HR-006` should state the handbook
-   limit and decline details that are only in the missing addendum.
+3. Run a case and name the revision of the Kinegraph service you started:
+
+   ```shell
+   python client.py --case HR-001 --mode hybrid \
+     --code-revision <running-kinegraph-commit> > hr-001-hybrid.json
+   ```
+
+   Repeat for the six questions in `contract/prompts.json`. Check every answer
+   against its `expected_facts` and `source_sections`; `HR-006` should state the
+   handbook limit and decline details that are only in the missing addendum.
 4. For a comparison, ingest the same PDF into an isolated Vector-only run and
-   ask the same six questions. Record the route, answer, cited sections, query
-   ID, and latency for each case. Do not claim a retrieval advantage without
-   this recorded run.
+   ask the same six questions with `--mode vector`. The client records the
+   corpus hash, code revision, requested and effective route, full response,
+   latency fields, and query ID when the API supplies one. Do not claim a
+   retrieval advantage without these recorded runs.
 
 The contract pins the input corpus with SHA-256
 `95119b5dab08c01ea39adbd5bb8a2987f4b0153f278ce7ead37898d7f41504a8`.
