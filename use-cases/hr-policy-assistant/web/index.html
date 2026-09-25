@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ask HR policy · Kinegraph use case</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div>
+      <p class="eyebrow">Kinegraph community use case</p>
+      <h1>Ask HR policy</h1>
+    </div>
+    <p id="connectionState" class="connection" role="status">API not contacted</p>
+  </header>
+
+  <div class="notice" role="note">
+    <strong>Synthetic demonstration only.</strong>
+    Do not use this client or handbook for real employment decisions.
+  </div>
+
+  <main>
+    <aside aria-label="Demo controls">
+      <section aria-labelledby="connectionHeading">
+        <h2 id="connectionHeading">Connection</h2>
+        <label for="apiUrl">Kinegraph API URL</label>
+        <input id="apiUrl" type="url" value="http://localhost:8000" required>
+      </section>
+
+      <section aria-labelledby="ingestHeading">
+        <h2 id="ingestHeading">1. Ingest the handbook</h2>
+        <label for="pdfFile">Synthetic handbook PDF</label>
+        <input id="pdfFile" type="file" accept="application/pdf,.pdf">
+        <button id="ingestButton" type="button">Upload and ingest</button>
+        <p id="ingestStatus" class="helper" role="status">No document submitted.</p>
+      </section>
+
+      <section aria-labelledby="queryHeading">
+        <h2 id="queryHeading">2. Ask a contract question</h2>
+        <label for="promptSelect">Question</label>
+        <select id="promptSelect"></select>
+
+        <fieldset>
+          <legend>Retrieval mode</legend>
+          <label><input type="radio" name="mode" value="hybrid" checked> Hybrid</label>
+          <label><input type="radio" name="mode" value="vector"> Vector</label>
+        </fieldset>
+        <button id="queryButton" type="button">Run query</button>
+      </section>
+    </aside>
+
+    <section class="result-panel" aria-labelledby="resultHeading" aria-live="polite">
+      <div class="result-heading">
+        <div>
+          <p class="eyebrow">Observed API response</p>
+          <h2 id="resultHeading">Evidence</h2>
+        </div>
+        <span id="resultState" class="state state-idle">Not run</span>
+      </div>
+
+      <p id="resultMessage" class="empty">Ingest the corpus, then run a question.</p>
+      <dl id="resultMeta" hidden>
+        <div><dt>Requested route</dt><dd id="requestedMode">—</dd></div>
+        <div><dt>Effective route</dt><dd id="effectiveMode">—</dd></div>
+        <div><dt>Latency</dt><dd id="latency">—</dd></div>
+      </dl>
+
+      <div id="warningPanel" class="warning" hidden></div>
+      <section id="answerPanel" hidden>
+        <h3>Grounded answer</h3>
+        <p id="answer"></p>
+      </section>
+      <section id="evidencePanel" hidden>
+        <h3>Citations and grounding</h3>
+        <pre id="evidence"></pre>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="app.mjs"></script>
+</body>
+</html>

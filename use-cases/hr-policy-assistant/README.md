@@ -13,17 +13,69 @@ and it must not be used for real workplace decisions.
 2. Start Kinegraph with the Hybrid route enabled, then upload that PDF through
    the UI or `POST /api/v1/ingest/document`. Wait for the queued ingestion task
    to complete.
-3. Run `python client.py --case HR-001` (or use its API request as a template)
-   for the six questions in `contract/prompts.json`. Check every answer against its
-   `expected_facts` and `source_sections`; `HR-006` should state the handbook
-   limit and decline details that are only in the missing addendum.
+3. Run a case and name the revision of the Kinegraph service you started:
+
+   ```shell
+   python client.py --case HR-001 --mode hybrid \
+     --code-revision <running-kinegraph-commit> > hr-001-hybrid.json
+   ```
+
+   Repeat for the six questions in `contract/prompts.json`. Check every answer
+   against its `expected_facts` and `source_sections`; `HR-006` should state the
+   handbook limit and decline details that are only in the missing addendum.
 4. For a comparison, ingest the same PDF into an isolated Vector-only run and
-   ask the same six questions. Record the route, answer, cited sections, query
-   ID, and latency for each case. Do not claim a retrieval advantage without
-   this recorded run.
+   ask the same six questions with `--mode vector`. The client records the
+   corpus hash, code revision, requested and effective route, full response,
+   latency fields, and query ID when the API supplies one. Do not claim a
+   retrieval advantage without these recorded runs.
 
 The contract pins the input corpus with SHA-256
 `95119b5dab08c01ea39adbd5bb8a2987f4b0153f278ce7ead37898d7f41504a8`.
+
+## Run the complete comparison
+
+After ingesting the same corpus into the environment under test, run all six
+cases through both explicit routes:
+
+```shell
+python run_comparison.py \
+  --base-url http://localhost:8000 \
+  --code-revision <running-kinegraph-commit> \
+  --environment local \
+  --output /tmp/hr-policy-comparison.json
+```
+
+The JSON report contains 12 runs and flags failures, effective-route changes,
+missing evidence fields, and expected facts absent from the generated answer.
+Its `comparative_claim` remains `not_evaluated`; review the retained evidence
+before making any Hybrid-versus-Vector claim.
+
+The deterministic tests use fake API responses. A live smoke run requires a
+running Kinegraph stack, the ingested PDF, and explicitly authorized model
+providers. Record those environment details with the report; do not present
+the tests as live retrieval evidence.
+
+## Standalone browser client
+
+Serve this use-case directory from the origin allowed by Kinegraph's default
+local CORS configuration:
+
+```shell
+cd use-cases/hr-policy-assistant
+python -m http.server 8080
+```
+
+Open <http://localhost:8080/web/>. Set the API URL, upload the synthetic
+handbook PDF, and wait for its ingestion task to finish. Choose one of the six
+contract prompts and run it in Hybrid or Vector mode. The page shows the
+requested and effective route, answer, latency, citation/grounding payload,
+mode downgrades, missing evidence, and API failures.
+
+If the page reports `Failed to fetch`, confirm the API is running, its URL is
+correct, and `http://localhost:8080` is allowed by `CORS_ALLOWED_ORIGINS`. If
+ingestion fails, inspect the returned task error before querying. Browser tests
+use deterministic responses; retain one real ingestion and query response
+before claiming live compatibility or retrieval quality.
 
 ## What to look for
 
