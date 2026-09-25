@@ -55,6 +55,28 @@ running Kinegraph stack, the ingested PDF, and explicitly authorized model
 providers. Record those environment details with the report; do not present
 the tests as live retrieval evidence.
 
+## Standalone browser client
+
+Serve this use-case directory from the origin allowed by Kinegraph's default
+local CORS configuration:
+
+```shell
+cd use-cases/hr-policy-assistant
+python -m http.server 8080
+```
+
+Open <http://localhost:8080/web/>. Set the API URL, upload the synthetic
+handbook PDF, and wait for its ingestion task to finish. Choose one of the six
+contract prompts and run it in Hybrid or Vector mode. The page shows the
+requested and effective route, answer, latency, citation/grounding payload,
+mode downgrades, missing evidence, and API failures.
+
+If the page reports `Failed to fetch`, confirm the API is running, its URL is
+correct, and `http://localhost:8080` is allowed by `CORS_ALLOWED_ORIGINS`. If
+ingestion fails, inspect the returned task error before querying. Browser tests
+use deterministic responses; retain one real ingestion and query response
+before claiming live compatibility or retrieval quality.
+
 ## What to look for
 
 `HR-001` joins team-to-department facts with the cross-department transfer
