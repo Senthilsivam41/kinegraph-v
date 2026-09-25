@@ -32,6 +32,29 @@ and it must not be used for real workplace decisions.
 The contract pins the input corpus with SHA-256
 `95119b5dab08c01ea39adbd5bb8a2987f4b0153f278ce7ead37898d7f41504a8`.
 
+## Run the complete comparison
+
+After ingesting the same corpus into the environment under test, run all six
+cases through both explicit routes:
+
+```shell
+python run_comparison.py \
+  --base-url http://localhost:8000 \
+  --code-revision <running-kinegraph-commit> \
+  --environment local \
+  --output /tmp/hr-policy-comparison.json
+```
+
+The JSON report contains 12 runs and flags failures, effective-route changes,
+missing evidence fields, and expected facts absent from the generated answer.
+Its `comparative_claim` remains `not_evaluated`; review the retained evidence
+before making any Hybrid-versus-Vector claim.
+
+The deterministic tests use fake API responses. A live smoke run requires a
+running Kinegraph stack, the ingested PDF, and explicitly authorized model
+providers. Record those environment details with the report; do not present
+the tests as live retrieval evidence.
+
 ## What to look for
 
 `HR-001` joins team-to-department facts with the cross-department transfer
