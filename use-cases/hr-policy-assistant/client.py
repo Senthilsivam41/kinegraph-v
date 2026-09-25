@@ -29,6 +29,17 @@ def build_artifact(case, requested_mode, result, code_revision, captured_at=None
     }
 
 
+def query_case(base_url, case, mode, *, opener=urlopen):
+    body = json.dumps({"query": case["question"], "mode": mode, "allow_mode_downgrade": False}).encode()
+    request = Request(
+        f"{base_url.rstrip('/')}/api/v1/query/",
+        data=body,
+        headers={"Content-Type": "application/json"},
+    )
+    with opener(request, timeout=60) as response:
+        return json.load(response)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", choices=[case["id"] for case in CASES], required=True)
@@ -39,12 +50,9 @@ def main() -> None:
     if not args.code_revision:
         parser.error("--code-revision is required to make the evidence reproducible")
     case = next(case for case in CASES if case["id"] == args.case)
-    body = json.dumps({"query": case["question"], "mode": args.mode, "allow_mode_downgrade": False}).encode()
-    request = Request(f"{args.base_url.rstrip('/')}/api/v1/query/", data=body, headers={"Content-Type": "application/json"})
 
     try:
-        with urlopen(request, timeout=60) as response:
-            result = json.load(response)
+        result = query_case(args.base_url, case, args.mode)
     except (HTTPError, URLError) as error:
         raise SystemExit(f"Kinegraph API request failed: {error}") from error
 
