@@ -7,13 +7,13 @@
     "locale": "en",
     "repository": {
       "url": "https://github.com/Senthilsivam41/kinegraph-v.git",
-      "revision": "b709ab9187266c73531b8df1b144c707b1fee097"
+      "revision": "4c1c924033c2651e31a4bd7e9950fd864fdfbc99"
     },
     "views": [
-      { "id": "query-path", "label": "Query path", "focus": ["client", "api", "routing", "retrieval", "verification"], "note": "Follow a query from the local UI through retrieval and evidence validation." },
+      { "id": "query-path", "label": "Query path", "focus": ["client", "api", "routing", "retrieval", "verification", "otel"], "note": "Follow a query from the local UI through retrieval, evidence validation, and telemetry." },
       { "id": "dual-store", "label": "Dual-store retrieval", "focus": ["retrieval", "vector", "graph", "lexical"], "note": "Inspect the vector, graph, and lexical evidence channels." },
       { "id": "ingestion", "label": "Document ingestion", "focus": ["client", "api", "parser", "ingestion", "vector", "graph", "queue"], "note": "Trace document processing into the local evidence stores." },
-      { "id": "evaluation", "label": "Evaluation controls", "focus": ["evaluator", "retrieval", "verification"], "note": "Connect acceptance gates and shadow verification without implying promotion." }
+      { "id": "evaluation", "label": "Evaluation controls", "focus": ["evaluator", "retrieval", "verification", "otel"], "note": "Connect acceptance gates, shadow verification, and telemetry without implying promotion." }
     ]
   },
   "components": [
@@ -28,6 +28,7 @@
     { "id": "parser", "type": "backend", "label": "LiteParse", "sublabel": "localhost:5707", "tag": "local parser", "pos": [40, 80], "size": [170, 64], "sources": [{ "path": "backend/graph_ingestion/lite_parser.py", "line": 1 }] },
     { "id": "ingestion", "type": "backend", "label": "Ingestion Workers", "sublabel": "Celery processing", "pos": [270, 80], "size": [180, 64], "sources": [{ "path": "backend/workers/tasks.py", "line": 1 }] },
     { "id": "queue", "type": "messagebus", "label": "Redis", "sublabel": "localhost:6379", "tag": "task queue", "pos": [500, 80], "size": [150, 64], "sources": [{ "path": "backend/core/config.py", "line": 12 }] },
+    { "id": "otel", "type": "cloud", "label": "OpenTelemetry", "sublabel": "LLM metrics and traces", "tag": "observability", "pos": [700, 650], "size": [190, 64], "sources": [{ "path": "backend/observability/telemetry.py", "line": 1 }] },
     { "id": "evaluator", "type": "external", "label": "Evaluation Harness", "sublabel": "RAGAS + acceptance gates", "tag": "diagnostic only", "pos": [950, 480], "size": [190, 64], "sources": [{ "path": "eval/ragas_evaluator.py", "line": 189 }] }
   ],
   "boundaries": [
@@ -45,6 +46,7 @@
     { "id": "api-parser", "from": "api", "to": "parser", "label": "parse document", "fromSide": "top", "toSide": "bottom", "labelDx": -60 },
     { "id": "parser-ingestion", "from": "parser", "to": "ingestion", "label": "structured Markdown", "labelDy": 70 },
     { "id": "ingestion-queue", "from": "ingestion", "to": "queue", "label": "enqueue work", "labelDy": 70 },
+    { "id": "api-otel", "from": "api", "to": "otel", "label": "query spans and LLM metrics", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "via": [[330, 620], [795, 620]], "labelDy": 30 },
     { "id": "evaluator-retrieval", "from": "evaluator", "to": "retrieval", "label": "measure slices", "variant": "dashed", "fromSide": "top", "toSide": "bottom", "labelDx": -70 },
     { "id": "evaluator-verification", "from": "evaluator", "to": "verification", "label": "score evidence", "variant": "dashed", "fromSide": "top", "toSide": "bottom", "labelDx": 70 }
   ],
