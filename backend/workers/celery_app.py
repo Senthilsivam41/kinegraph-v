@@ -23,4 +23,16 @@ celery_app.conf.update(
     task_time_limit=3600,  # 1 hour max per task
     worker_prefetch_multiplier=1,
     worker_max_tasks_per_child=50,
+    beat_schedule={
+        "dispatch-ingest-outbox": {
+            "task": "workers.tasks.dispatch_ingest_outbox",
+            "schedule": 10.0,
+            "options": {"queue": "control"},
+        },
+        "reconcile-ingest": {
+            "task": "workers.tasks.reconcile_ingest",
+            "schedule": 300.0,
+            "options": {"queue": "control"},
+        },
+    },
 )

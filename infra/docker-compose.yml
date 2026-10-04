@@ -151,7 +151,31 @@ services:
         condition: service_healthy
     networks:
       - kinetic-network
-    command: celery -A backend.workers.celery_app worker --loglevel=info --concurrency=4
+    command: celery -A backend.workers.celery_app worker --loglevel=info --queues=celery,ingest,control --concurrency=4
+
+  # Celery Beat dispatches the durable ingestion outbox and reconciliation jobs.
+  beat:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    container_name: kinetic-beat
+    restart: unless-stopped
+    volumes:
+      - ../backend:/app/backend
+    env_file:
+      - ../.env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - INGEST_DATABASE_URL=${INGEST_DATABASE_URL:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - kinetic-network
+    command: celery -A backend.workers.celery_app beat --loglevel=info
 
 volumes:
   redis_data:

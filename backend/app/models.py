@@ -161,6 +161,8 @@ class IngestResponse(BaseModel):
     task_id: str
     status: str
     message: str
+    doc_id: Optional[str] = None
+    status_url: Optional[str] = None
 
 
 class TaskStatus(BaseModel):

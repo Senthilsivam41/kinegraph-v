@@ -35,7 +35,7 @@ REPO_ROOT = Path(__file__).parents[1]
         "folder\\document.pdf",
         "",
         None,
-        "document.txt",
+        "document.exe",
     ],
 )
 def test_upload_filename_rejects_paths_and_non_pdf_names(filename):

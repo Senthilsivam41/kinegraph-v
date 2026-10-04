@@ -1,0 +1,184 @@
+services:
+  caddy:
+    build:
+      context: ..
+      dockerfile: infra/Caddy.Dockerfile
+    restart: unless-stopped
+    environment:
+      PUBLIC_HOSTNAME: ${PUBLIC_HOSTNAME:?Set public DNS hostname}
+    ports:
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - oauth2-proxy
+    networks: [internal]
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.10.0
+    restart: unless-stopped
+    environment:
+      OAUTH2_PROXY_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?Set OIDC client secret}
+      OAUTH2_PROXY_COOKIE_SECRET: ${OIDC_COOKIE_SECRET:?Set OIDC cookie secret}
+    command:
+      - --provider=oidc
+      - --http-address=0.0.0.0:4180
+      - --upstream=http://app:8000/
+      - --redirect-url=https://${PUBLIC_HOSTNAME:?Set public DNS hostname}/oauth2/callback
+      - --oidc-issuer-url=${OIDC_ISSUER_URL:?Set OIDC issuer}
+      - --client-id=${OIDC_CLIENT_ID:?Set OIDC client ID}
+      - --oidc-groups-claim=${OIDC_GROUP_CLAIM:-groups}
+      - --allowed-group=${OIDC_ALLOWED_GROUP:?Set allowed group}
+      - --email-domain=*
+      - --skip-jwt-bearer-tokens=true
+      - --extra-jwt-issuers=${OIDC_ISSUER_URL:?Set OIDC issuer}=${OIDC_AUDIENCE:?Set API audience}
+      - --bearer-token-login-fallback=false
+      - --api-route=^/api/
+      - --pass-user-headers=true
+      - --skip-auth-strip-headers=true
+      - --reverse-proxy=true
+      - --cookie-secure=true
+      - --cookie-samesite=lax
+    depends_on:
+      - app
+    networks: [internal]
+
+  liteparse:
+    image: ghcr.io/run-llama/liteparse-server@sha256:fdc2a40d68a0e38c0bc9c304e8ef534ad03cd62abf83a18f454b0fa4ba217ac4
+    restart: unless-stopped
+    networks: [internal]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks: [internal]
+
+  chroma:
+    image: chromadb/chroma:0.5.20
+    restart: unless-stopped
+    environment:
+      IS_PERSISTENT: "TRUE"
+      ANONYMIZED_TELEMETRY: "FALSE"
+    volumes:
+      - chroma_data:/chroma/chroma
+    networks: [internal]
+
+  neo4j:
+    image: neo4j:5.16-community
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?Set Neo4j password}
+      NEO4J_server_memory_pagecache_size: 512M
+      NEO4J_server_memory_heap_initial__size: 512M
+      NEO4J_server_memory_heap_max__size: 2G
+      NEO4J_PLUGINS: '["apoc"]'
+    volumes:
+      - neo4j_data:/data
+    networks: [internal]
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    environment:
+      INGEST_MIGRATION_DATABASE_URL: ${INGEST_MIGRATION_DATABASE_URL:?Set direct Neon URL}
+    command: ["python", "-m", "backend.ingestion.migrations"]
+    networks: [internal]
+
+  app:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    restart: unless-stopped
+    env_file: ../.env
+    environment: &app_env
+      ENVIRONMENT: production
+      CHROMA_HOST: chroma
+      CHROMA_PORT: 8000
+      NEO4J_URI: bolt://neo4j:7687
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      PARSER_URL: http://liteparse:5707
+      INGEST_DATABASE_URL: ${INGEST_DATABASE_URL:?Set pooled Neon URL}
+      NEON_S3_ENDPOINT: ${NEON_S3_ENDPOINT:?Set Neon S3 endpoint}
+      NEON_S3_BUCKET: ${NEON_S3_BUCKET:?Set private bucket}
+      NEON_S3_REGION: ${NEON_S3_REGION:-us-east-2}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Set Neon S3 access key}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?Set Neon S3 secret}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:?Set OIDC issuer}
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:?Set API audience}
+      OIDC_JWKS_URL: ${OIDC_JWKS_URL:?Set JWKS URL}
+      OIDC_ALLOWED_GROUP: ${OIDC_ALLOWED_GROUP:?Set allowed group}
+      OIDC_GROUP_CLAIM: ${OIDC_GROUP_CLAIM:-groups}
+      TRUST_PROXY_AUTH_HEADERS: "true"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+      chroma:
+        condition: service_started
+      neo4j:
+        condition: service_started
+      liteparse:
+        condition: service_started
+    networks: [internal]
+    command: ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  worker-ingest:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    restart: unless-stopped
+    env_file: ../.env
+    environment: *app_env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+    networks: [internal]
+    command: ["celery", "-A", "backend.workers.celery_app", "worker", "--loglevel=info", "--queues=ingest", "--concurrency=2"]
+
+  worker-control:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    restart: unless-stopped
+    env_file: ../.env
+    environment: *app_env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+    networks: [internal]
+    command: ["celery", "-A", "backend.workers.celery_app", "worker", "--loglevel=info", "--queues=control", "--concurrency=1"]
+
+  beat:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    restart: unless-stopped
+    env_file: ../.env
+    environment: *app_env
+    depends_on:
+      redis:
+        condition: service_started
+    networks: [internal]
+    command: ["celery", "-A", "backend.workers.celery_app", "beat", "--loglevel=info"]
+
+volumes:
+  caddy_data:
+  caddy_config:
+  redis_data:
+  chroma_data:
+  neo4j_data:
+
+networks:
+  internal:
+    driver: bridge

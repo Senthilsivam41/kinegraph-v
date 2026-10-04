@@ -4,6 +4,8 @@ Includes observability layer: LangSmithTracer + MetricsCollector
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi import HTTPException, Request
 from contextlib import asynccontextmanager
 
 from backend.app.api.routes import query, ingest, health
@@ -52,8 +54,21 @@ app.add_middleware(
     allow_origins=settings.cors_allowed_origins,
     allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
 )
+
+
+@app.middleware("http")
+async def authorize_public_api(request: Request, call_next):
+    """The edge is not the sole authorization boundary for bearer API calls."""
+    if settings.ENVIRONMENT == "production" and request.method != "OPTIONS" and request.url.path.startswith("/api/"):
+        from backend.ingestion.auth import require_workspace
+
+        try:
+            request.state.workspace = require_workspace(request)
+        except HTTPException as exc:
+            return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    return await call_next(request)
 
 # Routers
 app.include_router(health.router,          prefix="/health",              tags=["Health"])

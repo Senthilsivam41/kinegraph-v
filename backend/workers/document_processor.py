@@ -4,6 +4,7 @@ Document Processing Utilities
 from typing import List, Dict, Any, Optional, Tuple
 import fitz  # PyMuPDF
 import os
+from pathlib import Path
 try:
     from langchain_text_splitters import RecursiveCharacterTextSplitter
 except ImportError:  # pragma: no cover - older langchain layouts
@@ -31,6 +32,18 @@ def extract_text_from_pdf(pdf_path: str) -> str:
     layout-preserved, table-aware Markdown suitable for graph ingestion.
     Falls back to PyMuPDF sequentially if LiteParse is unavailable.
     """
+    # The page ceiling must be checked before calling the parser service when
+    # PyMuPDF can open the file. If it cannot, still let LiteParse attempt the
+    # file; it may support a PDF variant that PyMuPDF does not.
+    try:
+        with fitz.open(pdf_path) as document:
+            page_count = getattr(document, "page_count", None)
+            if page_count is not None and page_count > settings.MAX_DOCUMENT_PAGES:
+                raise ValueError("PDF exceeds the configured page limit")
+    except ValueError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Could not preflight PDF '%s': %s", pdf_path, exc)
     client = LiteParseClient()
     try:
         return client.extract_to_markdown(pdf_path)
@@ -52,6 +65,21 @@ def extract_text_from_pdf(pdf_path: str) -> str:
     except Exception as e:
         logger.error("PyMuPDF also failed for '%s': %s", pdf_path, e)
         return ""
+
+
+def extract_document_text(path: str, kind: str) -> str:
+    """Extract only the admission-approved format; never infer it from a path."""
+    if kind == "pdf":
+        return extract_text_from_pdf(path)
+    if kind == "text":
+        return Path(path).read_text(encoding="utf-8-sig")
+    if kind == "docx":
+        from docx import Document
+
+        document = Document(path)
+        paragraphs = (p.text for p in document.paragraphs)
+        return "\n".join(paragraphs)
+    raise ValueError("Unsupported document format")
 
 
 def chunk_text(

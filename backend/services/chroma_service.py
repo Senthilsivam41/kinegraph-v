@@ -59,19 +59,22 @@ class ChromaService:
         Returns:
             Success status
         """
+        if not (len(texts) == len(metadatas) == len(ids)):
+            raise ValueError("texts, metadatas and ids must have equal lengths")
+        if len(ids) != len(set(ids)):
+            raise ValueError("chunk IDs must be unique within one document")
         try:
             collection = self.get_or_create_collection()
-            
-            # Generate embeddings
-            embeddings = self.embeddings.embed_documents(texts)
-            
-            # Add to collection
-            collection.add(
-                embeddings=embeddings,
-                documents=texts,
-                metadatas=metadatas,
-                ids=ids
-            )
+            for start in range(0, len(texts), settings.CHROMA_UPSERT_BATCH_SIZE):
+                end = start + settings.CHROMA_UPSERT_BATCH_SIZE
+                batch_texts = texts[start:end]
+                embeddings = self.embeddings.embed_documents(batch_texts)
+                collection.upsert(
+                    embeddings=embeddings,
+                    documents=batch_texts,
+                    metadatas=metadatas[start:end],
+                    ids=ids[start:end],
+                )
             
             return True
         except Exception as e:

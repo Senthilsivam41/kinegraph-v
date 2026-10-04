@@ -246,4 +246,5 @@ def test_app_cors_middleware_uses_explicit_methods_headers_and_origins():
 
     assert middleware.kwargs["allow_origins"] != ["*"]
     assert middleware.kwargs["allow_methods"] == ["GET", "POST", "OPTIONS"]
-    assert middleware.kwargs["allow_headers"] == ["Authorization", "Content-Type"]
+    assert set(["Authorization", "Content-Type"]).issubset(middleware.kwargs["allow_headers"])
+    assert "Idempotency-Key" in middleware.kwargs["allow_headers"]

@@ -6,6 +6,7 @@ import logging
 import re
 
 from neo4j import GraphDatabase, READ_ACCESS, Session
+from neo4j.exceptions import TransientError
 from typing import List, Dict, Any, Optional
 from backend.core.config import settings
 from langchain_openai import ChatOpenAI
@@ -133,18 +134,19 @@ class Neo4jService:
             return False
     
     def create_indexes(self):
-        """Create indexes for better query performance"""
+        """Enforce MERGE keys so concurrent retries cannot create duplicates."""
         with self.driver.session() as session:
-            # Index for documents
             session.run("""
-                CREATE INDEX document_id IF NOT EXISTS
-                FOR (d:Document) ON (d.id)
+                CREATE CONSTRAINT ingest_document_id IF NOT EXISTS
+                FOR (d:Document) REQUIRE d.id IS UNIQUE
             """)
-            
-            # Index for entities
             session.run("""
-                CREATE INDEX entity_name IF NOT EXISTS
-                FOR (e:Entity) ON (e.name)
+                CREATE CONSTRAINT ingest_chunk_id IF NOT EXISTS
+                FOR (c:Chunk) REQUIRE c.id IS UNIQUE
+            """)
+            session.run("""
+                CREATE CONSTRAINT ingest_entity_key IF NOT EXISTS
+                FOR (e:Entity) REQUIRE (e.name, e.type) IS UNIQUE
             """)
     
     async def add_document_graph(
@@ -181,9 +183,9 @@ class Neo4jService:
                 # Create document node
                 session.run("""
                     MERGE (d:Document {id: $doc_id})
+                    ON CREATE SET d.created_at = datetime()
                     SET d.content = $content,
-                        d += $metadata,
-                        d.created_at = datetime()
+                        d += $metadata
                 """, doc_id=doc_id, content=content, metadata=metadata)
 
                 if chunks:
@@ -256,6 +258,9 @@ class Neo4jService:
                 finally:
                     chroma.close()
             return GraphWriteResult(success=True, enrichment=enrichment_result)
+        except TransientError:
+            logger.exception("Transient Neo4j graph write failure")
+            raise
         except Exception as e:
             logger.exception("Failed to add document to Neo4j")
             return GraphWriteResult(success=False, error=str(e))

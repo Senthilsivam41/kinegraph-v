@@ -1,0 +1,28 @@
+{$PUBLIC_HOSTNAME} {
+    encode zstd gzip
+
+    handle /oauth2/* {
+        reverse_proxy oauth2-proxy:4180 {
+            header_up -X-Forwarded-User
+            header_up -X-Forwarded-Groups
+            header_up -X-Forwarded-Email
+        }
+    }
+
+    @private path /api/* /docs* /openapi.json /health*
+    handle @private {
+        request_body {
+            max_size 105MB
+        }
+        reverse_proxy oauth2-proxy:4180 {
+            header_up -X-Forwarded-User
+            header_up -X-Forwarded-Groups
+            header_up -X-Forwarded-Email
+        }
+    }
+
+    handle {
+        root * /srv
+        file_server
+    }
+}

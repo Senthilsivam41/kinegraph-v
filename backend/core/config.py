@@ -24,6 +24,23 @@ class Settings(BaseSettings):
     CORS_ALLOWED_ORIGINS: str = "http://localhost:8080,http://127.0.0.1:8080"
     CORS_ALLOW_CREDENTIALS: bool = False
     UPLOAD_DIR: Path = Path("data/uploads")
+    MAX_UPLOAD_BYTES: int = Field(default=100 * 1024 * 1024, ge=1)
+    MAX_DOCUMENT_PAGES: int = Field(default=500, ge=1)
+    MAX_EXTRACTED_CHARACTERS: int = Field(default=5_000_000, ge=1)
+    MAX_DOCUMENT_CHUNKS: int = Field(default=3_000, ge=1)
+    CHROMA_UPSERT_BATCH_SIZE: int = Field(default=64, ge=1, le=1000)
+    INGEST_DATABASE_URL: Optional[str] = None
+    INGEST_MIGRATION_DATABASE_URL: Optional[str] = None
+    NEON_S3_ENDPOINT: Optional[str] = None
+    NEON_S3_BUCKET: Optional[str] = None
+    NEON_S3_REGION: str = "us-east-2"
+    INGEST_ACTIVE_OBJECT_LIMIT_BYTES: int = Field(default=4 * 1024**3, ge=1)
+    OIDC_ISSUER_URL: Optional[str] = None
+    OIDC_AUDIENCE: Optional[str] = None
+    OIDC_JWKS_URL: Optional[str] = None
+    OIDC_GROUP_CLAIM: str = "groups"
+    OIDC_ALLOWED_GROUP: Optional[str] = None
+    TRUST_PROXY_AUTH_HEADERS: bool = False
     
     # OpenAI
     OPENAI_API_KEY: str

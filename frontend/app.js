@@ -1,6 +1,6 @@
 // Application State
 const state = {
-    apiUrl: 'http://localhost:8000',
+    apiUrl: window.location.protocol === 'https:' ? window.location.origin : 'http://localhost:8000',
     mode: 'hybrid',
     maxResults: 10,
     messages: [],
@@ -50,6 +50,15 @@ async function init() {
     setupEventListeners();
     await checkSystemHealth();
     loadSettings();
+    const active = localStorage.getItem('kinegraph-active-ingest');
+    if (active) {
+        try {
+            const { docId, fileName } = JSON.parse(active);
+            if (docId && fileName) pollDocumentStatus(docId, fileName);
+        } catch (_) {
+            localStorage.removeItem('kinegraph-active-ingest');
+        }
+    }
     console.log('KineGraph Chat UI initialized');
 }
 
@@ -396,8 +405,8 @@ async function handleFileUpload() {
     const file = elements.fileInput.files[0];
     if (!file) return;
     
-    if (!file.name.endsWith('.pdf')) {
-        showUploadStatus('Only PDF files are supported', 'error');
+    if (!/\.(pdf|docx|txt)$/i.test(file.name)) {
+        showUploadStatus('Only PDF, DOCX and TXT files are supported', 'error');
         return;
     }
     
@@ -423,14 +432,46 @@ async function handleFileUpload() {
         
         const data = await response.json();
         
-        // Poll task status
-        await pollTaskStatus(data.task_id, file.name);
+        if (data.doc_id) {
+            localStorage.setItem('kinegraph-active-ingest', JSON.stringify({docId: data.doc_id, fileName: file.name}));
+            pollDocumentStatus(data.doc_id, file.name);
+        } else {
+            await pollTaskStatus(data.task_id, file.name);
+        }
         
     } catch (error) {
         console.error('Upload error:', error);
         showUploadStatus(`Error: ${error.message}`, 'error');
         elements.uploadBtn.disabled = false;
     }
+}
+
+async function pollDocumentStatus(docId, fileName) {
+    const url = `${state.apiUrl}/api/v1/ingest/documents/${encodeURIComponent(docId)}`;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Status unavailable (${response.status})`);
+        const data = await response.json();
+        if (data.state === 'done' && data.validation?.complete) {
+            localStorage.removeItem('kinegraph-active-ingest');
+            showUploadStatus(`✅ ${fileName} indexed and ready`, 'success');
+            state.uploadedFiles.push(fileName);
+            elements.fileInput.value = '';
+            elements.uploadBtn.disabled = false;
+            addMessage('assistant', `Document "${fileName}" has been successfully indexed. You can now ask questions about it!`);
+            return;
+        }
+        if (data.state === 'failed' || data.state === 'done') {
+            localStorage.removeItem('kinegraph-active-ingest');
+            showUploadStatus(`❌ ${fileName}: ${data.error_code || 'index validation incomplete'}`, 'error');
+            elements.uploadBtn.disabled = false;
+            return;
+        }
+        showUploadStatus(`Processing ${fileName}… ${data.stage}`, 'processing');
+    } catch (error) {
+        showUploadStatus(`Waiting for status service: ${error.message}`, 'processing');
+    }
+    setTimeout(() => pollDocumentStatus(docId, fileName), 5000);
 }
 
 // Poll Task Status
@@ -547,7 +588,7 @@ function clearChat() {
                     <li>Explore relationships and connections in your knowledge graph</li>
                     <li>Answer questions using both vector and graph databases</li>
                 </ul>
-                <p><strong>Get started:</strong> Upload a PDF document or ask me a question!</p>
+                <p><strong>Get started:</strong> Upload a PDF, DOCX, or TXT document or ask me a question!</p>
             </div>
         `;
     }
