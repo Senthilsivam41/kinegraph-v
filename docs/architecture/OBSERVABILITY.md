@@ -7,12 +7,15 @@ The query API emits vendor-neutral OpenTelemetry traces and metrics. Configure
 Each `POST /api/v1/query` produces the `kinegraph.query` span. Its generated
 query UUID is an attribute for trace correlation only; it is never a metric
 label. Prompt text, answer text, evidence content, credentials, and attachment
-content are not sent as telemetry attributes.
+content are not sent as telemetry attributes. Failed queries record one
+allowlisted `error.type` (`validation_error`, `timeout`, `unavailable`,
+`permission_denied`, `cancelled`, or `internal_error`). Exception messages,
+class names, and stack traces are not recorded.
 
 | Signal | Type | Bounded dimensions | Purpose |
 | --- | --- | --- | --- |
 | `kinegraph.query.requests` | Counter | route, requested/effective mode, outcome | Query rate and success/failure split |
-| `kinegraph.query.failures` | Counter | route, exception type | Failed query diagnosis |
+| `kinegraph.query.failures` | Counter | route, allowlisted error code | Failed query diagnosis |
 | `kinegraph.query.duration` | Histogram (ms) | route, modes, outcome | Query latency percentiles |
 | `kinegraph.query.stage.duration` | Histogram (ms) | stage | Retrieval, rerank, generation, and critique latency |
 | `kinegraph.llm.tokens` | Counter | operation, configured model, input/output | Provider-reported LLM token usage |
