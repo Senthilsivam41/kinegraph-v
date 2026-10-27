@@ -20,6 +20,13 @@ secret store, restart dependent services, and invalidate any derived snapshots
 or credentials. Rewriting public Git history is a separate repository-owner
 decision and does not replace rotation.
 
+A Google API key-shaped value was committed in `docs/FIX_API_KEY.md` and in
+derived copies under `data/documents/` and `data/chunks/`. The working tree
+now uses a placeholder. Removing it does not revoke the credential or erase
+Git history. If that value was ever issued, revoke it in the Google Cloud or
+AI Studio console, rotate any configuration that used it, and treat historical
+commits as exposed. Rewriting history remains a repository-owner decision.
+
 ## Generated Cypher
 
 The optional PropertyGraph Text-to-Cypher retriever is disabled. Requesting

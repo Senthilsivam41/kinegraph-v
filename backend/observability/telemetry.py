@@ -6,6 +6,7 @@ added to telemetry.
 """
 from __future__ import annotations
 
+import asyncio
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from typing import Any, Mapping
@@ -19,6 +20,37 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 
 ROUTE = "/api/v1/query"
+
+# Closed set recorded on failure metrics and spans. Exception messages,
+# class names, and stack traces are never telemetry.
+ALLOWED_ERROR_CODES = frozenset({
+    "validation_error",
+    "timeout",
+    "unavailable",
+    "permission_denied",
+    "cancelled",
+    "internal_error",
+})
+
+
+def sanitized_error_code(error: BaseException) -> str:
+    """Map an exception to an allowlisted code, using its explicit cause."""
+    root = error.__cause__ or error
+    if isinstance(root, asyncio.CancelledError):
+        code = "cancelled"
+    elif isinstance(root, TimeoutError):
+        code = "timeout"
+    elif isinstance(root, ConnectionError):
+        code = "unavailable"
+    elif isinstance(root, PermissionError):
+        code = "permission_denied"
+    elif isinstance(root, ValueError):
+        code = "validation_error"
+    else:
+        code = "internal_error"
+    if code not in ALLOWED_ERROR_CODES:
+        return "internal_error"
+    return code
 
 
 def _as_int(value: Any) -> int:
@@ -105,9 +137,8 @@ class QueryObservation(AbstractContextManager["QueryObservation"]):
         )
 
     def record_failure(self, error: BaseException) -> None:
-        root_cause = error.__cause__ or error
-        error_type = type(root_cause).__name__
-        attrs = {"http.route": ROUTE, "error.type": error_type}
+        error_code = sanitized_error_code(error)
+        attrs = {"http.route": ROUTE, "error.type": error_code}
         self.telemetry.query_failures.add(1, attrs)
         self.telemetry.query_requests.add(
             1,
@@ -119,8 +150,8 @@ class QueryObservation(AbstractContextManager["QueryObservation"]):
             },
         )
         self._span.set_attribute("kinegraph.query.outcome", "failure")
-        self._span.record_exception(root_cause)
-        self._span.set_status(trace.Status(trace.StatusCode.ERROR, error_type))
+        self._span.set_attribute("error.type", error_code)
+        self._span.set_status(trace.Status(trace.StatusCode.ERROR, error_code))
 
 
 class QueryTelemetry:

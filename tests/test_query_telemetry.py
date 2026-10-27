@@ -1,4 +1,10 @@
-from backend.observability.telemetry import QueryTelemetry, estimate_cost_usd, normalize_usage
+from backend.observability.telemetry import (
+    ALLOWED_ERROR_CODES,
+    QueryTelemetry,
+    estimate_cost_usd,
+    normalize_usage,
+    sanitized_error_code,
+)
 
 
 def test_normalize_usage_supports_openai_and_langchain_names():
@@ -35,10 +41,36 @@ def test_failure_metric_uses_the_wrapped_root_cause():
 
     assert telemetry.query_failures.calls == [(1, {
         "http.route": "/api/v1/query",
-        "error.type": "ValueError",
+        "error.type": "validation_error",
     })]
+    assert sanitized_error_code(wrapper) in ALLOWED_ERROR_CODES
+    rendered = _span_text(observation)
+    assert "public error" not in rendered
+    assert "provider failure" not in rendered
+    assert all(event.name != "exception" for event in observation._span.events)
     observation.__exit__(None, None, None)
     telemetry.shutdown()
+
+
+def test_unclassified_failure_code_hides_exception_text():
+    telemetry = QueryTelemetry(service_name="test", service_version="1", environment="test")
+    telemetry.query_requests = _Capture()
+    telemetry.query_failures = _Capture()
+    observation = telemetry.observe("query-123", "hybrid")
+    secret = "credential-shaped-value"
+
+    observation.record_failure(RuntimeError(f"provider returned {secret}"))
+
+    assert telemetry.query_failures.calls[0][1]["error.type"] == "internal_error"
+    assert secret not in _span_text(observation)
+    observation.__exit__(None, None, None)
+    telemetry.shutdown()
+
+
+def _span_text(observation) -> str:
+    span = observation._span
+    events = [(event.name, dict(event.attributes)) for event in span.events]
+    return repr(dict(span.attributes)) + repr(events) + repr(span.status)
 
 
 class _Capture:

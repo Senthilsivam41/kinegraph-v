@@ -6,12 +6,12 @@ Your document uploads are failing because you're using a **Google API key** inst
 
 ### Error in Logs:
 ```
-Error code: 401 - Incorrect API key provided: AIzaSyBO***fVvw
+Error code: 401 - Incorrect API key provided: <redacted>
 ```
 
 ### Current Configuration:
 ```bash
-OPENAI_API_KEY=AIzaSyBO5kPUxn3p74SHS3a8cm4_8hwPS8XfVvw  # ❌ Google API key
+OPENAI_API_KEY=<redacted-google-api-key>  # ❌ Google API key
 ```
 
 ### Why This Matters:
@@ -43,7 +43,7 @@ The system uses OpenAI's API to generate embeddings (vector representations) of 
    Find and replace:
    ```bash
    # From:
-   OPENAI_API_KEY=AIzaSyBO5kPUxn3p74SHS3a8cm4_8hwPS8XfVvw
+   OPENAI_API_KEY=<redacted-google-api-key>
    
    # To:
    OPENAI_API_KEY=sk-proj-your-actual-openai-key-here
