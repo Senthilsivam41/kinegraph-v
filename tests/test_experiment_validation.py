@@ -88,6 +88,7 @@ def test_ratchet_keeps_one_lever_improvement():
     comparison = compare_manifests(baseline, candidate)
 
     assert comparison["decision"] == "keep"
+    assert comparison["accepted"] is True
     assert comparison["changed_levers"] == ["pipeline.max_hops"]
     assert comparison["composite_delta"] > 0
 

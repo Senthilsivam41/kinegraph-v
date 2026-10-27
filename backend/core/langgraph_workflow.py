@@ -303,9 +303,9 @@ class HybridRAGWorkflow:
     ) -> None:
         self.chroma = chroma_service
         self.neo4j = neo4j_service
-        self.graph_retriever_node = LangGraphGraphRetrieverNode(
-            use_cypher=False, neo4j_driver=neo4j_service.driver
-        )
+        # Graph stores are constructed on first graph retrieval so Vectorless
+        # can run without Chroma or the Neo4j property-graph client.
+        self._graph_retriever_node = None
         requested_cross_encoder = (
             settings.CROSS_ENCODER_RERANK_ENABLED
             if use_cross_encoder is None
@@ -338,6 +338,18 @@ class HybridRAGWorkflow:
         self.recovery = QueryRecoveryEngine(self.llm)
 
         self.graph = self._build_graph()
+
+    @property
+    def graph_retriever_node(self):
+        if self._graph_retriever_node is None:
+            self._graph_retriever_node = LangGraphGraphRetrieverNode(
+                use_cypher=False, neo4j_driver=self.neo4j.driver
+            )
+        return self._graph_retriever_node
+
+    @graph_retriever_node.setter
+    def graph_retriever_node(self, value) -> None:
+        self._graph_retriever_node = value
 
     def _get_ranker(self, use_cross_encoder: bool) -> ContextRanker:
         """Resolve a cached ranker so cross-encoder use is request-scoped and explicit."""
@@ -532,6 +544,7 @@ class HybridRAGWorkflow:
         max_hops: int,
         traversal_strategy: TraversalStrategy,
         community_id: Optional[str],
+        filters: Optional[Dict[str, Any]] = None,
     ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """Use the diagnostic graph contract when supported, preserving test adapters."""
         diagnostic_method = getattr(
@@ -544,6 +557,7 @@ class HybridRAGWorkflow:
                 max_hops=max_hops,
                 traversal_strategy=traversal_strategy,
                 community_id=community_id,
+                filters=filters,
             )
         results = await self.graph_retriever_node.retrieve_chunks(
             query=query,
@@ -551,6 +565,7 @@ class HybridRAGWorkflow:
             max_hops=max_hops,
             traversal_strategy=traversal_strategy,
             community_id=community_id,
+            filters=filters,
         )
         return results, {}
 
@@ -583,6 +598,7 @@ class HybridRAGWorkflow:
             max_hops=state["max_hops"],
             traversal_strategy=state["traversal_strategy"],
             community_id=state.get("community_id"),
+            filters=state.get("filters"),
         ))
 
         tasks = [vector_task, graph_task]
@@ -668,6 +684,7 @@ class HybridRAGWorkflow:
                 max_hops=state["max_hops"],
                 traversal_strategy=state["traversal_strategy"],
                 community_id=state.get("community_id"),
+                filters=state.get("filters"),
             )
         except Exception as exc:
             state.setdefault("retrieval_failures", {})["graph"] = f"{type(exc).__name__}: {exc}"[:500]
@@ -790,6 +807,7 @@ class HybridRAGWorkflow:
                         max_hops=state["max_hops"],
                         traversal_strategy=state["traversal_strategy"],
                         community_id=state.get("community_id"),
+                        filters=state.get("filters"),
                     )
                     state["graph_results"] = self.recovery.annotate_results(
                         graph_results,
@@ -1424,12 +1442,21 @@ class HybridRAGWorkflow:
                     state["answer_confidence"] * (len(retained) / original_count), 4
                 )
         except Exception as exc:
-            logger.error("[GroundingCritique] critic call failed: %s", exc)
+            logger.error("[GroundingCritique] critic call failed: %s", type(exc).__name__)
+            removed_claim_ids = [
+                str(claim.get("claim_id"))
+                for claim in claims
+                if claim.get("claim_id")
+            ]
+            state["grounded_claims"] = []
+            state["generated_answer"] = (
+                "No fully supported claims remained after grounding verification."
+            )
+            state["answer_confidence"] = 0.0
             state["grounding_critique"] = {
                 "completed": False,
                 "reason": "critic_failed",
-                "error": str(exc),
-                "removed_claim_ids": [],
+                "removed_claim_ids": removed_claim_ids,
             }
             state["answer_relevancy"] = {
                 "completed": False,

@@ -4,12 +4,40 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 RUN_OUTPUT_SCHEMA = "kinegraph.regression-gate.v1"
+_CITATION_ID = re.compile(r"\[([^\[\]]+)\]")
+
+
+def citation_contexts_from(value: Any) -> list[dict[str, Any]]:
+    """Preserve chunk identity alongside text for the regression citation check."""
+    if not isinstance(value, (list, tuple)):
+        return []
+    mapped: list[dict[str, Any]] = []
+    for item in value:
+        if isinstance(item, str):
+            mapped.append({"id": None, "text": item})
+        elif isinstance(item, Mapping):
+            chunk_id = item.get("id", item.get("chunk_id"))
+            mapped.append({
+                "id": None if chunk_id is None else str(chunk_id),
+                "text": str(item.get("text", item.get("content", ""))),
+            })
+    return mapped
+
+
+def citation_membership_ok(answer: str, contexts: list[dict[str, Any]]) -> bool:
+    """Every bracketed citation must name a retrieved chunk id."""
+    referenced = set(_CITATION_ID.findall(answer))
+    if not referenced:
+        return True
+    known = {item["id"] for item in contexts if item.get("id")}
+    return referenced <= known
 
 
 @dataclass(frozen=True)
@@ -131,7 +159,11 @@ def write_run_output(
     path: str | Path,
     results: Iterable[Mapping[str, Any]],
     overall_composite_score: float,
+    *,
+    working_tree_clean: bool | None = None,
+    candidate_provenance_completeness: float | None = None,
 ) -> RatchetRun:
+    rows = list(results)
     cases = tuple(
         RatchetCase(
             query=str(row.get("question", row.get("query", ""))),
@@ -139,19 +171,34 @@ def write_run_output(
             retrieved_chunks=_context_texts(row.get("contexts", row.get("retrieved_chunks", []))),
             ragas_composite_score=_score(row["composite_score"], "composite_score"),
         )
-        for row in results
+        for row in rows
     )
     if not cases:
         raise ValueError("cannot write regression output without result rows")
+    case_payloads = []
+    for row, case in zip(rows, cases):
+        citation_contexts = citation_contexts_from(
+            row.get("citation_contexts", row.get("contexts", row.get("retrieved_chunks", [])))
+        )
+        case_payloads.append({
+            **case.__dict__,
+            "citation_contexts": citation_contexts,
+            "citation_membership_ok": citation_membership_ok(case.answer, citation_contexts),
+        })
     run = RatchetRun(_score(overall_composite_score), cases)
-    _atomic_json(Path(path), {
+    payload: dict[str, Any] = {
         "schema_version": RUN_OUTPUT_SCHEMA,
         "query": run.query,
         "answer": run.answer,
         "retrieved_chunks": run.retrieved_chunks,
         "ragas_composite_score": run.ragas_composite_score,
-        "cases": [case.__dict__ for case in cases],
-    })
+        "cases": case_payloads,
+    }
+    if working_tree_clean is not None:
+        payload["working_tree_clean"] = working_tree_clean
+    if candidate_provenance_completeness is not None:
+        payload["candidate_provenance_completeness"] = candidate_provenance_completeness
+    _atomic_json(Path(path), payload)
     return run
 
 

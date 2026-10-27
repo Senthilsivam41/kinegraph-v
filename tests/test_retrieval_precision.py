@@ -1,11 +1,13 @@
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from backend.app.models import QueryMode, QueryRequest
 from backend.core.langgraph_workflow import HybridRAGWorkflow
 from backend.core.rrf import deduplicate_results
 from backend.graph_retrieval.multi_hop import TraversalStrategy
-from backend.services.chroma_service import ChromaService
+from backend.services.chroma_service import ChromaService, VectorChannelUnavailable
 
 
 def test_near_duplicate_chunks_are_removed_in_rank_order():
@@ -55,6 +57,52 @@ def test_chroma_retrieval_exposes_stored_embeddings_for_internal_dedup():
 
     assert "embeddings" in collection.query.call_args.kwargs["include"]
     assert results[0]["embedding"] == [0.3, 0.4]
+
+def test_chroma_outage_is_a_typed_channel_failure():
+    service = ChromaService.__new__(ChromaService)
+    service.get_or_create_collection = MagicMock(side_effect=ConnectionError("database offline"))
+
+    with pytest.raises(VectorChannelUnavailable, match="vector channel unavailable"):
+        asyncio.run(service.similarity_search("query"))
+
+
+def test_vectorless_workflow_defers_graph_store_construction():
+    with (
+        patch("backend.core.langgraph_workflow.LangGraphGraphRetrieverNode") as node,
+        patch("backend.core.langgraph_workflow.ContextRanker"),
+        patch("backend.core.langgraph_workflow.ChatOpenAI"),
+        patch("backend.core.langgraph_workflow.QueryRecoveryEngine"),
+    ):
+        workflow = HybridRAGWorkflow(MagicMock(), MagicMock())
+        node.assert_not_called()
+        workflow.graph_retriever_node
+        node.assert_called_once()
+
+
+def test_critic_failure_drops_unverified_claims():
+    workflow = HybridRAGWorkflow.__new__(HybridRAGWorkflow)
+
+    async def fail_prompt(*_args, **_kwargs):
+        raise RuntimeError("provider returned secret claim text")
+
+    workflow._invoke_prompt = fail_prompt
+    workflow._finalize_verification = lambda state: state
+    state = {
+        "query": "What is supported?",
+        "grounded_claims": [{"claim_id": "claim-1", "text": "unverified", "chunk_ids": []}],
+        "enable_grounding_critique": True,
+        "answer_confidence": 0.99,
+        "citation_context": {},
+        "latency_breakdown": {},
+    }
+
+    result = asyncio.run(workflow._grounding_critique(state))
+
+    assert result["grounded_claims"] == []
+    assert result["answer_confidence"] == 0.0
+    assert result["grounding_critique"]["reason"] == "critic_failed"
+    assert "secret" not in str(result["grounding_critique"])
+
 
 def test_precision_defaults_retrieve_wide_and_generate_narrow():
     request = QueryRequest(query="How does Kinegraph retrieve context?")
