@@ -128,6 +128,10 @@ def build_document_chunks(
     )
 
 
+class EntityExtractionError(RuntimeError):
+    """Entity extraction failed or returned an invalid response."""
+
+
 async def extract_entities_and_relationships(
     text: str
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
@@ -148,8 +152,6 @@ async def extract_entities_and_relationships(
     }
     if openai_key and (openai_key.startswith("sk-or-") or "openrouter" in openai_key):
         kw["base_url"] = "https://openrouter.ai/api/v1"
-    llm = ChatOpenAI(**kw)
-    
     prompt = PromptTemplate(
         input_variables=["text"],
         template="""
@@ -179,16 +181,26 @@ JSON:
     )
     
     try:
+        llm = ChatOpenAI(**kw)
         response = await llm.ainvoke(prompt.format(text=text[:4000]))  # Limit text length
         result = json.loads(response.content)
-        
-        entities = result.get("entities", [])
-        relationships = result.get("relationships", [])
-        
+        if not isinstance(result, dict):
+            raise ValueError("Extraction response must be a JSON object")
+        entities = result.get("entities")
+        relationships = result.get("relationships")
+        for items, required in (
+            (entities, ("name", "type")),
+            (relationships, ("source", "target", "type")),
+        ):
+            if not isinstance(items, list) or any(
+                not isinstance(item, dict)
+                or any(not isinstance(item.get(key), str) or not item[key].strip() for key in required)
+                for item in items
+            ):
+                raise ValueError("Extraction response has invalid entities or relationships")
         return entities, relationships
-    except Exception as e:
-        logger.exception("Entity and relationship extraction failed")
-        return [], []
+    except Exception as exc:
+        raise EntityExtractionError("Entity and relationship extraction failed") from exc
 
 
 def generate_chunk_id(content: str, index: int) -> str:

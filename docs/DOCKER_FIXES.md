@@ -1,5 +1,10 @@
 # Docker Compose Fixes - February 11, 2026
 
+> **Historical record:** The fixes and command output in this document were
+> captured on February 11, 2026. They are not a current smoke-test result.
+> For current KineGraph operations from the repository root, explicitly select
+> `infra/docker-compose.yml` and the repository `.env` file as shown below.
+
 ## Issues Found
 
 1. **Obsolete `version` attribute** - Docker Compose warning
@@ -57,9 +62,10 @@ Changed from deprecated `dbms.*` to current `server.*` naming:
 + NEO4J_server_memory_heap_max__size=2G
 ```
 
-## Verification
+## Historical Verification Snapshot
 
-All services are now running and healthy:
+The following output was recorded when these fixes were applied on February 11,
+2026; run the current commands below to establish present service health.
 
 ```bash
 $ docker-compose ps
@@ -85,9 +91,9 @@ $ curl -s http://localhost:8000/health/
 }
 ```
 
-## Service Endpoints
+## Service Endpoints in the Historical Snapshot
 
-All services are now accessible:
+The February 11 snapshot recorded these service endpoints:
 
 - **API**: http://localhost:8000
 - **API Docs (Swagger)**: http://localhost:8000/docs
@@ -98,25 +104,29 @@ All services are now accessible:
 
 ## Starting/Stopping Services
 
+Run these commands from the repository root. The root `docker-compose.yml`
+defines the separate LiteLLM quickstart stack, not the KineGraph application
+services described in this document.
+
 ```bash
 # Start all services
-docker-compose up -d
+docker compose --env-file .env -f infra/docker-compose.yml up -d
 
 # Stop all services
-docker-compose down
+docker compose --env-file .env -f infra/docker-compose.yml down
 
 # View logs
-docker-compose logs -f
+docker compose --env-file .env -f infra/docker-compose.yml logs -f
 
 # View specific service logs
-docker-compose logs -f app
-docker-compose logs -f neo4j
+docker compose --env-file .env -f infra/docker-compose.yml logs -f app
+docker compose --env-file .env -f infra/docker-compose.yml logs -f neo4j
 
 # Check status
-docker-compose ps
+docker compose --env-file .env -f infra/docker-compose.yml ps
 
 # Rebuild and restart
-docker-compose up -d --build
+docker compose --env-file .env -f infra/docker-compose.yml up -d --build
 ```
 
 ## Troubleshooting
@@ -125,13 +135,13 @@ docker-compose up -d --build
 
 1. **Check logs:**
    ```bash
-   docker-compose logs [service-name]
+   docker compose --env-file .env -f infra/docker-compose.yml logs [service-name]
    ```
 
 2. **Completely reset:**
    ```bash
-   docker-compose down -v  # Remove volumes
-   docker-compose up -d --build
+   docker compose --env-file .env -f infra/docker-compose.yml down -v  # Remove volumes
+   docker compose --env-file .env -f infra/docker-compose.yml up -d --build
    ```
 
 3. **Check resource usage:**
@@ -147,11 +157,11 @@ docker-compose up -d --build
 
 ## Next Steps
 
-Now that the backend is running, you can:
+After the scoped Compose status command confirms a healthy backend, you can:
 
 1. **Start the Chat UI:**
    ```bash
-   ./start-ui.sh
+   ./scripts/start-ui.sh
    # Or manually:
    cd frontend && python3 serve.py
    ```
@@ -166,10 +176,11 @@ Now that the backend is running, you can:
 
 ## Summary
 
-✅ Removed obsolete `version` attribute  
-✅ Fixed Neo4j healthcheck to use HTTP endpoint  
-✅ Updated Neo4j environment variables to current naming  
-✅ All services starting successfully  
-✅ All health checks passing  
+- ✅ Removed obsolete `version` attribute.
+- ✅ Fixed the Neo4j healthcheck to use its HTTP endpoint.
+- ✅ Updated Neo4j environment variables to current naming.
+- ✅ The February 11, 2026 snapshot recorded successful startup.
+- ✅ The February 11, 2026 snapshot recorded passing health checks.
 
-The system is now ready for use!
+Run the scoped Compose commands above before treating the services as ready
+today.

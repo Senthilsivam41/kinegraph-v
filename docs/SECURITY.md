@@ -22,11 +22,17 @@ decision and does not replace rotation.
 
 ## Generated Cypher
 
-LLM-generated Cypher is treated as untrusted input. Only a single read-only
-`MATCH` or `OPTIONAL MATCH` statement with `RETURN` is accepted. Comments,
-multiple statements, procedures, administrative clauses, write clauses, and
-LLM-provided pagination are rejected. Kinegraph executes the validated query in
-Neo4j read access mode and applies its own parameterized result limit.
+The optional PropertyGraph Text-to-Cypher retriever is disabled. Requesting
+`use_cypher=True` raises an error before database or model clients are initialized.
+It must remain disabled until its execution path enforces validated, bounded
+queries and database read-only authority.
+
+The separate `Neo4jService.graph_search` path treats LLM-generated Cypher as
+untrusted input. Only a single read-only `MATCH` or `OPTIONAL MATCH` statement
+with `RETURN` is accepted. Comments, multiple statements, procedures,
+administrative clauses, write clauses, and LLM-provided pagination are rejected.
+That path executes validated queries in Neo4j read access mode and applies its
+own parameterized result limit.
 
 Production should additionally use a Neo4j account whose database privileges
 are read-only for retrieval workloads. Application validation is defense in

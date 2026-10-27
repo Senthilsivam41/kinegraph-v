@@ -1,13 +1,30 @@
 from backend.graph_retrieval.retrievers import ComposedGraphRetriever
+from backend.graph_retrieval.langgraph_node import LangGraphGraphRetrieverNode
 from backend.graph_retrieval.multi_hop import TraversalStrategy
 from llama_index.core.schema import TextNode, NodeWithScore
 from unittest.mock import ANY, MagicMock, patch
 import pytest
 
+
+@pytest.mark.parametrize("retriever_type", [ComposedGraphRetriever, LangGraphGraphRetrieverNode])
+def test_generated_cypher_is_rejected_before_initializing_clients(retriever_type):
+    with (
+        patch("backend.graph_retrieval.retrievers.ChromaService") as chroma,
+        patch("backend.graph_retrieval.retrievers.get_neo4j_graph_store") as graph_store,
+        patch("backend.graph_retrieval.retrievers.get_chroma_vector_store") as vector_store,
+        patch("backend.graph_retrieval.retrievers.get_llm") as llm,
+    ):
+        with pytest.raises(ValueError, match="Text-to-Cypher.*disabled"):
+            retriever_type(use_cypher=True, neo4j_driver=MagicMock())
+
+    chroma.assert_not_called()
+    graph_store.assert_not_called()
+    vector_store.assert_not_called()
+    llm.assert_not_called()
+
 @patch("backend.graph_retrieval.retrievers.PropertyGraphIndex")
 @patch("backend.graph_retrieval.retrievers.VectorContextRetriever")
 @patch("backend.graph_retrieval.retrievers.LLMSynonymRetriever")
-@patch("backend.graph_retrieval.retrievers.TextToCypherRetriever")
 @patch("backend.graph_retrieval.retrievers.ChromaService")
 @patch("backend.graph_retrieval.retrievers.get_neo4j_graph_store")
 @patch("backend.graph_retrieval.retrievers.get_chroma_vector_store")
@@ -17,7 +34,6 @@ def test_composed_retriever(
     mock_get_chroma_store, 
     mock_get_neo4j_store, 
     mock_chroma_service,
-    mock_cypher_retriever,
     mock_synonym_retriever,
     mock_vector_retriever,
     mock_property_graph_index
@@ -39,7 +55,7 @@ def test_composed_retriever(
     ]
     
     # Instantiate ComposedGraphRetriever
-    retriever = ComposedGraphRetriever(use_cypher=True, neo4j_driver=MagicMock())
+    retriever = ComposedGraphRetriever(use_cypher=False, neo4j_driver=MagicMock())
     retriever.multi_hop_retriever.retrieve = MagicMock(return_value=[{
         "content": "Traversal path (depth 1): A -[USES]-> B",
         "metadata": {"traversal_depth": 1, "relationship_path": [{"relationship_type": "USES"}]},
@@ -52,7 +68,10 @@ def test_composed_retriever(
     mock_property_graph_index.from_existing.assert_called_once()
     mock_vector_retriever.assert_called_once()
     mock_synonym_retriever.assert_called_once()
-    mock_cypher_retriever.assert_called_once()
+    mock_index.as_retriever.assert_called_once_with(sub_retrievers=[
+        mock_vector_retriever.return_value,
+        mock_synonym_retriever.return_value,
+    ])
     
     # Verify outputs are formatted properly
     assert len(results) == 3
