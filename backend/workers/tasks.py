@@ -5,6 +5,7 @@ from celery import Task
 from celery.utils.log import get_task_logger
 from backend.workers.celery_app import celery_app
 from backend.workers.document_processor import (
+    EntityExtractionError,
     extract_document_text,
     build_document_chunks,
     extract_entities_and_relationships,
@@ -134,8 +135,10 @@ async def _persist_document(
         logger.info("[Task %s] Stored in Neo4j", task.request.id)
         return entities, relationships, graph_write
     finally:
-        if neo4j is not None:
-            neo4j.close()
+        try:
+            if neo4j is not None:
+                neo4j.close()
+        finally:
             chroma.close()
 
 
@@ -342,7 +345,8 @@ def process_stored_document(self, doc_id: str) -> Dict[str, Any]:
     except Exception as exc:
         logger.exception("Retryable ingestion failure for %s", doc_id)
         if self.request.retries >= self.max_retries:
-            store.fail_document(doc_id, "processing_failed")
+            error_code = "extraction_failed" if isinstance(exc, EntityExtractionError) else "processing_failed"
+            store.fail_document(doc_id, error_code)
             raise
         store.release_retry(doc_id)
         raise self.retry(exc=exc)

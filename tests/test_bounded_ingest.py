@@ -1,7 +1,7 @@
 import asyncio
 from io import BytesIO
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException, Request, UploadFile
@@ -9,6 +9,9 @@ from fastapi import HTTPException, Request, UploadFile
 from backend.app.api.routes import ingest
 from backend.services.chroma_service import ChromaService
 from backend.ingestion.auth import require_workspace
+from backend.workers import tasks
+from backend.workers.document_processor import EntityExtractionError
+from celery.exceptions import Retry
 
 
 def test_upload_rejects_oversize_and_cleans_up(tmp_path):
@@ -95,3 +98,145 @@ def test_proxy_group_header_is_required_for_workspace():
             with pytest.raises(HTTPException) as denied:
                 require_workspace(request)
     assert denied.value.status_code == 403
+
+
+@pytest.mark.parametrize("failure", [RuntimeError("provider unavailable"), "not json"])
+@pytest.mark.parametrize("retries", [0, 3])
+def test_durable_extraction_failure_cannot_finish_or_delete_source(failure, retries):
+    doc_id = "00000000-0000-4000-8000-000000000001"
+    document = {"kind": "text", "source_key": "uploads/source", "content_sha256": "digest",
+                "metadata": {}, "file_name": "note.txt"}
+    record = MagicMock(text="source text", chunk_id="chunk-1")
+    record.to_metadata.return_value = {}
+    chroma = MagicMock()
+    chroma.add_documents = AsyncMock(return_value=True)
+    llm = MagicMock()
+    llm.ainvoke = (AsyncMock(side_effect=failure) if isinstance(failure, Exception)
+                   else AsyncMock(return_value=SimpleNamespace(content=failure)))
+    task = tasks.process_stored_document
+    task.push_request(id="test-task", retries=retries)
+    try:
+        with (
+            patch("backend.ingestion.store.claim_document", return_value=document),
+            patch("backend.ingestion.store.set_stage"),
+            patch("backend.ingestion.store.release_retry") as release,
+            patch("backend.ingestion.store.fail_document") as fail,
+            patch("backend.ingestion.store.finish_document") as finish,
+            patch("backend.ingestion.objects.download_source"),
+            patch("backend.ingestion.objects.delete_source") as delete,
+            patch.object(tasks, "extract_document_text", return_value="source text"),
+            patch.object(tasks, "build_document_chunks", return_value=[record]),
+            patch.object(tasks, "ChromaService", return_value=chroma),
+            patch.object(tasks, "_save_vectorless_document", return_value=True),
+            patch.object(tasks, "Neo4jService") as neo4j,
+            patch("backend.workers.document_processor.ChatOpenAI", return_value=llm),
+            patch.object(task, "update_state"),
+            patch.object(task, "retry", side_effect=Retry()) as retry,
+        ):
+            with pytest.raises(Retry if retries == 0 else EntityExtractionError):
+                task.run(doc_id)
+            finish.assert_not_called()
+            delete.assert_not_called()
+            neo4j.assert_not_called()
+            llm.ainvoke.assert_awaited_once()
+            chroma.close.assert_called_once_with()
+            if retries == 0:
+                release.assert_called_once_with(doc_id)
+                retry.assert_called_once()
+                fail.assert_not_called()
+            else:
+                fail.assert_called_once_with(doc_id, "extraction_failed")
+                release.assert_not_called()
+                retry.assert_not_called()
+    finally:
+        task.pop_request()
+
+
+def test_legacy_extraction_failure_retries_and_retains_upload(tmp_path):
+    source = tmp_path / "note.txt"
+    source.write_text("source text")
+    record = MagicMock(text="source text", chunk_id="chunk-1")
+    record.to_metadata.return_value = {}
+    chroma = MagicMock()
+    chroma.add_documents = AsyncMock(return_value=True)
+    llm = MagicMock()
+    llm.ainvoke = AsyncMock(side_effect=RuntimeError("provider unavailable"))
+    task = tasks.process_document
+    task.push_request(id="test-task", retries=0)
+    try:
+        with (
+            patch.object(tasks, "extract_document_text", return_value="source text"),
+            patch.object(tasks, "build_document_chunks", return_value=[record]),
+            patch.object(tasks, "ChromaService", return_value=chroma),
+            patch.object(tasks, "_save_vectorless_document", return_value=True),
+            patch.object(tasks, "Neo4jService") as neo4j,
+            patch("backend.workers.document_processor.ChatOpenAI", return_value=llm),
+            patch.object(task, "update_state"),
+            patch.object(task, "retry", side_effect=Retry()) as retry,
+        ):
+            with pytest.raises(Retry):
+                task.run(str(source), {})
+            retry.assert_called_once()
+            neo4j.assert_not_called()
+            llm.ainvoke.assert_awaited_once()
+            chroma.close.assert_called_once_with()
+            assert source.exists()
+    finally:
+        task.pop_request()
+
+
+def test_durable_retry_can_finish_after_extraction_recovers():
+    doc_id = "00000000-0000-4000-8000-000000000001"
+    document = {"kind": "text", "source_key": "uploads/source", "content_sha256": "digest",
+                "metadata": {}, "file_name": "note.txt"}
+    record = MagicMock(text="source text", chunk_id="chunk-1")
+    record.to_metadata.return_value = {}
+    chroma = MagicMock()
+    chroma.add_documents = AsyncMock(return_value=True)
+    neo4j = MagicMock()
+    neo4j.add_document_graph = AsyncMock(return_value=SimpleNamespace(enrichment={}))
+    llm = MagicMock()
+    llm.ainvoke = AsyncMock(side_effect=[
+        RuntimeError("provider unavailable"),
+        SimpleNamespace(content='{"entities": [], "relationships": []}'),
+    ])
+    task = tasks.process_stored_document
+    with (
+        patch("backend.ingestion.store.claim_document", return_value=document),
+        patch("backend.ingestion.store.set_stage"),
+        patch("backend.ingestion.store.release_retry") as release,
+        patch("backend.ingestion.store.fail_document") as fail,
+        patch("backend.ingestion.store.finish_document") as finish,
+        patch("backend.ingestion.store.clear_source") as clear,
+        patch("backend.ingestion.objects.download_source"),
+        patch("backend.ingestion.objects.delete_source") as delete,
+        patch.object(tasks, "extract_document_text", return_value="source text"),
+        patch.object(tasks, "build_document_chunks", return_value=[record]),
+        patch.object(tasks, "ChromaService", return_value=chroma),
+        patch.object(tasks, "_save_vectorless_document", return_value=True),
+        patch.object(tasks, "Neo4jService", return_value=neo4j),
+        patch("backend.workers.document_processor.ChatOpenAI", return_value=llm),
+        patch.object(task, "update_state"),
+        patch.object(task, "retry", side_effect=Retry()),
+    ):
+        task.push_request(id="test-task", retries=0)
+        try:
+            with pytest.raises(Retry):
+                task.run(doc_id)
+        finally:
+            task.pop_request()
+        finish.assert_not_called()
+        delete.assert_not_called()
+
+        task.push_request(id="test-task", retries=1)
+        try:
+            result = task.run(doc_id)
+        finally:
+            task.pop_request()
+        assert result["status"] == "done"
+        assert result["validation"]["complete"] is True
+        release.assert_called_once_with(doc_id)
+        fail.assert_not_called()
+        assert finish.call_args.kwargs["success"] is True
+        delete.assert_called_once_with("uploads/source")
+        clear.assert_called_once_with(doc_id)

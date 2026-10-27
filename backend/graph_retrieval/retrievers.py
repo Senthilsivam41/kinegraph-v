@@ -5,7 +5,6 @@ import logging
 from llama_index.core.indices.property_graph import (
     VectorContextRetriever,
     LLMSynonymRetriever,
-    TextToCypherRetriever,
     PropertyGraphIndex
 )
 
@@ -34,7 +33,7 @@ def contextualize_graph_result(content: str, metadata: Dict[str, Any]) -> str:
 class ComposedGraphRetriever:
     """
     Composed retriever for the hybrid RAG system using PropertyGraphIndex.
-    Combines vector search, synonym-expansion graph traversal, and optional Text-to-Cypher.
+    Combines vector search and synonym-expansion graph traversal.
     """
     def __init__(
         self,
@@ -43,12 +42,15 @@ class ComposedGraphRetriever:
         max_hops: int = 3,
         traversal_strategy: TraversalStrategy | str = TraversalStrategy.BFS,
     ):
+        if use_cypher:
+            raise ValueError(
+                "Text-to-Cypher is disabled until validated, bounded read-only execution is available"
+            )
         self.chroma_service = ChromaService()
         self.embed_model = LangChainEmbeddingWrapper(self.chroma_service.embeddings)
         self.graph_store = get_neo4j_graph_store()
         self.vector_store = get_chroma_vector_store()
         self.llm = get_llm()
-        self.use_cypher = use_cypher
         self._owns_driver = neo4j_driver is None
         self.neo4j_driver = neo4j_driver or GraphDatabase.driver(
             settings.NEO4J_URI,
@@ -115,14 +117,6 @@ class ComposedGraphRetriever:
             
             sub_retrievers = [vector_retriever, synonym_retriever]
             
-            # TextToCypher is run behind a feature flag and is sandboxed (using Neo4j read-only credentials if possible)
-            if self.use_cypher:
-                cypher_retriever = TextToCypherRetriever(
-                    graph_store=self.graph_store,
-                    llm=self.llm
-                )
-                sub_retrievers.append(cypher_retriever)
-                
             # Compose retrievers
             retriever = index.as_retriever(sub_retrievers=sub_retrievers)
             

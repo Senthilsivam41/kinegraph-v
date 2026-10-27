@@ -2,12 +2,46 @@
 Unit tests for backend.workers.document_processor — focused on
 the LiteParse-first / PyMuPDF-fallback behaviour of extract_text_from_pdf.
 """
+import asyncio
+import json
 import pytest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import AsyncMock, MagicMock, patch, call
 
 import requests
 
 from backend.graph_ingestion.lite_parser import LiteParseUnavailableError
+from backend.workers.document_processor import extract_entities_and_relationships
+
+
+@pytest.mark.parametrize("response", ["not json", "{}", '{"entities": [], "relationships": null}', '{"entities": ["bad"], "relationships": []}'])
+def test_entity_extraction_rejects_invalid_output(response):
+    llm = MagicMock()
+    llm.ainvoke = AsyncMock(return_value=MagicMock(content=response))
+    with patch("backend.workers.document_processor.ChatOpenAI", return_value=llm):
+        with pytest.raises(RuntimeError, match="extraction failed"):
+            asyncio.run(extract_entities_and_relationships("Source text"))
+
+
+def test_entity_extraction_propagates_provider_failure():
+    llm = MagicMock()
+    llm.ainvoke = AsyncMock(side_effect=RuntimeError("provider unavailable"))
+    with patch("backend.workers.document_processor.ChatOpenAI", return_value=llm):
+        with pytest.raises(RuntimeError, match="extraction failed"):
+            asyncio.run(extract_entities_and_relationships("Source text"))
+
+
+@pytest.mark.parametrize("entities,relationships", [
+    ([], []),
+    ([{"name": "Alice", "type": "Person"}],
+     [{"source": "Alice", "target": "Kinegraph", "type": "USES"}]),
+])
+def test_entity_extraction_accepts_valid_results(entities, relationships):
+    llm = MagicMock()
+    llm.ainvoke = AsyncMock(return_value=MagicMock(content=json.dumps({
+        "entities": entities, "relationships": relationships,
+    })))
+    with patch("backend.workers.document_processor.ChatOpenAI", return_value=llm):
+        assert asyncio.run(extract_entities_and_relationships("Source text")) == (entities, relationships)
 
 
 # ---------------------------------------------------------------------------
