@@ -17,6 +17,7 @@ class LangGraphGraphRetrieverNode:
         max_hops: int = 3,
         traversal_strategy: TraversalStrategy | str = TraversalStrategy.BFS,
         community_id: str | None = None,
+        filters: Dict[str, Any] | None = None,
     ) -> List[Dict[str, Any]]:
         """
         Retrieves matching chunks and returns standard formatted dicts for LangGraph workflow.
@@ -30,6 +31,7 @@ class LangGraphGraphRetrieverNode:
             max_hops=max_hops,
             traversal_strategy=traversal_strategy,
             community_id=community_id,
+            filters=filters,
         )
         return results
 
@@ -40,6 +42,7 @@ class LangGraphGraphRetrieverNode:
         max_hops: int = 3,
         traversal_strategy: TraversalStrategy | str = TraversalStrategy.BFS,
         community_id: str | None = None,
+        filters: Dict[str, Any] | None = None,
     ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """Return graph candidates and traversal diagnostics without shared mutable state."""
         import asyncio
@@ -50,4 +53,5 @@ class LangGraphGraphRetrieverNode:
             max_hops=max_hops,
             traversal_strategy=traversal_strategy,
             community_id=community_id,
+            filters=filters,
         )

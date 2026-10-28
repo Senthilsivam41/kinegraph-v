@@ -12,6 +12,10 @@ from backend.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+class VectorChannelUnavailable(RuntimeError):
+    """Vector retrieval could not reach the vector store."""
+
+
 class ChromaService:
     """Service for interacting with ChromaDB"""
     
@@ -137,9 +141,9 @@ class ChromaService:
             
             return formatted_results
             
-        except Exception as e:
+        except Exception as exc:
             logger.exception("ChromaDB similarity search failed")
-            return []
+            raise VectorChannelUnavailable("vector channel unavailable") from exc
     
     def delete_collection(self):
         """Delete the collection (useful for testing)"""

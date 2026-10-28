@@ -305,6 +305,7 @@ def compare_manifests(
 
     return {
         "decision": decision,
+        "accepted": decision == "keep",
         "reasons": reasons,
         "changed_levers": levers,
         "baseline_composite": round(baseline_score, 4) if math.isfinite(baseline_score) else None,
