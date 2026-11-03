@@ -40,7 +40,7 @@ The system uses OpenAI's API to generate embeddings (vector representations) of 
    OPENAI_API_KEY=<redacted-google-api-key>
    
    # To:
-   OPENAI_API_KEY=sk-proj-your-actual-openai-key-here
+   OPENAI_API_KEY=<your-openai-api-key>
    ```
 
 3. **Run the fix script**:
@@ -186,7 +186,7 @@ OPENAI_API_KEY= sk-...  # ❌ No space after =
 
 ✅ **Correct format**:
 ```bash
-OPENAI_API_KEY=sk-proj-your-actual-key
+OPENAI_API_KEY=<your-openai-api-key>
 ```
 
 ---
