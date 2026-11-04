@@ -9,7 +9,8 @@ You have two options:
 #### Option A: Docker (Recommended)
 ```bash
 cd /Users/sendils/work/repo/kinetic-v/kinegraph-v
-docker-compose up -d
+# Run from the repository root with .env configured
+docker compose --env-file .env -f infra/docker-compose.yml up -d
 ```
 
 #### Option B: Local Development
@@ -124,7 +125,7 @@ curl http://localhost:8000/health
 
 # If not, start it
 cd /Users/sendils/work/repo/kinetic-v/kinegraph-v
-docker-compose up -d
+docker compose --env-file .env -f infra/docker-compose.yml up -d
 
 # Or for local dev
 uvicorn app.main:app --reload
@@ -151,7 +152,7 @@ uvicorn app.main:app --reload
 
 **Solution**:
 1. Ensure file is a PDF
-2. Check backend logs: `docker-compose logs -f app`
+2. Check backend logs: `docker compose --env-file .env -f infra/docker-compose.yml logs -f app`
 3. Verify Redis and Celery workers are running
 4. Check disk space
 
@@ -296,8 +297,8 @@ Typical performance on modern hardware:
 ## 💬 Need Help?
 
 1. Check browser console for errors (F12)
-2. Review backend logs: `docker-compose logs -f`
-3. Verify all services are running: `docker-compose ps`
+2. Review backend logs: `docker compose --env-file .env -f infra/docker-compose.yml logs -f`
+3. Verify all services are running: `docker compose --env-file .env -f infra/docker-compose.yml ps`
 4. Test API directly: `curl http://localhost:8000/health`
 
 ---

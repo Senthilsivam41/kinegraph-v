@@ -62,8 +62,8 @@ nano .env
 # Replace the Google key with your OpenAI key
 
 # 2. Restart services
-docker-compose down
-docker-compose up -d
+docker compose --env-file .env -f infra/docker-compose.yml down
+docker compose --env-file .env -f infra/docker-compose.yml up -d
 
 # 3. Wait for services to start (40 seconds)
 sleep 40
@@ -124,7 +124,7 @@ Once you've updated your API key and restarted services, you can:
 2. **Verify in Logs**:
    ```bash
    # Should see successful processing
-   docker-compose logs worker -f
+   docker compose --env-file .env -f infra/docker-compose.yml logs worker -f
    ```
 
 3. **Check ChromaDB**:
@@ -151,8 +151,8 @@ grep OPENAI_API_KEY .env
 ### Services Won't Restart
 ```bash
 # Force clean restart
-docker-compose down -v
-docker-compose up -d --build
+docker compose --env-file .env -f infra/docker-compose.yml down -v
+docker compose --env-file .env -f infra/docker-compose.yml up -d --build
 ```
 
 ### Key Works But Still Failing
@@ -219,7 +219,7 @@ OPENAI_API_KEY=<your-openai-api-key>
 After fixing the API key:
 
 - [ ] `.env` file has valid OpenAI key (starts with `sk-`)
-- [ ] Services restarted: `docker-compose ps` shows all healthy
+- [ ] Services restarted: `docker compose --env-file .env -f infra/docker-compose.yml ps` shows all healthy
 - [ ] Health check passes: `curl http://localhost:8000/health/`
 - [ ] Upload works: Try uploading a PDF via UI
 - [ ] Processing succeeds: Check worker logs for success
@@ -237,13 +237,13 @@ grep OPENAI_API_KEY .env
 nano .env
 
 # Restart services
-docker-compose down && docker-compose up -d
+docker compose --env-file .env -f infra/docker-compose.yml down && docker compose --env-file .env -f infra/docker-compose.yml up -d
 
 # Check health
 curl http://localhost:8000/health/
 
 # Watch worker logs
-docker-compose logs worker -f
+docker compose --env-file .env -f infra/docker-compose.yml logs worker -f
 
 # Test upload via UI
 open http://localhost:8080
@@ -258,7 +258,7 @@ If problems persist after updating the key:
 1. **Verify key is active**: https://platform.openai.com/api-keys
 2. **Check account has credit**: https://platform.openai.com/usage
 3. **Try a new key**: Create fresh key to rule out issues
-4. **Check logs**: `docker-compose logs worker --tail=100`
+4. **Check logs**: `docker compose --env-file .env -f infra/docker-compose.yml logs worker --tail=100`
 
 ---
 

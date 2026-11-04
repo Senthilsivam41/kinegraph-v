@@ -9,7 +9,7 @@ This guide will help you get KineticGraph-Vectra up and running quickly.
 ```bash
 # Check Docker installation
 docker --version
-docker-compose --version
+docker compose version
 
 # Ensure you have at least 8GB RAM available
 docker system info | grep "Total Memory"
@@ -53,7 +53,7 @@ Wait until you see:
 
 ```bash
 # Check all services are running
-docker-compose ps
+docker compose --env-file .env -f infra/docker-compose.yml ps
 
 # Test health endpoint
 curl http://localhost:8000/health
@@ -131,26 +131,26 @@ lsof -i :8000
 # Minimum recommended: 8GB
 
 # Or reduce service replicas temporarily
-docker-compose up -d --scale worker=1
+docker compose --env-file .env -f infra/docker-compose.yml up -d --scale worker=1
 ```
 
 ### Issue: ChromaDB Connection Failed
 
 ```bash
 # Restart ChromaDB service
-docker-compose restart chroma
+docker compose --env-file .env -f infra/docker-compose.yml restart chroma
 
 # Check logs
-docker-compose logs chroma
+docker compose --env-file .env -f infra/docker-compose.yml logs chroma
 ```
 
 ### Issue: Neo4j Authentication Failed
 
 ```bash
 # Reset Neo4j password
-docker-compose down
+docker compose --env-file .env -f infra/docker-compose.yml down
 docker volume rm kinegraph-v_neo4j_data
-docker-compose up -d
+docker compose --env-file .env -f infra/docker-compose.yml up -d
 ```
 
 ---
@@ -168,10 +168,10 @@ docker-compose up -d
 
 ```bash
 # Stop all services
-docker-compose down
+docker compose --env-file .env -f infra/docker-compose.yml down
 
 # Stop and remove all data
-docker-compose down -v
+docker compose --env-file .env -f infra/docker-compose.yml down -v
 ```
 
 ---

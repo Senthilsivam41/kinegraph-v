@@ -5,6 +5,7 @@ This guide provides step-by-step instructions for testing the KineticGraph-Vectr
 ## 🚀 Prerequisites
 
 - Docker and Docker Compose installed
+- Run the Compose commands below from the repository root, with a `.env` file containing a Neo4j password of at least 16 characters.
 - OpenAI API Key
 - At least 8GB RAM available
 - curl or any HTTP client
@@ -25,13 +26,13 @@ cp .env.example .env
 nano .env  # or use your favorite editor
 
 # Build and start all containers
-docker-compose up --build -d
+docker compose --env-file .env -f infra/docker-compose.yml up --build -d
 
 # Check service health
-docker-compose ps
+docker compose --env-file .env -f infra/docker-compose.yml ps
 
 # View logs (optional)
-docker-compose logs -f app
+docker compose --env-file .env -f infra/docker-compose.yml logs -f app
 ```
 
 ### 2. Verify Service Health
@@ -153,8 +154,8 @@ pytest tests/ -v --cov=app --cov=core --cov=services
 ### 7. Test Performance and Scaling
 
 ```bash
-# Scale workers for testing
-docker-compose up -d --scale worker=5
+# Start the worker for testing (the Compose service has a fixed container name)
+docker compose --env-file .env -f infra/docker-compose.yml up -d worker
 
 # Test load with multiple concurrent requests
 for i in {1..10}; do
@@ -171,22 +172,22 @@ wait
 
 ```bash
 # Start services
-docker-compose up -d
+docker compose --env-file .env -f infra/docker-compose.yml up -d
 
 # Stop services
-docker-compose down
+docker compose --env-file .env -f infra/docker-compose.yml down
 
 # View logs
-docker-compose logs -f [service_name]
+docker compose --env-file .env -f infra/docker-compose.yml logs -f [service_name]
 
 # Restart a service
-docker-compose restart app
+docker compose --env-file .env -f infra/docker-compose.yml restart app
 
 # Rebuild after code changes
-docker-compose up --build app
+docker compose --env-file .env -f infra/docker-compose.yml up --build app
 
-# Scale workers
-docker-compose up -d --scale worker=5
+# Start the worker
+docker compose --env-file .env -f infra/docker-compose.yml up -d worker
 ```
 
 ### Service Ports
@@ -229,7 +230,7 @@ docker-compose up -d --scale worker=5
 1. **Services not starting**
    ```bash
    # Check logs
-   docker-compose logs -f
+   docker compose --env-file .env -f infra/docker-compose.yml logs -f
    
    # Check port conflicts
    lsof -i :8000

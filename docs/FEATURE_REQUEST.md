@@ -1,7 +1,7 @@
 # Feature Request: Local Document Parsing Service via LiteParse Integration
 
 ## 1. Overview & Objective
-To support fully offline, private, and high-performance document ingestion within `kinegraph-v`, this feature request proposes replacing or augmenting the existing traditional Python PDF extraction libraries with a self-hosted, local **LiteParse Server** container instance. 
+This historical feature request proposes a self-hosted **LiteParse Server** for local PDF parsing. Parsing alone can run locally; subsequent embedding and entity extraction use configured providers and may transmit document content externally and incur API charges. The pipeline as a whole is not guaranteed to be offline or private.
 
 Knowledge Graph (GraphRAG) creation relies heavily on structural semantic accuracy. Traditional parsers frequently scramble multi-column text and strip table formats, resulting in corrupted graph entities and malformed relationships. Integrating LiteParse allows the ingestion pipeline to parse complex documents natively into clean, structural **Markdown** locally without data leaving the host boundary or incurring cloud API costs.
 
