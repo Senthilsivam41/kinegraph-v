@@ -18,6 +18,44 @@ from neo4j import GraphDatabase
 logger = logging.getLogger(__name__)
 
 
+def metadata_matches(metadata: Dict[str, Any] | None, filters: Dict[str, Any] | None) -> bool:
+    """Return whether graph metadata satisfies the same equality filters as Chroma.
+
+    Missing fields and unsupported operators fail closed so out-of-scope
+    evidence cannot enter graph candidate selection.
+    """
+    if not filters:
+        return True
+    return _match_where(metadata or {}, filters)
+
+
+def _match_where(metadata: Dict[str, Any], clause: Any) -> bool:
+    if not isinstance(clause, dict) or not clause:
+        return False
+    if "$and" in clause:
+        parts = clause["$and"]
+        return isinstance(parts, list) and all(_match_where(metadata, part) for part in parts)
+    if "$or" in clause:
+        parts = clause["$or"]
+        return isinstance(parts, list) and bool(parts) and any(_match_where(metadata, part) for part in parts)
+    for key, expected in clause.items():
+        if not isinstance(key, str) or key.startswith("$"):
+            return False
+        actual = metadata.get(key)
+        if isinstance(expected, dict):
+            if "$eq" in expected and actual != expected["$eq"]:
+                return False
+            if "$ne" in expected and actual == expected["$ne"]:
+                return False
+            if "$in" in expected and actual not in list(expected["$in"]):
+                return False
+            if not any(operator in expected for operator in ("$eq", "$ne", "$in")):
+                return False
+        elif actual != expected:
+            return False
+    return True
+
+
 def contextualize_graph_result(content: str, metadata: Dict[str, Any]) -> str:
     """Attach persisted evidence chunks to an entity result for grounded generation."""
     description = metadata.get("description", "")
@@ -67,6 +105,7 @@ class ComposedGraphRetriever:
         max_hops: int = 3,
         traversal_strategy: TraversalStrategy | str = TraversalStrategy.BFS,
         community_id: str | None = None,
+        filters: Dict[str, Any] | None = None,
     ) -> List[Dict[str, Any]]:
         results, _ = self.retrieve_with_diagnostics(
             query=query,
@@ -74,6 +113,7 @@ class ComposedGraphRetriever:
             max_hops=max_hops,
             traversal_strategy=traversal_strategy,
             community_id=community_id,
+            filters=filters,
         )
         return results
 
@@ -84,6 +124,7 @@ class ComposedGraphRetriever:
         max_hops: int = 3,
         traversal_strategy: TraversalStrategy | str = TraversalStrategy.BFS,
         community_id: str | None = None,
+        filters: Dict[str, Any] | None = None,
     ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """
         Retrieve graph context together with bounded traversal diagnostics.
@@ -142,7 +183,13 @@ class ComposedGraphRetriever:
                         "score": r.score if r.score is not None else 1.0,
                         "source": "graph"
                     })
+            unfiltered_count = len(formatted_results)
+            formatted_results = [
+                result for result in formatted_results
+                if metadata_matches(result.get("metadata"), filters)
+            ]
             diagnostics["base_candidate_count"] = len(formatted_results)
+            diagnostics["metadata_filter_removed"] = unfiltered_count - len(formatted_results)
                     
             seed_ids = []
             for result in formatted_results:
@@ -164,7 +211,17 @@ class ComposedGraphRetriever:
                 logger.warning("Multi-hop traversal failed; returning composed base results: %s", exc)
                 diagnostics["traversal_failure"] = f"{type(exc).__name__}: {exc}"[:500]
                 traversal_results = []
+            traversal_count = len(traversal_results)
+            traversal_results = [
+                result for result in traversal_results
+                if metadata_matches(result.get("metadata"), filters)
+            ]
             diagnostics["traversal_candidate_count"] = len(traversal_results)
+            diagnostics["metadata_filter_removed"] = (
+                diagnostics.get("metadata_filter_removed", 0)
+                + traversal_count
+                - len(traversal_results)
+            )
             traversal_limit = min(len(traversal_results), max(1, n_results // 2))
             base_limit = max(0, n_results - traversal_limit)
             results = [*formatted_results[:base_limit], *traversal_results[:traversal_limit]]

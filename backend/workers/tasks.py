@@ -127,6 +127,7 @@ async def _persist_document(
             relationships=relationships,
             chunks=chunks,
             chunk_ids=chunk_ids,
+            chunk_metadata=chunk_metadata,
         )
         if not graph_write:
             raise RuntimeError(

@@ -2,6 +2,7 @@
 Health Check Endpoints
 """
 from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 from backend.app.models import HealthResponse
 from backend.core.config import settings
 import httpx
@@ -67,11 +68,21 @@ async def liveness():
 
 @router.get("/readiness")
 async def readiness(request: Request):
-    """Kubernetes readiness probe"""
+    """Kubernetes readiness probe. Dependency failures are HTTP 503."""
     try:
-        # Check critical services
         request.app.state.chroma.get_or_create_collection()
-        request.app.state.neo4j.verify_connectivity()
-        return {"status": "ready"}
-    except Exception as e:
-        return {"status": "not_ready", "error": str(e)}, 503
+    except Exception:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "error": "chroma_unavailable"},
+        )
+    try:
+        neo4j_ready = request.app.state.neo4j.verify_connectivity()
+    except Exception:
+        neo4j_ready = False
+    if not neo4j_ready:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "error": "neo4j_unavailable"},
+        )
+    return {"status": "ready"}

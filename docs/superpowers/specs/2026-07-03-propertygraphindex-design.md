@@ -1,7 +1,7 @@
 # Design Specification: PropertyGraphIndex Dual-Store Integration (Neo4j + ChromaDB)
 
 ## 1. Goal & Context
-Integrate LlamaIndex's `PropertyGraphIndex` into the existing `kinegraph-v` hybrid RAG pipeline. This integration replaces the custom entity/relationship extraction and graph-write logic with a schema-constrained extractor stack, a semantic entity deduplication pipeline, and a composed retriever, while keeping graph storage (Neo4j) and vector storage (ChromaDB) decoupled as two separate systems (without using Neo4j's native vector support).
+This historical design proposes integrating LlamaIndex's `PropertyGraphIndex` into the hybrid RAG pipeline. The replacement of API ingestion is not complete: uploads still use the worker's custom extraction and graph-write path, while PropertyGraph ingestion is a separate CLI/restore path. The schema-constrained extractor and shared ingestion boundary remain future work; do not treat this design as proof that uploads use that pipeline.
 
 ---
 

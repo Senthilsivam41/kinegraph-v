@@ -95,6 +95,41 @@ class RAGASConfigurationError(RuntimeError):
     """Raised when the configured RAGAS judge cannot be initialized."""
 
 
+def _workflow_contexts(chunks: Any) -> tuple[list[str], list[dict[str, Any]]]:
+    """Keep RAGAS text contexts and the citation id-to-text map together."""
+    citation_contexts: list[dict[str, Any]] = []
+    for chunk in chunks or []:
+        metadata = getattr(chunk, "metadata", None) or {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+        chunk_id = metadata.get("chunk_id") or metadata.get("id")
+        citation_contexts.append({
+            "id": None if chunk_id is None else str(chunk_id),
+            "text": str(getattr(chunk, "content", "")),
+        })
+    return [item["text"] for item in citation_contexts], citation_contexts
+
+
+def publication_rejection(
+    *,
+    working_tree_clean: bool,
+    provenance_completeness: Any,
+    comparison: Optional[Mapping[str, Any]] = None,
+) -> Optional[str]:
+    """Reasons an otherwise scored run must not publish accepted artifacts."""
+    if working_tree_clean is not True:
+        return "working tree is dirty or unknown"
+    try:
+        completeness = float(provenance_completeness)
+    except (TypeError, ValueError):
+        return "candidate provenance is incomplete"
+    if completeness != 1.0:
+        return "candidate provenance is incomplete"
+    if comparison is not None and comparison.get("decision") != "keep":
+        return "baseline comparison rejected the candidate"
+    return None
+
+
 def require_successful_ragas(
     results: pd.DataFrame,
     expected_rows: Optional[int] = None,
@@ -657,14 +692,14 @@ class RAGASEvaluator:
                 include_trace=True,
             )
             answer = res.get("answer", "")
-            chunks = res.get("chunks", [])
-            contexts = [c.content for c in chunks]
+            contexts, citation_contexts = _workflow_contexts(res.get("chunks", []))
             run_latency_ms = round((time.perf_counter() - t0) * 1000, 1)
             workflow_error = None
         except Exception as e:
             logger.error("Workflow execution failed for query '%s': %s", question, e)
             answer = "Error: Workflow execution failed"
             contexts = []
+            citation_contexts = []
             run_latency_ms = round((time.perf_counter() - t0) * 1000, 1)
             workflow_error = str(e)
 
@@ -720,6 +755,7 @@ class RAGASEvaluator:
             "question": question,
             "answer": answer,
             "contexts": contexts,
+            "citation_contexts": citation_contexts,
             "n_contexts": len(contexts),
             "has_ground_truth": bool(ground_truth),
             "ground_truth": ground_truth,
@@ -825,14 +861,14 @@ class RAGASEvaluator:
                         include_trace=True,
                     )
                     answer = res.get("answer", "")
-                    chunks = res.get("chunks", [])
-                    contexts = [c.content for c in chunks]
+                    contexts, citation_contexts = _workflow_contexts(res.get("chunks", []))
                     run_latency_ms = round((time.perf_counter() - t0) * 1000, 1)
                     workflow_error = None
                 except Exception as e:
                     logger.error("Workflow execution failed for query '%s': %s", question, e)
                     answer = "Error: Workflow execution failed"
                     contexts = []
+                    citation_contexts = []
                     run_latency_ms = round((time.perf_counter() - t0) * 1000, 1)
                     workflow_error = str(e)
             
@@ -883,6 +919,7 @@ class RAGASEvaluator:
                 "question": question,
                 "answer": answer,
                 "contexts": contexts,
+            "citation_contexts": citation_contexts,
                 "n_contexts": len(contexts),
                 "has_ground_truth": bool(ground_truth),
                 "ground_truth": ground_truth,
@@ -1468,34 +1505,24 @@ if __name__ == "__main__":
         )
         sys.exit(2)
     report = evaluator.generate_report(results_df)
+    provenance_completeness = (
+        (report.get("retrieval_diagnostics") or {}).get("candidate_provenance_completeness")
+    )
 
     results_path = os.path.join(reports_dir, f"ragas_{artifact_label}_results.csv")
     report_path = os.path.join(reports_dir, f"ragas_{artifact_label}_report.json")
-    serializable_results = results_df.copy()
-    for column in ("categories", "provenance"):
-        if column in serializable_results.columns:
-            serializable_results[column] = serializable_results[column].apply(
-                lambda value: json.dumps(value, sort_keys=True)
-            )
-    serializable_results.to_csv(results_path, index=False)
-    with open(report_path, "w", encoding="utf-8") as report_file:
-        json.dump(report, report_file, indent=2)
-
     regression_output_path = args.regression_run_output
     if not os.path.isabs(regression_output_path):
         regression_output_path = os.path.join(repo_root, regression_output_path)
+    graph_path = os.path.join(reports_dir, f"spider_graph_ragas_{artifact_label}.png")
+    manifest_path = os.path.join(reports_dir, f"ragas_{artifact_label}_manifest.json")
     regression_policy = ValidationPolicy()
     regression_results = results_df.copy()
     regression_results["composite_score"] = regression_results.apply(
         lambda row: weighted_composite(row.to_dict(), regression_policy),
         axis=1,
     )
-    write_run_output(
-        regression_output_path,
-        regression_results.to_dict(orient="records"),
-        report["summary"]["overall_composite_score"],
-    )
-    
+
     print("\n=== PER-METRIC AVERAGE SCORES ===")
     for metric, stats in report['per_metric'].items():
         print(f"  {metric:25s}: {stats['mean']:.4f}")
@@ -1522,8 +1549,6 @@ if __name__ == "__main__":
     ax.set_title('PropertyGraphIndex Hybrid RAG Scores', size=13, pad=20)
     plt.tight_layout()
     
-    graph_path = os.path.join(reports_dir, f"spider_graph_ragas_{artifact_label}.png")
-    plt.savefig(graph_path, dpi=300)
     policy = ValidationPolicy()
     pipeline_config = {
         "retrieval": {
@@ -1601,7 +1626,37 @@ if __name__ == "__main__":
             load_manifest(args.baseline_manifest), manifest, policy
         )
         manifest["baseline_comparison"] = comparison
-    manifest_path = os.path.join(reports_dir, f"ragas_{artifact_label}_manifest.json")
+    rejection = publication_rejection(
+        working_tree_clean=run_working_tree_clean,
+        provenance_completeness=provenance_completeness,
+        comparison=comparison,
+    )
+    if rejection:
+        print(f"\nBENCHMARK REJECTED: {rejection}", file=sys.stderr)
+        print(
+            "Diagnostic provenance was saved; no accepted report, manifest, "
+            "spider graph, or regression input was published.",
+            file=sys.stderr,
+        )
+        sys.exit(3 if comparison is not None and comparison.get("decision") != "keep" else 2)
+
+    serializable_results = results_df.copy()
+    for column in ("categories", "provenance", "citation_contexts"):
+        if column in serializable_results.columns:
+            serializable_results[column] = serializable_results[column].apply(
+                lambda value: json.dumps(value, sort_keys=True) if not isinstance(value, str) else value
+            )
+    serializable_results.to_csv(results_path, index=False)
+    with open(report_path, "w", encoding="utf-8") as report_file:
+        json.dump(report, report_file, indent=2)
+    plt.savefig(graph_path, dpi=300)
+    write_run_output(
+        regression_output_path,
+        regression_results.to_dict(orient="records"),
+        report["summary"]["overall_composite_score"],
+        working_tree_clean=True,
+        candidate_provenance_completeness=1.0,
+    )
     write_manifest(manifest_path, manifest)
     print(f"\nResults saved to {results_path}")
     print(f"Report saved to {report_path}")
@@ -1613,6 +1668,3 @@ if __name__ == "__main__":
             f"{comparison['decision'].upper()} "
             f"(delta={comparison['composite_delta']})"
         )
-        if comparison["decision"] != "keep":
-            print("Candidate did not pass the experiment ratchet gate.", file=sys.stderr)
-            sys.exit(3)

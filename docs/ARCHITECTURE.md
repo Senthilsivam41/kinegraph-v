@@ -8,7 +8,7 @@ KineticGraph-Vectra implements a **Hybrid Retrieval-Augmented Generation (RAG)**
 
 1. **Vector Search (ChromaDB):** Excels at semantic similarity and finding conceptually related content
 2. **Graph Search (Neo4j):** Excels at understanding relationships and traversing connected entities
-3. **Vectorless Search (BM25 Local Lexical Cache):** Excels at fast, direct keyword lookup and attachment processing without vector DB dependencies
+3. **Vectorless Search (BM25 Local Lexical Cache):** Performs keyword lookup and attachment processing without querying the vector database. The workflow lazily constructs the graph retriever, but the standard API startup still initializes Chroma and Neo4j clients; this is not a standalone deployment guarantee.
 4. **Reciprocal Rank Fusion:** Intelligently merges results from all retrieval sources
 
 ---

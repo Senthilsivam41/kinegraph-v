@@ -15,6 +15,34 @@ from langchain.prompts import PromptTemplate
 logger = logging.getLogger(__name__)
 
 
+def _neo4j_properties(metadata: Dict[str, Any] | None) -> Dict[str, Any]:
+    """Keep only scalar chunk-contract fields Neo4j can store."""
+    properties: Dict[str, Any] = {}
+    for key, value in (metadata or {}).items():
+        if key in {"id", "text"} or not isinstance(key, str):
+            continue
+        if isinstance(value, (str, int, float, bool)):
+            properties[key] = value
+    return properties
+
+
+def _chunk_rows(
+    chunks: List[str],
+    chunk_ids: List[str],
+    chunk_metadata: Optional[List[Dict[str, Any]]],
+) -> List[Dict[str, Any]]:
+    metadata_rows = list(chunk_metadata or [])
+    rows = []
+    for index, (chunk_id, text) in enumerate(zip(chunk_ids, chunks)):
+        metadata = metadata_rows[index] if index < len(metadata_rows) else {}
+        rows.append({
+            "id": chunk_id,
+            "text": text,
+            "properties": _neo4j_properties(metadata if isinstance(metadata, dict) else {}),
+        })
+    return rows
+
+
 @dataclass(frozen=True)
 class GraphWriteResult:
     """Request-scoped graph write outcome, including optional enrichment details."""
@@ -158,6 +186,7 @@ class Neo4jService:
         relationships: List[Dict[str, Any]],
         chunks: Optional[List[str]] = None,
         chunk_ids: Optional[List[str]] = None,
+        chunk_metadata: Optional[List[Dict[str, Any]]] = None,
     ) -> GraphWriteResult:
         """
         Add a document and its entities/relationships to the graph
@@ -193,13 +222,11 @@ class Neo4jService:
                         UNWIND $chunks AS chunk
                         MERGE (c:__Node__:Chunk {id: chunk.id})
                         SET c.text = chunk.text, c.document_id = $doc_id
+                        SET c += chunk.properties
                         WITH c
                         MATCH (d:Document {id: $doc_id})
                         MERGE (d)-[:HAS_CHUNK]->(c)
-                    """, doc_id=doc_id, chunks=[
-                        {"id": chunk_id, "text": chunk}
-                        for chunk_id, chunk in zip(chunk_ids, chunks)
-                    ])
+                    """, doc_id=doc_id, chunks=_chunk_rows(chunks, chunk_ids, chunk_metadata))
                 
                 # Create entity nodes and link to document.
                 # Chunk MENTIONS require a textual match — never invent locality.

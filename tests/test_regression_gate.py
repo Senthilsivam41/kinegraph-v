@@ -45,6 +45,21 @@ def test_write_and_load_batch_run_output(tmp_path):
     ]
     assert json.loads(output.read_text())["schema_version"] == RUN_OUTPUT_SCHEMA
     assert isinstance(run.cases[0], RatchetCase)
+    stored = json.loads(output.read_text())["cases"][0]
+    assert stored["citation_contexts"] == [{"id": None, "text": "RRF combines ranked lists."}]
+    cited = write_run_output(
+        tmp_path / "cited.json",
+        [{
+            "question": "Q",
+            "answer": "Supported by [chunk-1].",
+            "citation_contexts": [{"id": "chunk-9", "text": "Support"}],
+            "composite_score": 0.8,
+        }],
+        0.8,
+    )
+    cited_case = json.loads((tmp_path / "cited.json").read_text())["cases"][0]
+    assert cited_case["citation_membership_ok"] is False
+    assert cited.cases[0].answer.startswith("Supported")
 
 
 def test_first_run_baseline_and_atomic_promotion(tmp_path):

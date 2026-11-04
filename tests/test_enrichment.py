@@ -186,6 +186,46 @@ def test_legacy_document_ingestion_creates_chunks_and_runs_enrichment():
     chroma_cls.return_value.close.assert_called_once_with()
 
 
+def test_neo4j_chunk_write_keeps_the_chunk_contract():
+    service = Neo4jService.__new__(Neo4jService)
+    session = MagicMock()
+    service.driver = MagicMock()
+    service.driver.session.return_value.__enter__.return_value = session
+
+    with patch("backend.services.chroma_service.ChromaService"), patch(
+        "backend.graph_ingestion.enrichment.NodeEnricher"
+    ) as enricher_cls:
+        enricher_cls.return_value.enrich.return_value = {"complete": True}
+        asyncio.run(service.add_document_graph(
+            doc_id="doc-1",
+            content="Kinegraph uses Neo4j.",
+            metadata={"file_name": "test.md"},
+            entities=[],
+            relationships=[],
+            chunks=["Kinegraph uses Neo4j."],
+            chunk_ids=["chunk-1"],
+            chunk_metadata=[{
+                "chunk_hash": "abc",
+                "chunk_policy_version": "adr-002",
+                "chunk_type": "paragraph",
+                "section_path": "Intro",
+                "page_start": 2,
+                "nested": {"ignored": True},
+            }],
+        ))
+
+    chunk_call = next(
+        call for call in session.run.call_args_list if "chunk.properties" in call.args[0]
+    )
+    properties = chunk_call.kwargs["chunks"][0]["properties"]
+    assert properties["chunk_hash"] == "abc"
+    assert properties["chunk_policy_version"] == "adr-002"
+    assert properties["chunk_type"] == "paragraph"
+    assert properties["section_path"] == "Intro"
+    assert properties["page_start"] == 2
+    assert "nested" not in properties
+
+
 def test_entity_without_chunk_match_is_not_linked_to_first_chunk():
     """ADR-002: never invent evidence locality for unmatched entities."""
     service = Neo4jService.__new__(Neo4jService)

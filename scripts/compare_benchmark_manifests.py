@@ -54,11 +54,14 @@ def main() -> int:
     baseline = _load(Path(args.baseline))
     candidate = _load(Path(args.candidate))
     comparison = compare_manifests(baseline, candidate)
-    print(f"accepted={comparison.get('accepted')}")
+    accepted = comparison.get("accepted")
+    if accepted is None:
+        accepted = comparison.get("decision") == "keep"
+    print(f"accepted={accepted}")
     print(f"levers={comparison.get('changed_levers')}")
     for reason in comparison.get("reasons") or []:
         print(f"REASON: {reason}")
-    if not comparison.get("accepted") and not args.skip_ratchet:
+    if not accepted and not args.skip_ratchet:
         return 2
 
     baseline_means = _metric_means(baseline)

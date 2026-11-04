@@ -1,4 +1,4 @@
-from backend.graph_retrieval.retrievers import ComposedGraphRetriever
+from backend.graph_retrieval.retrievers import ComposedGraphRetriever, metadata_matches
 from backend.graph_retrieval.langgraph_node import LangGraphGraphRetrieverNode
 from backend.graph_retrieval.multi_hop import TraversalStrategy
 from llama_index.core.schema import TextNode, NodeWithScore
@@ -97,3 +97,9 @@ def test_composed_retriever(
     diagnostics = retriever.multi_hop_retriever.retrieve.call_args.kwargs["diagnostics"]
     assert diagnostics["base_candidate_count"] == 2
     assert diagnostics["traversal_candidate_count"] == 1
+
+
+def test_metadata_filter_removes_out_of_scope_graph_candidates_before_traversal():
+    assert metadata_matches({"file_name": "a.pdf"}, {"file_name": "a.pdf"})
+    assert not metadata_matches({"file_name": "b.pdf"}, {"file_name": "a.pdf"})
+    assert not metadata_matches({}, {"author": "ada"})

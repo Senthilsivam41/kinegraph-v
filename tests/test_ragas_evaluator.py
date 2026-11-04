@@ -14,6 +14,7 @@ from eval.ragas_evaluator import (
     RAGASConfigurationError,
     RAGASEvaluator,
     RAGASValidationError,
+    publication_rejection,
     require_successful_ragas,
 )
 
@@ -29,6 +30,29 @@ def _results(ragas_failed=False):
         "ragas_failed": ragas_failed,
         "ragas_error": "judge unavailable" if ragas_failed else None,
     }])
+
+
+def test_publication_requires_clean_tree_and_complete_provenance():
+    assert publication_rejection(working_tree_clean=False, provenance_completeness=1)
+    assert publication_rejection(working_tree_clean=True, provenance_completeness=0)
+    assert publication_rejection(
+        working_tree_clean=True,
+        provenance_completeness=1,
+        comparison={"decision": "revert"},
+    )
+    assert publication_rejection(working_tree_clean=True, provenance_completeness=1) is None
+
+
+def test_readiness_reports_dependency_outages_as_http_503():
+    from backend.app.api.routes.health import readiness
+
+    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(
+        chroma=SimpleNamespace(get_or_create_collection=lambda: None),
+        neo4j=SimpleNamespace(verify_connectivity=lambda: False),
+    )))
+    response = asyncio.run(readiness(request))
+    assert response.status_code == 503
+    assert b"neo4j_unavailable" in response.body
 
 
 def test_openrouter_qwen_preflight_uses_explicit_endpoint_and_local_embeddings(

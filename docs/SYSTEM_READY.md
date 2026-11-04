@@ -106,22 +106,22 @@ curl -X POST "http://localhost:8000/api/v1/query/" \
 
 ### Stop All Services
 ```bash
-docker-compose down
+docker compose --env-file .env -f infra/docker-compose.yml down
 ```
 
 ### Start All Services
 ```bash
-docker-compose up -d
+docker compose --env-file .env -f infra/docker-compose.yml up -d
 ```
 
 ### View Logs
 ```bash
 # All services
-docker-compose logs -f
+docker compose --env-file .env -f infra/docker-compose.yml logs -f
 
 # Specific service
-docker-compose logs -f app
-docker-compose logs -f neo4j
+docker compose --env-file .env -f infra/docker-compose.yml logs -f app
+docker compose --env-file .env -f infra/docker-compose.yml logs -f neo4j
 ```
 
 ### Stop Frontend Only
@@ -145,7 +145,7 @@ cd frontend && python3 serve.py
 
 1. **Start System** (already done! ✅)
    ```bash
-   docker-compose up -d
+   docker compose --env-file .env -f infra/docker-compose.yml up -d
    ./start-ui.sh
    ```
 
@@ -197,8 +197,8 @@ kinegraph-v/
 
 ### Backend not responding
 ```bash
-docker-compose ps              # Check status
-docker-compose logs app        # Check logs
+docker compose --env-file .env -f infra/docker-compose.yml ps              # Check status
+docker compose --env-file .env -f infra/docker-compose.yml logs app        # Check logs
 curl http://localhost:8000/health/  # Test health
 ```
 
@@ -211,8 +211,8 @@ cd frontend && python3 serve.py  # Restart
 
 ### Database connection errors
 ```bash
-docker-compose down            # Stop all
-docker-compose up -d           # Restart
+docker compose --env-file .env -f infra/docker-compose.yml down            # Stop all
+docker compose --env-file .env -f infra/docker-compose.yml up -d           # Restart
 # Wait 30-40 seconds for Neo4j to fully initialize
 ```
 
