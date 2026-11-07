@@ -80,7 +80,7 @@ def test_critic_can_only_filter_existing_claims():
 @pytest.mark.asyncio
 async def test_generate_node_exposes_verified_citations_only():
     workflow = HybridRAGWorkflow.__new__(HybridRAGWorkflow)
-    workflow.llm = object()
+    workflow.llm = SimpleNamespace(model_name="generation-override")
     workflow._invoke_prompt = AsyncMock(return_value=SimpleNamespace(content=json.dumps({
         "claims": [
             {"text": "Grounded answer", "chunk_ids": ["stored-1"]},
@@ -98,13 +98,14 @@ async def test_generate_node_exposes_verified_citations_only():
 
     assert result["generated_answer"] == "Grounded answer [stored-1]"
     assert result["citation_validation"]["accepted_claims"] == 1
+    assert result["llm_usage"][0]["model"] == "generation-override"
     assert result["citation_validation"]["rejected_claims"][0]["reason"] == "invalid_citation"
 
 
 @pytest.mark.asyncio
 async def test_generate_node_repairs_malformed_structured_output_once():
     workflow = HybridRAGWorkflow.__new__(HybridRAGWorkflow)
-    workflow.llm = object()
+    workflow.llm = SimpleNamespace(model_name="generation-override")
     workflow._invoke_prompt = AsyncMock(side_effect=[
         SimpleNamespace(content="not json"),
         SimpleNamespace(content=json.dumps({
@@ -124,6 +125,10 @@ async def test_generate_node_repairs_malformed_structured_output_once():
     assert result["citation_validation"]["repair_attempted"] is True
     assert result["citation_validation"]["initial_validation"]["structured_output_valid"] is False
     assert workflow._invoke_prompt.await_count == 2
+    assert [(usage["operation"], usage["model"]) for usage in result["llm_usage"]] == [
+        ("generation", "generation-override"),
+        ("generation_repair", "generation-override"),
+    ]
 
 
 @pytest.mark.asyncio
@@ -178,7 +183,7 @@ async def test_generate_node_does_not_retry_a_valid_empty_claim_set():
 @pytest.mark.asyncio
 async def test_critique_removes_unsupported_claim_without_rewriting():
     workflow = HybridRAGWorkflow.__new__(HybridRAGWorkflow)
-    workflow.critic_llm = object()
+    workflow.critic_llm = SimpleNamespace(model_name="critic-override")
     workflow._invoke_prompt = AsyncMock(return_value=SimpleNamespace(content=json.dumps({
         "supported_claim_ids": ["claim-1"],
         "directly_relevant_claim_ids": ["claim-1"],
@@ -205,6 +210,7 @@ async def test_critique_removes_unsupported_claim_without_rewriting():
 
     assert result["generated_answer"] == "Keep [a]"
     assert result["answer_confidence"] == 0.4
+    assert result["llm_usage"][0]["model"] == "critic-override"
     assert result["grounding_critique"]["removed_claim_ids"] == ["claim-2"]
     critic_payload = json.loads(workflow._invoke_prompt.await_args.args[2]["claims_json"])
     assert critic_payload[0]["cited_context"] == {"a": "Keep"}

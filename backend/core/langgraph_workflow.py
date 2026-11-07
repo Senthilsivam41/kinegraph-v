@@ -1273,7 +1273,7 @@ class HybridRAGWorkflow:
                 ),
             }
             response = await self._invoke_prompt(GENERATION_PROMPT, self.llm, payload)
-            self._record_llm_usage(state, response, operation="generation", model=settings.LLM_MODEL)
+            self._record_llm_usage(state, response, operation="generation", model=getattr(self.llm, "model_name", "unknown"))
             claims, confidence, validation = validate_grounded_response(
                 str(response.content), valid_ids
             )
@@ -1298,7 +1298,7 @@ class HybridRAGWorkflow:
                     + json.dumps(sorted(valid_ids), ensure_ascii=False)
                 )
                 response = await self._invoke_prompt(GENERATION_PROMPT, self.llm, payload)
-                self._record_llm_usage(state, response, operation="generation_repair", model=settings.LLM_MODEL)
+                self._record_llm_usage(state, response, operation="generation_repair", model=getattr(self.llm, "model_name", "unknown"))
                 claims, confidence, validation = validate_grounded_response(
                     str(response.content), valid_ids
                 )
@@ -1418,7 +1418,7 @@ class HybridRAGWorkflow:
                 "question": state["query"],
                 "claims_json": json.dumps(critic_claims, ensure_ascii=False),
             })
-            self._record_llm_usage(state, response, operation="grounding_critique", model=settings.FAITHFULNESS_CRITIC_MODEL)
+            self._record_llm_usage(state, response, operation="grounding_critique", model=getattr(self.critic_llm, "model_name", "unknown"))
             retained, critique = apply_critic_response(claims, str(response.content))
             state["grounded_claims"] = retained
             state["grounding_critique"] = critique
