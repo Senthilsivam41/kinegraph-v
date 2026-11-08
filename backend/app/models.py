@@ -54,6 +54,13 @@ class QueryRequest(BaseModel):
         default=settings.RETRIEVAL_ORCHESTRATION_ENABLED,
         description="Experimental ADR-003 provenance ledger and context optimization",
     )
+    enable_corrective_rag: bool = Field(
+        default=settings.CORRECTIVE_RAG_ENABLED,
+        description=(
+            "Grade reranked chunks and drop context that misses the question, "
+            "with one follow-up retrieval when nothing relevant survives"
+        ),
+    )
     enable_cross_encoder_reranking: bool = Field(
         default=settings.CROSS_ENCODER_RERANK_ENABLED,
         description="Controlled cross-encoder experiment; keyword reranking remains default",
@@ -146,6 +153,7 @@ class QueryResponse(BaseModel):
     answer_relevancy: Optional[Dict[str, Any]] = None
     routing_details: Optional[Dict[str, Any]] = None
     retrieval_orchestration: Optional[Dict[str, Any]] = None
+    corrective_rag: Optional[Dict[str, Any]] = None
     verification_outcome: Optional[Dict[str, Any]] = None
     kinetic_score: Optional[Dict[str, Any]] = None
 

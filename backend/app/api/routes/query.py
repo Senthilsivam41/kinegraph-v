@@ -48,6 +48,7 @@ async def query_system(query_request: QueryRequest, request: Request):
                 enable_grounding_critique=query_request.enable_grounding_critique,
                 enable_verification_framework=query_request.enable_verification_framework,
                 enable_retrieval_orchestration=query_request.enable_retrieval_orchestration,
+                enable_corrective_rag=query_request.enable_corrective_rag,
                 enable_cross_encoder_reranking=query_request.enable_cross_encoder_reranking,
                 context_max_per_source=query_request.context_max_per_source,
                 context_max_per_community=query_request.context_max_per_community,
@@ -88,6 +89,7 @@ async def query_system(query_request: QueryRequest, request: Request):
                 answer_relevancy=result["answer_relevancy"],
                 routing_details=result["routing"],
                 retrieval_orchestration=result["retrieval_orchestration"],
+                corrective_rag=result["corrective_rag"],
                 verification_outcome=result["verification_outcome"],
                 kinetic_score=result["kinetic_score"],
             )
