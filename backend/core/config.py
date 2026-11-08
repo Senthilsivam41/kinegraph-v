@@ -84,6 +84,7 @@ class Settings(BaseSettings):
     RERANKER_MIN_RELEVANCE: float = 0.20
     CROSS_ENCODER_RERANK_ENABLED: bool = False
     RETRIEVAL_ORCHESTRATION_ENABLED: bool = False
+    CORRECTIVE_RAG_ENABLED: bool = False
     CONTEXT_OPTIMIZATION_MAX_PER_SOURCE: int = Field(default=3, ge=0, le=100)
     CONTEXT_OPTIMIZATION_MAX_PER_COMMUNITY: int = Field(default=3, ge=0, le=100)
     FUSION_VECTOR_WEIGHT: float = 1.0

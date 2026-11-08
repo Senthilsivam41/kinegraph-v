@@ -26,6 +26,8 @@ from backend.app.models import DocumentChunk, QueryMode
 from backend.graph_retrieval.multi_hop import TraversalStrategy
 from backend.core.adaptive_routing import build_execution_plan
 from backend.core.config import settings
+from backend.core.corrective_rag import correct_retrieval, disabled_corrective_report
+from backend.observability.telemetry import sanitized_error_code
 from backend.core.context_ranker import ContextRanker
 from backend.core.grounding import (
     apply_critic_response,
@@ -197,6 +199,8 @@ class WorkflowState(TypedDict):
     reranked_results: List[Dict[str, Any]]
     reranker_details: Dict[str, Any]
     enable_retrieval_orchestration: bool
+    enable_corrective_rag: bool
+    corrective_rag: Dict[str, Any]
     enable_cross_encoder_reranking: bool
     context_max_per_source: int
     context_max_per_community: int
@@ -381,6 +385,7 @@ class HybridRAGWorkflow:
           → query_recovery         (only when initial retrieval is weak)
           → fusion_node            (RRF merge)
           → rerank_node            (cross-encoder / keyword reranker)
+          → corrective_rag_node   (drop context that misses the question)
           → generate_node          (grounded LLM answer)
           → grounding_critique     (remove unsupported claims; cannot rewrite)
           → format_results
@@ -396,6 +401,7 @@ class HybridRAGWorkflow:
         workflow.add_node("query_recovery", self._query_recovery)
         workflow.add_node("fusion_node",     self._fusion_node)
         workflow.add_node("rerank_node",     self._rerank_node)
+        workflow.add_node("corrective_rag_node", self._corrective_rag_node)
         workflow.add_node("generate_node",   self._generate_node)
         # Keep the graph node name distinct from the WorkflowState field of the
         # same name; LangGraph rejects node/state-key collisions.
@@ -427,7 +433,8 @@ class HybridRAGWorkflow:
 
         # Common tail
         workflow.add_edge("fusion_node",    "rerank_node")
-        workflow.add_edge("rerank_node",    "generate_node")
+        workflow.add_edge("rerank_node",    "corrective_rag_node")
+        workflow.add_edge("corrective_rag_node", "generate_node")
         workflow.add_edge("generate_node",  "grounding_critique_node")
         workflow.add_edge("grounding_critique_node", "format_results")
         workflow.add_edge("format_results", END)
@@ -1237,6 +1244,126 @@ class HybridRAGWorkflow:
         return state
 
     # ------------------------------------------------------------------
+    # Node: corrective_rag_node
+    # ------------------------------------------------------------------
+
+    async def _corrective_rag_node(self, state: WorkflowState) -> WorkflowState:
+        """Drop reranked chunks that miss the question, then search once if needed."""
+        t0 = time.perf_counter()
+        candidates = list(state.get("reranked_results") or [])
+        if not state.get("enable_corrective_rag", False):
+            state["corrective_rag"] = disabled_corrective_report(candidates)
+            state["latency_breakdown"]["corrective_rag_ms"] = round(
+                (time.perf_counter() - t0) * 1000, 2
+            )
+            return state
+
+        selected, report = correct_retrieval(
+            state["query"],
+            candidates,
+            top_k=state["max_results"],
+        )
+        if report["needs_supplementary"]:
+            extra = await self._fetch_corrective_candidates(
+                state,
+                str(report.get("corrective_query") or state["query"]),
+            )
+            selected, report = correct_retrieval(
+                state["query"],
+                candidates,
+                top_k=state["max_results"],
+                supplementary=extra,
+            )
+            report["supplementary_count"] = len(extra)
+        state["reranked_results"] = selected
+        state["corrective_rag"] = report
+        mode = state.get("mode", QueryMode.HYBRID)
+        channel_candidates = {
+            "vectorless" if mode == QueryMode.VECTORLESS else "vector": list(
+                state.get("vector_results") or []
+            ),
+            "graph": list(state.get("graph_results") or []),
+            "lexical": list(state.get("lexical_results") or []),
+        }
+        state["candidate_lifecycle"] = build_candidate_lifecycle(
+            channel_candidates=channel_candidates,
+            fused_candidates=state.get("fusion_candidates_before_dedup") or [],
+            final_candidates=selected,
+            stage_reports=(
+                state.get("deduplication_details") or {},
+                state.get("reranker_details") or {},
+                state.get("context_optimization_details") or {},
+                report,
+            ),
+        )
+        state["latency_breakdown"]["corrective_rag_ms"] = round(
+            (time.perf_counter() - t0) * 1000, 2
+        )
+        logger.info(
+            "[CorrectiveRAG] action=%s %d → %d",
+            report["action"],
+            len(candidates),
+            len(selected),
+        )
+        return state
+
+    async def _fetch_corrective_candidates(
+        self,
+        state: WorkflowState,
+        query: str,
+    ) -> List[Dict[str, Any]]:
+        """One follow-up search on the channels already selected for this request."""
+        fetch_n = max(
+            state["max_results"],
+            state.get("candidate_pool_size") or state["max_results"],
+        )
+        mode = state.get("mode", QueryMode.HYBRID)
+        found: List[Dict[str, Any]] = []
+        if mode in (QueryMode.VECTOR, QueryMode.HYBRID):
+            try:
+                found.extend(await self.chroma.similarity_search(
+                    query=query,
+                    n_results=fetch_n,
+                    filters=state.get("filters"),
+                ))
+            except Exception as exc:
+                state.setdefault("retrieval_failures", {})["corrective_vector"] = sanitized_error_code(exc)
+        if mode in (QueryMode.GRAPH, QueryMode.HYBRID):
+            try:
+                graph_results, _diagnostics = await self._retrieve_graph(
+                    query=query,
+                    n_results=fetch_n,
+                    max_hops=state["max_hops"],
+                    traversal_strategy=state["traversal_strategy"],
+                    community_id=state.get("community_id"),
+                    filters=state.get("filters"),
+                )
+                found.extend(graph_results)
+            except Exception as exc:
+                state.setdefault("retrieval_failures", {})["corrective_graph"] = sanitized_error_code(exc)
+        if mode == QueryMode.VECTORLESS or state.get("enable_lexical_fusion", False):
+            try:
+                if state.get("attachment_content"):
+                    lexical = await asyncio.to_thread(
+                        _search_vectorless_attachment,
+                        query,
+                        state.get("attachment_content"),
+                        state.get("attachment_name"),
+                        fetch_n,
+                    )
+                else:
+                    lexical = await asyncio.to_thread(
+                        _search_vectorless_chunks,
+                        query,
+                        fetch_n,
+                        state.get("filters"),
+                    )
+                found.extend(lexical)
+            except Exception as exc:
+                state.setdefault("retrieval_failures", {})["corrective_lexical"] = sanitized_error_code(exc)
+        return found
+
+    # ------------------------------------------------------------------
     # Node: generate_node  ← NEW (fixes faithfulness + answer_relevancy)
     # ------------------------------------------------------------------
 
@@ -1273,7 +1400,7 @@ class HybridRAGWorkflow:
                 ),
             }
             response = await self._invoke_prompt(GENERATION_PROMPT, self.llm, payload)
-            self._record_llm_usage(state, response, operation="generation", model=settings.LLM_MODEL)
+            self._record_llm_usage(state, response, operation="generation", model=getattr(self.llm, "model_name", "unknown"))
             claims, confidence, validation = validate_grounded_response(
                 str(response.content), valid_ids
             )
@@ -1298,7 +1425,7 @@ class HybridRAGWorkflow:
                     + json.dumps(sorted(valid_ids), ensure_ascii=False)
                 )
                 response = await self._invoke_prompt(GENERATION_PROMPT, self.llm, payload)
-                self._record_llm_usage(state, response, operation="generation_repair", model=settings.LLM_MODEL)
+                self._record_llm_usage(state, response, operation="generation_repair", model=getattr(self.llm, "model_name", "unknown"))
                 claims, confidence, validation = validate_grounded_response(
                     str(response.content), valid_ids
                 )
@@ -1418,7 +1545,7 @@ class HybridRAGWorkflow:
                 "question": state["query"],
                 "claims_json": json.dumps(critic_claims, ensure_ascii=False),
             })
-            self._record_llm_usage(state, response, operation="grounding_critique", model=settings.FAITHFULNESS_CRITIC_MODEL)
+            self._record_llm_usage(state, response, operation="grounding_critique", model=getattr(self.critic_llm, "model_name", "unknown"))
             retained, critique = apply_critic_response(claims, str(response.content))
             state["grounded_claims"] = retained
             state["grounding_critique"] = critique
@@ -1575,6 +1702,7 @@ class HybridRAGWorkflow:
                 "context_optimization": state.get("context_optimization_details", {}),
                 "candidate_lifecycle": state.get("candidate_lifecycle", {}),
             },
+            "corrective_rag": state.get("corrective_rag", {}),
             "verification": {
                 "enabled": state.get("enable_verification_framework", False),
                 "outcome": state.get("verification_outcome", {}),
@@ -1606,6 +1734,7 @@ class HybridRAGWorkflow:
         enable_grounding_critique: bool = True,
         enable_verification_framework: bool = settings.VERIFICATION_FRAMEWORK_ENABLED,
         enable_retrieval_orchestration: bool = settings.RETRIEVAL_ORCHESTRATION_ENABLED,
+        enable_corrective_rag: bool = settings.CORRECTIVE_RAG_ENABLED,
         enable_cross_encoder_reranking: Optional[bool] = None,
         context_max_per_source: int = settings.CONTEXT_OPTIMIZATION_MAX_PER_SOURCE,
         context_max_per_community: int = settings.CONTEXT_OPTIMIZATION_MAX_PER_COMMUNITY,
@@ -1655,6 +1784,8 @@ class HybridRAGWorkflow:
             reranked_results=[],
             reranker_details={},
             enable_retrieval_orchestration=enable_retrieval_orchestration,
+            enable_corrective_rag=enable_corrective_rag,
+            corrective_rag={},
             enable_cross_encoder_reranking=(
                 self.ranker.requested_cross_encoder
                 if enable_cross_encoder_reranking is None
@@ -1703,6 +1834,7 @@ class HybridRAGWorkflow:
         enable_grounding_critique: bool = True,
         enable_verification_framework: bool = settings.VERIFICATION_FRAMEWORK_ENABLED,
         enable_retrieval_orchestration: bool = settings.RETRIEVAL_ORCHESTRATION_ENABLED,
+        enable_corrective_rag: bool = settings.CORRECTIVE_RAG_ENABLED,
         enable_cross_encoder_reranking: Optional[bool] = None,
         context_max_per_source: int = settings.CONTEXT_OPTIMIZATION_MAX_PER_SOURCE,
         context_max_per_community: int = settings.CONTEXT_OPTIMIZATION_MAX_PER_COMMUNITY,
@@ -1765,6 +1897,8 @@ class HybridRAGWorkflow:
             reranked_results=[],
             reranker_details={},
             enable_retrieval_orchestration=enable_retrieval_orchestration,
+            enable_corrective_rag=enable_corrective_rag,
+            corrective_rag={},
             enable_cross_encoder_reranking=(
                 self.ranker.requested_cross_encoder
                 if enable_cross_encoder_reranking is None
@@ -1814,6 +1948,7 @@ class HybridRAGWorkflow:
                 "context_optimization": final_state["context_optimization_details"],
                 "candidate_lifecycle": final_state["candidate_lifecycle"],
             },
+            "corrective_rag": final_state["corrective_rag"],
             "verification_outcome": final_state["verification_outcome"],
             "kinetic_score": final_state["kinetic_score"],
             "fusion": {
