@@ -100,3 +100,27 @@ the Hybrid and Vector observations for all six cases.
 
 See the [November 11 local smoke report](../../reports/test-runs/2026-11-11/hr-policy/REPORT.md)
 for the captured browser and comparison results.
+
+## Optional MCP transport
+
+Point the standalone adapter at a Streamable HTTP endpoint that implements
+the [Kinegraph use-case MCP contract v1](../MCP_CONTRACT.md). Use a disposable
+index containing only the synthetic handbook. The v1 MCP query tool does
+not accept the corpus filter used by the HTTP clients.
+
+```shell
+python mcp_client.py --endpoint http://localhost:9000/mcp ingest > hr-mcp-ingest.json
+# Wait for the returned task ID to succeed through the server's ingestion status API.
+python mcp_client.py --endpoint http://localhost:9000/mcp \
+  query --case HR-001 --mode hybrid > hr-mcp-query.json
+```
+
+Set `KINEGRAPH_MCP_URL` to reuse the endpoint. The adapter prints a JSON
+evidence record and exits nonzero for tool, protocol, or transport failures.
+The normal browser, CLI, and comparison runner use the public HTTP API.
+
+Run `python -m pytest -q tests/test_mcp_use_case_adapter.py` from the
+repository root for deterministic request and evidence checks. For a live
+smoke test, retain the ingestion response, terminal task status, query
+response, server revision, and test environment. Compatibility with a live
+Kinegraph MCP server remains unverified.

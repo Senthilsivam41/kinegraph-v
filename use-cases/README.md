@@ -6,10 +6,13 @@ of its core service. Keep this layout:
 ```text
 use-cases/<use-case>/
   README.md        # setup and evidence required to make a claim
-  client.py        # API or MCP client; stdlib where practical
+  client.py        # HTTP API client
+  mcp_client.py    # optional MCP transport adapter
   data/            # synthetic or redistributable source material only
   contract/        # prompts and expected grounded facts
 ```
 
 Use cases may add a focused test under `tests/`. They must not change core
 retrieval defaults, production configuration, or service implementation.
+
+MCP clients follow the versioned [use-case MCP contract](MCP_CONTRACT.md).
