@@ -24,6 +24,9 @@ def test_hr_policy_demo_contract_is_complete():
     assert contract["schema_version"] == "kinegraph.demo.hr-policy.v1"
     assert (DEMO_DIR / "contract" / contract["corpus"]).resolve() == corpus.resolve()
     assert contract["corpus_sha256"] == hashlib.sha256(corpus.read_bytes()).hexdigest()
+    pdf = (DEMO_DIR / "contract" / contract["ingestion_pdf"]).read_bytes()
+    assert pdf.startswith(b"%PDF-")
+    assert contract["ingestion_pdf_sha256"] == hashlib.sha256(pdf).hexdigest()
     assert [case["id"] for case in contract["cases"]] == [f"HR-{n:03d}" for n in range(1, 7)]
     assert all(case["expected_facts"] and case["source_sections"] for case in contract["cases"])
     assert contract["cases"][-1]["outcome"] == "partial_refusal"
@@ -70,5 +73,6 @@ def test_hr_policy_client_builds_explicit_mode_request():
     assert captured["url"] == "http://localhost:8000/api/v1/query/"
     assert captured["body"]["mode"] == "vector"
     assert captured["body"]["allow_mode_downgrade"] is False
+    assert captured["body"]["filters"] == {"demo_pdf_sha256": client.PDF_SHA256}
     assert captured["timeout"] == 60
     assert result["effective_mode"] == "vector"

@@ -1,0 +1,1850 @@
+{
+  "kinegraph_code_revision": "976426197a11f70e462b725f52c06580586fb025",
+  "source_corpus_sha256": "95119b5dab08c01ea39adbd5bb8a2987f4b0153f278ce7ead37898d7f41504a8",
+  "ingestion_pdf_sha256": "c9cad04fd762536011a7bc6e481c95c10916cd339c49e0592a7613d4c1fb782b",
+  "case": {
+    "id": "HR-001",
+    "question": "I'm on the Data Science team and want to transfer to Customer Success. Whose approval do I need?",
+    "expected_facts": [
+      "Marcus Oyelaran",
+      "Dana Whitfield",
+      "Sam Torres",
+      "Naomi Fields"
+    ],
+    "source_sections": [
+      "2",
+      "4.1"
+    ],
+    "outcome": "answer"
+  },
+  "captured_at": "2026-11-10T22:42:05.965Z",
+  "browser_origin": "http://localhost:18088",
+  "api_base_url": "http://127.0.0.1:18081",
+  "upload": {
+    "http_status": 202,
+    "body": {
+      "task_id": "f875270c-1014-4723-b602-07b682760e38",
+      "status": "PENDING",
+      "message": "Document 'northwind-analytics-employee-handbook.pdf' queued for processing",
+      "doc_id": null,
+      "status_url": null
+    }
+  },
+  "task": {
+    "http_status": 200,
+    "body": {
+      "task_id": "f875270c-1014-4723-b602-07b682760e38",
+      "status": "SUCCESS",
+      "result": {
+        "document_id": "doc_708d5efec0d9d495c17d11e4e8e58870e5002a5128bf84fc0b01f2fb2956b3c9",
+        "file_name": "northwind-analytics-employee-handbook.pdf",
+        "total_chunks": 6,
+        "entities_count": 18,
+        "relationships_count": 30,
+        "chunk_policy_version": "kinegraph.adaptive-chunking.v1",
+        "adaptive_chunking": false,
+        "enrichment": {
+          "enriched": 18,
+          "skipped_without_verified_context": 0,
+          "scanned": 18,
+          "verified_vector_links": 30,
+          "missing_vector_links": 0,
+          "complete": true,
+          "incomplete_entity_ids": [],
+          "linked_entity_ids": [
+            "Northwind Analytics",
+            "Priya Raman",
+            "Marcus Oyelaran",
+            "Dana Whitfield",
+            "Jordan Kessler",
+            "Alicia Fenn",
+            "Sam Torres",
+            "Naomi Fields",
+            "Full-Time Employee (FTE)",
+            "Part-Time Employee",
+            "Contractor",
+            "Intern",
+            "PTO",
+            "401(k) Match",
+            "Health Benefits",
+            "Remote Work",
+            "Client-Facing Role",
+            "Expense Approval"
+          ]
+        },
+        "validation": {
+          "policy_version": "kinegraph.adaptive-chunking.v1",
+          "total_chunks": 6,
+          "verified_chunk_links": 6,
+          "missing_chunk_links": [],
+          "enriched_entities": [
+            "Northwind Analytics",
+            "Priya Raman",
+            "Marcus Oyelaran",
+            "Dana Whitfield",
+            "Jordan Kessler",
+            "Alicia Fenn",
+            "Sam Torres",
+            "Naomi Fields",
+            "Full-Time Employee (FTE)",
+            "Part-Time Employee",
+            "Contractor",
+            "Intern",
+            "PTO",
+            "401(k) Match",
+            "Health Benefits",
+            "Remote Work",
+            "Client-Facing Role",
+            "Expense Approval"
+          ],
+          "incomplete_enrichment": [],
+          "complete": true
+        },
+        "status": "success"
+      },
+      "error": null
+    }
+  },
+  "ingest_ui": "Handbook ingestion completed. Task f875270c-1014-4723-b602-07b682760e38.",
+  "initial_query": {
+    "http_status": 500,
+    "body": {
+      "detail": "Query execution failed: {code: Neo.ClientError.Procedure.ProcedureNotFound} {message: There is no procedure with the name `apoc.meta.data` registered for this database instance. Please ensure you've spelled the procedure name correctly and that the procedure is properly deployed.}"
+    },
+    "request": {
+      "query": "I'm on the Data Science team and want to transfer to Customer Success. Whose approval do I need?",
+      "mode": "hybrid",
+      "allow_mode_downgrade": false,
+      "filters": {
+        "demo_pdf_sha256": "c9cad04fd762536011a7bc6e481c95c10916cd339c49e0592a7613d4c1fb782b"
+      }
+    }
+  },
+  "query_captured_at": "2026-11-10T22:45:18.734Z",
+  "query": {
+    "http_status": 200,
+    "body": {
+      "query": "I'm on the Data Science team and want to transfer to Customer Success. Whose approval do I need?",
+      "mode": "hybrid",
+      "requested_mode": "hybrid",
+      "effective_mode": "hybrid",
+      "results": [
+        {
+          "content": "the transfer crosses departments, the losing and receiving Department Heads must\nalso approve.\n4.2 General Exception Rule\nMost exceptions, including early benefits eligibility and one-time PTO advances,\nneed Team Lead approval only. Section 3.4 is a named exception and instead needs\nDepartment Head approval.\n4.3 Remote Work Exceptions\nPlatform Engineering and Data Science employees need Team Lead approval for\npermanent remote status. Customer Success and Sales employees need both Team\nLead and Department Head approval because they are client-facing under Section\n6.1.",
+          "metadata": {
+            "boundary_reason": "unstructured_text",
+            "caption": "",
+            "chunk_hash": "c53b25bb80b183772e4a67191e4fb6ccfa8accccaac40b73a0bc120bca2aad5b",
+            "chunk_index": 3,
+            "chunk_policy_version": "kinegraph.adaptive-chunking.v1",
+            "chunk_type": "recursive",
+            "confidence": -1,
+            "demo_pdf_sha256": "c9cad04fd762536011a7bc6e481c95c10916cd339c49e0592a7613d4c1fb782b",
+            "document_id": "doc_708d5efec0d9d495c17d11e4e8e58870e5002a5128bf84fc0b01f2fb2956b3c9",
+            "extraction_method": "",
+            "file_name": "northwind-analytics-employee-handbook.pdf",
+            "headers": "",
+            "image_id": "",
+            "original_file_name": "northwind-analytics-employee-handbook.pdf",
+            "overlap": 200,
+            "page_end": -1,
+            "page_start": -1,
+            "parent_structural_id": "",
+            "section_path": "",
+            "source_corpus_sha256": "95119b5dab08c01ea39adbd5bb8a2987f4b0153f278ce7ead37898d7f41504a8",
+            "table_id": "",
+            "tokenizer_version": "recursive-character-v1",
+            "total_chunks": 6,
+            "recovery_stage": "decomposition",
+            "retrieval_query": "Data Science team",
+            "original_query": "I'm on the Data Science team and want to transfer to Customer Success. Whose approval do I need?",
+            "hypothesis_is_evidence": null,
+            "rerank_score": 1,
+            "semantic_score": 1,
+            "graph_signal_score": null,
+            "graph_signals_applied": false,
+            "rerank_mode": "graph_aware_keyword",
+            "rerank_components": {
+              "centrality": null,
+              "community": null,
+              "edge": null,
+              "distance": null
+            },
+            "rrf_contributions": {
+              "vector": 0.01639344
+            },
+            "candidate_id": "chunk_3_fa10f62a00a5e8e310437e3c53f833588ba7b2e6ced6477cc326b2302b215c9a",
+            "source_channels": [
+              "source_0",
+              "source_1",
+              "source_2",
+              "source_3",
+              "source_4",
+              "vector"
+            ],
+            "original_scores": {
+              "source_0": 0.6346311477463477,
+              "source_1": 0.5176539402427125,
+              "source_2": 0.5182335134624371,
+              "source_3": 0.5649686246350829,
+              "source_4": 0.6427661898824834,
+              "vector": 0.6346311477463477
+            },
+            "channel_ranks": {
+              "source_0": 1,
+              "source_1": 2,
+              "source_2": 3,
+              "source_3": 1,
+              "source_4": 1,
+              "vector": 1
+            },
+            "graph_paths": {},
+            "retrieval_provenance": {
+              "policy_version": "kinegraph.retrieval-orchestration.v1",
+              "candidate_id": "chunk_3_fa10f62a00a5e8e310437e3c53f833588ba7b2e6ced6477cc326b2302b215c9a",
+              "source_channels": [
+                "source_0",
+                "source_1",
+                "source_2",
+                "source_3",
+                "source_4",
+                "vector"
+              ],
+              "original_scores": {
+                "source_0": 0.6346311477463477,
+                "source_1": 0.5176539402427125,
+                "source_2": 0.5182335134624371,
+                "source_3": 0.5649686246350829,
+                "source_4": 0.6427661898824834,
+                "vector": 0.6346311477463477
+              },
+              "channel_ranks": {
+                "source_0": 1,
+                "source_1": 2,
+                "source_2": 3,
+                "source_3": 1,
+                "source_4": 1,
+                "vector": 1
+              },
+              "graph_paths": {}
+            },
+            "citation_id": "chunk_3_fa10f62a00a5e8e310437e3c53f833588ba7b2e6ced6477cc326b2302b215c9a",
+            "intent": "conceptual"
+          },
+          "score": 0.01639344262295082,
+          "source": "vector",
+          "explanation": {
+            "candidate_id": "chunk_3_fa10f62a00a5e8e310437e3c53f833588ba7b2e6ced6477cc326b2302b215c9a",
+            "source_channels": [
+              "source_0",
+              "source_1",
+              "source_2",
+              "source_3",
+              "source_4",
+              "vector"
+            ],
+            "channel_ranks": {
+              "source_0": 1,
+              "source_1": 2,
+              "source_2": 3,
+              "source_3": 1,
+              "source_4": 1,
+              "vector": 1
+            },
+            "original_scores": {
+              "source_0": 0.6346311477463477,
+              "source_1": 0.5176539402427125,
+              "source_2": 0.5182335134624371,
+              "source_3": 0.5649686246350829,
+              "source_4": 0.6427661898824834,
+              "vector": 0.6346311477463477
+            },
+            "rrf_contributions": {
+              "vector": 0.01639344
+            },
+            "reranking": {
+              "mode": "graph_aware_keyword",
+              "score": 1,
+              "semantic_score": 1,
+              "graph_signal_score": null,
+              "graph_signals_applied": false,
+              "components": {
+                "centrality": null,
+                "community": null,
+                "edge": null,
+                "distance": null
+              }
+            },
+            "graph_paths": {}
+          }
+        },
+        {
+          "content": "| Platform Engineering | Priya Raman | Engineering |\n| Data Science | Marcus Oyelaran | Engineering |\n| Customer Success | Dana Whitfield | Revenue |\n| Sales | Jordan Kessler | Revenue |\n| People Ops | Alicia Fenn | Operations |\nDepartment Heads are Sam Torres (Engineering), Naomi Fields (Revenue), and\nAlicia Fenn (Operations). A Department Head provides second-line approval when\na Team Lead escalates an exception.",
+          "metadata": {
+            "boundary_reason": "unstructured_text",
+            "caption": "",
+            "chunk_hash": "648fe0b0a4503228a8c5f4ec36e3d74e5ea01ef45acd69636eaff972fdc98bf6",
+            "chunk_index": 1,
+            "chunk_policy_version": "kinegraph.adaptive-chunking.v1",
+            "chunk_type": "recursive",
+            "confidence": -1,
+            "demo_pdf_sha256": "c9cad04fd762536011a7bc6e481c95c10916cd339c49e0592a7613d4c1fb782b",
+            "document_id": "doc_708d5efec0d9d495c17d11e4e8e58870e5002a5128bf84fc0b01f2fb2956b3c9",
+            "extraction_method": "",
+            "file_name": "northwind-analytics-employee-handbook.pdf",
+            "headers": "",
+            "image_id": "",
+            "original_file_name": "northwind-analytics-employee-handbook.pdf",
+            "overlap": 200,
+            "page_end": -1,
+            "page_start": -1,
+            "parent_structural_id": "",
+            "section_path": "",
+            "source_corpus_sha256": "95119b5dab08c01ea39adbd5bb8a2987f4b0153f278ce7ead37898d7f41504a8",
+            "table_id": "",
+            "tokenizer_version": "recursive-character-v1",
+            "total_chunks": 6,
+            "recovery_stage": "decomposition",
+            "retrieval_query": "Data Science team",
+            "original_query": "I'm on the Data Science team and want to transfer to Customer Success. Whose approval do I need?",
+            "hypothesis_is_evidence": null,
+            "rerank_score": 1,
+            "semantic_score": 1,
+            "graph_signal_score": null,
+            "graph_signals_applied": false,
+            "rerank_mode": "graph_aware_keyword",
+            "rerank_components": {
+              "centrality": null,
+              "community": null,
+              "edge": null,
+              "distance": null
+            },
+            "rrf_contributions": {
+              "vector": 0.01612903
+            },
+            "candidate_id": "chunk_1_332a2e0618f398511f550f816dc40fc2db00559c2d95a7c580587628666c7631",
+            "source_channels": [
+              "source_0",
+              "source_1",
+              "source_2",
+              "source_3",
+              "source_4",
+              "vector"
+            ],
+            "original_scores": {
+              "source_0": 0.6138056563704554,
+              "source_1": 0.577054903678231,
+              "source_2": 0.5639439543661221,
+              "source_3": 0.5042011592807758,
+              "source_4": 0.5898146063638388,
+              "vector": 0.6138056563704554
+            },
+            "channel_ranks": {
+              "source_0": 2,
+              "source_1": 1,
+              "source_2": 1,
+              "source_3": 4,
+              "source_4": 2,
+              "vector": 2
+            },
+            "graph_paths": {},
+            "retrieval_provenance": {
+              "policy_version": "kinegraph.retrieval-orchestration.v1",
+              "candidate_id": "chunk_1_332a2e0618f398511f550f816dc40fc2db00559c2d95a7c580587628666c7631",
+              "source_channels": [
+                "source_0",
+                "source_1",
+                "source_2",
+                "source_3",
+                "source_4",
+                "vector"
+              ],
+              "original_scores": {
+                "source_0": 0.6138056563704554,
+                "source_1": 0.577054903678231,
+                "source_2": 0.5639439543661221,
+                "source_3": 0.5042011592807758,
+                "source_4": 0.5898146063638388,
+                "vector": 0.6138056563704554
+              },
+              "channel_ranks": {
+                "source_0": 2,
+                "source_1": 1,
+                "source_2": 1,
+                "source_3": 4,
+                "source_4": 2,
+                "vector": 2
+              },
+              "graph_paths": {}
+            },
+            "citation_id": "chunk_1_332a2e0618f398511f550f816dc40fc2db00559c2d95a7c580587628666c7631",
+            "intent": "conceptual"
+          },
+          "score": 0.016129032258064516,
+          "source": "vector",
+          "explanation": {
+            "candidate_id": "chunk_1_332a2e0618f398511f550f816dc40fc2db00559c2d95a7c580587628666c7631",
+            "source_channels": [
+              "source_0",
+              "source_1",
+              "source_2",
+              "source_3",
+              "source_4",
+              "vector"
+            ],
+            "channel_ranks": {
+              "source_0": 2,
+              "source_1": 1,
+              "source_2": 1,
+              "source_3": 4,
+              "source_4": 2,
+              "vector": 2
+            },
+            "original_scores": {
+              "source_0": 0.6138056563704554,
+              "source_1": 0.577054903678231,
+              "source_2": 0.5639439543661221,
+              "source_3": 0.5042011592807758,
+              "source_4": 0.5898146063638388,
+              "vector": 0.6138056563704554
+            },
+            "rrf_contributions": {
+              "vector": 0.01612903
+            },
+            "reranking": {
+              "mode": "graph_aware_keyword",
+              "score": 1,
+              "semantic_score": 1,
+              "graph_signal_score": null,
+              "graph_signals_applied": false,
+              "components": {
+                "centrality": null,
+                "community": null,
+                "edge": null,
+                "distance": null
+              }
+            },
+            "graph_paths": {}
+          }
+        },
+        {
+          "content": "3. Paid Time Off\n3.1 Standard Accrual\nFTEs accrue 1.25 PTO days each month (15 days each year) for their first three\nyears of tenure.\n3.2 Tenure-Based Increases\n- Years 0-3: 15 days each year.\n- Years 3-7: 20 days each year.\n- Years 7+: 25 days each year.\nInterns accrue 0.5 PTO days per month, capped at five days per internship term.\n3.3 Carryover\nUp to five unused PTO days carry into the next calendar year. An employee who\ntransfers teams mid-year may carry up to 10 days in that year if the receiving\nTeam Lead co-signs the request.\n3.4 PTO During a Notice Period\nAn employee may not take PTO during an active resignation notice period without\nDepartment Head approval. This overrides the normal Team Lead approval rule.\n4. Exceptions and Approval Chains\n4.1 Team Transfers\nA team transfer needs sign-off from the current and receiving Team Leads. When\nthe transfer crosses departments, the losing and receiving Department Heads must\nalso approve.\n4.2 General Exception Rule",
+          "metadata": {
+            "boundary_reason": "unstructured_text",
+            "caption": "",
+            "chunk_hash": "878f5e88640ac259947e01fd71d856a3b6dd697859499c2ee270ea3f645f9f10",
+            "chunk_index": 2,
+            "chunk_policy_version": "kinegraph.adaptive-chunking.v1",
+            "chunk_type": "recursive",
+            "confidence": -1,
+            "demo_pdf_sha256": "c9cad04fd762536011a7bc6e481c95c10916cd339c49e0592a7613d4c1fb782b",
+            "document_id": "doc_708d5efec0d9d495c17d11e4e8e58870e5002a5128bf84fc0b01f2fb2956b3c9",
+            "extraction_method": "",
+            "file_name": "northwind-analytics-employee-handbook.pdf",
+            "headers": "",
+            "image_id": "",
+            "original_file_name": "northwind-analytics-employee-handbook.pdf",
+            "overlap": 200,
+            "page_end": -1,
+            "page_start": -1,
+            "parent_structural_id": "",
+            "section_path": "",
+            "source_corpus_sha256": "95119b5dab08c01ea39adbd5bb8a2987f4b0153f278ce7ead37898d7f41504a8",
+            "table_id": "",
+            "tokenizer_version": "recursive-character-v1",
+            "total_chunks": 6,
+            "recovery_stage": "decomposition",
+            "retrieval_query": "Data Science team",
+            "original_query": "I'm on the Data Science team and want to transfer to Customer Success. Whose approval do I need?",
+            "hypothesis_is_evidence": null,
+            "rerank_score": 1,
+            "semantic_score": 1,
+            "graph_signal_score": null,
+            "graph_signals_applied": false,
+            "rerank_mode": "graph_aware_keyword",
+            "rerank_components": {
+              "centrality": null,
+              "community": null,
+              "edge": null,
+              "distance": null
+            },
+            "rrf_contributions": {
+              "vector": 0.015625
+            },
+            "candidate_id": "chunk_2_380804975e6413b98ee35fad09c3b4b34293689d79b97f2caec6b7e98b1b0e18",
+            "source_channels": [
+              "source_0",
+              "source_1",
+              "source_2",
+              "source_3",
+              "source_4",
+              "vector"
+            ],
+            "original_scores": {
+              "source_0": 0.5596290633029648,
+              "source_1": 0.4760224183239543,
+              "source_2": 0.4829142876615354,
+              "source_3": 0.5118666464756338,
+              "source_4": 0.553830050944712,
+              "vector": 0.5596290633029648
+            },
+            "channel_ranks": {
+              "source_0": 4,
+              "source_1": 6,
+              "source_2": 5,
+              "source_3": 3,
+              "source_4": 3,
+              "vector": 4
+            },
+            "graph_paths": {},
+            "retrieval_provenance": {
+              "policy_version": "kinegraph.retrieval-orchestration.v1",
+              "candidate_id": "chunk_2_380804975e6413b98ee35fad09c3b4b34293689d79b97f2caec6b7e98b1b0e18",
+              "source_channels": [
+                "source_0",
+                "source_1",
+                "source_2",
+                "source_3",
+                "source_4",
+                "vector"
+              ],
+              "original_scores": {
+                "source_0": 0.5596290633029648,
+                "source_1": 0.4760224183239543,
+                "source_2": 0.4829142876615354,
+                "source_3": 0.5118666464756338,
+                "source_4": 0.553830050944712,
+                "vector": 0.5596290633029648
+              },
+              "channel_ranks": {
+                "source_0": 4,
+                "source_1": 6,
+                "source_2": 5,
+                "source_3": 3,
+                "source_4": 3,
+                "vector": 4
+              },
+              "graph_paths": {}
+            },
+            "citation_id": "chunk_2_380804975e6413b98ee35fad09c3b4b34293689d79b97f2caec6b7e98b1b0e18",
+            "intent": "conceptual"
+          },
+          "score": 0.015625,
+          "source": "vector",
+          "explanation": {
+            "candidate_id": "chunk_2_380804975e6413b98ee35fad09c3b4b34293689d79b97f2caec6b7e98b1b0e18",
+            "source_channels": [
+              "source_0",
+              "source_1",
+              "source_2",
+              "source_3",
+              "source_4",
+              "vector"
+            ],
+            "channel_ranks": {
+              "source_0": 4,
+              "source_1": 6,
+              "source_2": 5,
+              "source_3": 3,
+              "source_4": 3,
+              "vector": 4
+            },
+            "original_scores": {
+              "source_0": 0.5596290633029648,
+              "source_1": 0.4760224183239543,
+              "source_2": 0.4829142876615354,
+              "source_3": 0.5118666464756338,
+              "source_4": 0.553830050944712,
+              "vector": 0.5596290633029648
+            },
+            "rrf_contributions": {
+              "vector": 0.015625
+            },
+            "reranking": {
+              "mode": "graph_aware_keyword",
+              "score": 1,
+              "semantic_score": 1,
+              "graph_signal_score": null,
+              "graph_signals_applied": false,
+              "components": {
+                "centrality": null,
+                "community": null,
+                "edge": null,
+                "distance": null
+              }
+            },
+            "graph_paths": {}
+          }
+        },
+        {
+          "content": "5. Benefits\n5.1 401(k) Match\nFTEs are eligible for a 4% 401(k) match after 90 days of employment. Interns and\nPart-Time employees are not eligible.\n5.2 Health Benefits\nFTEs are eligible for health benefits from day one. Part-Time employees are not\neligible regardless of tenure.\n5.3 Early Benefits Eligibility Exception\nA Part-Time employee who moves to FTE mid-quarter can request a waiver of the\nnormal eligibility waiting period through the Section 4.2 general exception rule:\nTeam Lead approval only.\n6. Client-Facing Role Policies\n6.1 Definition\nCustomer Success and Sales are client-facing roles. This classification affects\nremote work approval (Section 4.3) and expense policy (Section 7.2).\n7. Expenses\n7.1 Standard Expense Approval\nExpenses below $500 need Team Lead approval only.\n7.2 Client Entertainment Expenses\nClient-facing employees may submit client entertainment expenses up to $1,000\nwith Team Lead approval. Non-client-facing employees need Department Head",
+          "metadata": {
+            "boundary_reason": "unstructured_text",
+            "caption": "",
+            "chunk_hash": "8db97d111970c7bc65aa46997e19192ea0dc33556f304b2505c62bc5e7252649",
+            "chunk_index": 4,
+            "chunk_policy_version": "kinegraph.adaptive-chunking.v1",
+            "chunk_type": "recursive",
+            "confidence": -1,
+            "demo_pdf_sha256": "c9cad04fd762536011a7bc6e481c95c10916cd339c49e0592a7613d4c1fb782b",
+            "document_id": "doc_708d5efec0d9d495c17d11e4e8e58870e5002a5128bf84fc0b01f2fb2956b3c9",
+            "extraction_method": "",
+            "file_name": "northwind-analytics-employee-handbook.pdf",
+            "headers": "",
+            "image_id": "",
+            "original_file_name": "northwind-analytics-employee-handbook.pdf",
+            "overlap": 200,
+            "page_end": -1,
+            "page_start": -1,
+            "parent_structural_id": "",
+            "section_path": "",
+            "source_corpus_sha256": "95119b5dab08c01ea39adbd5bb8a2987f4b0153f278ce7ead37898d7f41504a8",
+            "table_id": "",
+            "tokenizer_version": "recursive-character-v1",
+            "total_chunks": 6,
+            "recovery_stage": "decomposition",
+            "retrieval_query": "Data Science team",
+            "original_query": "I'm on the Data Science team and want to transfer to Customer Success. Whose approval do I need?",
+            "hypothesis_is_evidence": null,
+            "rerank_score": 1,
+            "semantic_score": 1,
+            "graph_signal_score": null,
+            "graph_signals_applied": false,
+            "rerank_mode": "graph_aware_keyword",
+            "rerank_components": {
+              "centrality": null,
+              "community": null,
+              "edge": null,
+              "distance": null
+            },
+            "rrf_contributions": {
+              "vector": 0.01538462
+            },
+            "candidate_id": "chunk_4_6fbb5cb5fa74c7114219b703684e018a9191f46afa1fda10d7514cb3cc7dc104",
+            "source_channels": [
+              "source_0",
+              "source_1",
+              "source_2",
+              "source_3",
+              "source_4",
+              "vector"
+            ],
+            "original_scores": {
+              "source_0": 0.5596451250941863,
+              "source_1": 0.47814806572063373,
+              "source_2": 0.5052444787432641,
+              "source_3": 0.500382919178905,
+              "source_4": 0.5434888250125055,
+              "vector": 0.5596451250941863
+            },
+            "channel_ranks": {
+              "source_0": 3,
+              "source_1": 5,
+              "source_2": 4,
+              "source_3": 5,
+              "source_4": 5,
+              "vector": 5
+            },
+            "graph_paths": {},
+            "retrieval_provenance": {
+              "policy_version": "kinegraph.retrieval-orchestration.v1",
+              "candidate_id": "chunk_4_6fbb5cb5fa74c7114219b703684e018a9191f46afa1fda10d7514cb3cc7dc104",
+              "source_channels": [
+                "source_0",
+                "source_1",
+                "source_2",
+                "source_3",
+                "source_4",
+                "vector"
+              ],
+              "original_scores": {
+                "source_0": 0.5596451250941863,
+                "source_1": 0.47814806572063373,
+                "source_2": 0.5052444787432641,
+                "source_3": 0.500382919178905,
+                "source_4": 0.5434888250125055,
+                "vector": 0.5596451250941863
+              },
+              "channel_ranks": {
+                "source_0": 3,
+                "source_1": 5,
+                "source_2": 4,
+                "source_3": 5,
+                "source_4": 5,
+                "vector": 5
+              },
+              "graph_paths": {}
+            },
+            "citation_id": "chunk_4_6fbb5cb5fa74c7114219b703684e018a9191f46afa1fda10d7514cb3cc7dc104",
+            "intent": "conceptual"
+          },
+          "score": 0.015384615384615385,
+          "source": "vector",
+          "explanation": {
+            "candidate_id": "chunk_4_6fbb5cb5fa74c7114219b703684e018a9191f46afa1fda10d7514cb3cc7dc104",
+            "source_channels": [
+              "source_0",
+              "source_1",
+              "source_2",
+              "source_3",
+              "source_4",
+              "vector"
+            ],
+            "channel_ranks": {
+              "source_0": 3,
+              "source_1": 5,
+              "source_2": 4,
+              "source_3": 5,
+              "source_4": 5,
+              "vector": 5
+            },
+            "original_scores": {
+              "source_0": 0.5596451250941863,
+              "source_1": 0.47814806572063373,
+              "source_2": 0.5052444787432641,
+              "source_3": 0.500382919178905,
+              "source_4": 0.5434888250125055,
+              "vector": 0.5596451250941863
+            },
+            "rrf_contributions": {
+              "vector": 0.01538462
+            },
+            "reranking": {
+              "mode": "graph_aware_keyword",
+              "score": 1,
+              "semantic_score": 1,
+              "graph_signal_score": null,
+              "graph_signals_applied": false,
+              "components": {
+                "centrality": null,
+                "community": null,
+                "edge": null,
+                "distance": null
+              }
+            },
+            "graph_paths": {}
+          }
+        },
+        {
+          "content": "Northwind Analytics Employee Handbook (Synthetic Demo Corpus)\nThis fictional handbook is sample data for evaluating retrieval behaviour. It\nmust not be used to make real employment, benefits, or expense decisions.\n1. Employment Classifications\n- Full-Time Employee (FTE): 40 hours per week and eligible for full benefits.\n- Part-Time Employee: under 30 hours per week; eligible for prorated PTO but\n  not health benefits.\n- Contractor: engaged through a statement of work and not eligible for PTO or\n  benefits under this handbook. Contractor terms are in an external addendum that\n  is deliberately not included in this corpus.\n- Intern: fixed-term; accrues PTO under Section 3.2 but is not eligible for\n  the Section 5.1 401(k) match.\n2. Team Structure\n| Team | Team Lead | Department |\n| --- | --- | --- |\n| Platform Engineering | Priya Raman | Engineering |\n| Data Science | Marcus Oyelaran | Engineering |\n| Customer Success | Dana Whitfield | Revenue |\n| Sales | Jordan Kessler | Revenue |",
+          "metadata": {
+            "boundary_reason": "unstructured_text",
+            "caption": "",
+            "chunk_hash": "0de97da251b16d507a00e4904e4901e0fdceec6672ad8e977c4fceb8c6087cfa",
+            "chunk_index": 0,
+            "chunk_policy_version": "kinegraph.adaptive-chunking.v1",
+            "chunk_type": "recursive",
+            "confidence": -1,
+            "demo_pdf_sha256": "c9cad04fd762536011a7bc6e481c95c10916cd339c49e0592a7613d4c1fb782b",
+            "document_id": "doc_708d5efec0d9d495c17d11e4e8e58870e5002a5128bf84fc0b01f2fb2956b3c9",
+            "extraction_method": "",
+            "file_name": "northwind-analytics-employee-handbook.pdf",
+            "headers": "",
+            "image_id": "",
+            "original_file_name": "northwind-analytics-employee-handbook.pdf",
+            "overlap": 200,
+            "page_end": -1,
+            "page_start": -1,
+            "parent_structural_id": "",
+            "section_path": "",
+            "source_corpus_sha256": "95119b5dab08c01ea39adbd5bb8a2987f4b0153f278ce7ead37898d7f41504a8",
+            "table_id": "",
+            "tokenizer_version": "recursive-character-v1",
+            "total_chunks": 6,
+            "recovery_stage": "decomposition",
+            "retrieval_query": "Data Science team",
+            "original_query": "I'm on the Data Science team and want to transfer to Customer Success. Whose approval do I need?",
+            "hypothesis_is_evidence": null,
+            "rerank_score": 1,
+            "semantic_score": 1,
+            "graph_signal_score": null,
+            "graph_signals_applied": false,
+            "rerank_mode": "graph_aware_keyword",
+            "rerank_components": {
+              "centrality": null,
+              "community": null,
+              "edge": null,
+              "distance": null
+            },
+            "rrf_contributions": {
+              "vector": 0.01515152
+            },
+            "candidate_id": "chunk_0_2cfa3ba7ae739913cdd643a5f81a793a9fe2e06dd93c914b905956e34739816b",
+            "source_channels": [
+              "source_0",
+              "source_1",
+              "source_2",
+              "source_3",
+              "source_4",
+              "vector"
+            ],
+            "original_scores": {
+              "source_0": 0.5577414024668094,
+              "source_1": 0.5172370081183673,
+              "source_2": 0.48167554757176445,
+              "source_3": 0.4756717384612694,
+              "source_4": 0.5206342840461197,
+              "vector": 0.5577414024668094
+            },
+            "channel_ranks": {
+              "source_0": 6,
+              "source_1": 3,
+              "source_2": 6,
+              "source_3": 6,
+              "source_4": 6,
+              "vector": 6
+            },
+            "graph_paths": {},
+            "retrieval_provenance": {
+              "policy_version": "kinegraph.retrieval-orchestration.v1",
+              "candidate_id": "chunk_0_2cfa3ba7ae739913cdd643a5f81a793a9fe2e06dd93c914b905956e34739816b",
+              "source_channels": [
+                "source_0",
+                "source_1",
+                "source_2",
+                "source_3",
+                "source_4",
+                "vector"
+              ],
+              "original_scores": {
+                "source_0": 0.5577414024668094,
+                "source_1": 0.5172370081183673,
+                "source_2": 0.48167554757176445,
+                "source_3": 0.4756717384612694,
+                "source_4": 0.5206342840461197,
+                "vector": 0.5577414024668094
+              },
+              "channel_ranks": {
+                "source_0": 6,
+                "source_1": 3,
+                "source_2": 6,
+                "source_3": 6,
+                "source_4": 6,
+                "vector": 6
+              },
+              "graph_paths": {}
+            },
+            "citation_id": "chunk_0_2cfa3ba7ae739913cdd643a5f81a793a9fe2e06dd93c914b905956e34739816b",
+            "intent": "conceptual"
+          },
+          "score": 0.015151515151515152,
+          "source": "vector",
+          "explanation": {
+            "candidate_id": "chunk_0_2cfa3ba7ae739913cdd643a5f81a793a9fe2e06dd93c914b905956e34739816b",
+            "source_channels": [
+              "source_0",
+              "source_1",
+              "source_2",
+              "source_3",
+              "source_4",
+              "vector"
+            ],
+            "channel_ranks": {
+              "source_0": 6,
+              "source_1": 3,
+              "source_2": 6,
+              "source_3": 6,
+              "source_4": 6,
+              "vector": 6
+            },
+            "original_scores": {
+              "source_0": 0.5577414024668094,
+              "source_1": 0.5172370081183673,
+              "source_2": 0.48167554757176445,
+              "source_3": 0.4756717384612694,
+              "source_4": 0.5206342840461197,
+              "vector": 0.5577414024668094
+            },
+            "rrf_contributions": {
+              "vector": 0.01515152
+            },
+            "reranking": {
+              "mode": "graph_aware_keyword",
+              "score": 1,
+              "semantic_score": 1,
+              "graph_signal_score": null,
+              "graph_signals_applied": false,
+              "components": {
+                "centrality": null,
+                "community": null,
+                "edge": null,
+                "distance": null
+              }
+            },
+            "graph_paths": {}
+          }
+        },
+        {
+          "content": "7.2 Client Entertainment Expenses\nClient-facing employees may submit client entertainment expenses up to $1,000\nwith Team Lead approval. Non-client-facing employees need Department Head\napproval for any entertainment expense.",
+          "metadata": {
+            "boundary_reason": "unstructured_text",
+            "caption": "",
+            "chunk_hash": "1fc06464fcbae9200feb403404eae1b0ed5ae6531a0710caf4eb5e8e23d6af18",
+            "chunk_index": 5,
+            "chunk_policy_version": "kinegraph.adaptive-chunking.v1",
+            "chunk_type": "recursive",
+            "confidence": -1,
+            "demo_pdf_sha256": "c9cad04fd762536011a7bc6e481c95c10916cd339c49e0592a7613d4c1fb782b",
+            "document_id": "doc_708d5efec0d9d495c17d11e4e8e58870e5002a5128bf84fc0b01f2fb2956b3c9",
+            "extraction_method": "",
+            "file_name": "northwind-analytics-employee-handbook.pdf",
+            "headers": "",
+            "image_id": "",
+            "original_file_name": "northwind-analytics-employee-handbook.pdf",
+            "overlap": 200,
+            "page_end": -1,
+            "page_start": -1,
+            "parent_structural_id": "",
+            "section_path": "",
+            "source_corpus_sha256": "95119b5dab08c01ea39adbd5bb8a2987f4b0153f278ce7ead37898d7f41504a8",
+            "table_id": "",
+            "tokenizer_version": "recursive-character-v1",
+            "total_chunks": 6,
+            "recovery_stage": "decomposition",
+            "retrieval_query": "Data Science team",
+            "original_query": "I'm on the Data Science team and want to transfer to Customer Success. Whose approval do I need?",
+            "hypothesis_is_evidence": null,
+            "rerank_score": 0.6869,
+            "semantic_score": 0.6869,
+            "graph_signal_score": null,
+            "graph_signals_applied": false,
+            "rerank_mode": "graph_aware_keyword",
+            "rerank_components": {
+              "centrality": null,
+              "community": null,
+              "edge": null,
+              "distance": null
+            },
+            "rrf_contributions": {
+              "vector": 0.01587302
+            },
+            "candidate_id": "chunk_5_ee46fb0e1d3d82bd14975b96a65955439e8bb5a422630acdebeecd940e64ab90",
+            "source_channels": [
+              "source_0",
+              "source_1",
+              "source_2",
+              "source_3",
+              "source_4",
+              "vector"
+            ],
+            "original_scores": {
+              "source_0": 0.5586276484504396,
+              "source_1": 0.47824420878954077,
+              "source_2": 0.5330461096842689,
+              "source_3": 0.5521833954185876,
+              "source_4": 0.5437421847602317,
+              "vector": 0.5586276484504396
+            },
+            "channel_ranks": {
+              "source_0": 5,
+              "source_1": 4,
+              "source_2": 2,
+              "source_3": 2,
+              "source_4": 4,
+              "vector": 3
+            },
+            "graph_paths": {},
+            "retrieval_provenance": {
+              "policy_version": "kinegraph.retrieval-orchestration.v1",
+              "candidate_id": "chunk_5_ee46fb0e1d3d82bd14975b96a65955439e8bb5a422630acdebeecd940e64ab90",
+              "source_channels": [
+                "source_0",
+                "source_1",
+                "source_2",
+                "source_3",
+                "source_4",
+                "vector"
+              ],
+              "original_scores": {
+                "source_0": 0.5586276484504396,
+                "source_1": 0.47824420878954077,
+                "source_2": 0.5330461096842689,
+                "source_3": 0.5521833954185876,
+                "source_4": 0.5437421847602317,
+                "vector": 0.5586276484504396
+              },
+              "channel_ranks": {
+                "source_0": 5,
+                "source_1": 4,
+                "source_2": 2,
+                "source_3": 2,
+                "source_4": 4,
+                "vector": 3
+              },
+              "graph_paths": {}
+            },
+            "citation_id": "chunk_5_ee46fb0e1d3d82bd14975b96a65955439e8bb5a422630acdebeecd940e64ab90",
+            "intent": "conceptual"
+          },
+          "score": 0.015873015873015872,
+          "source": "vector",
+          "explanation": {
+            "candidate_id": "chunk_5_ee46fb0e1d3d82bd14975b96a65955439e8bb5a422630acdebeecd940e64ab90",
+            "source_channels": [
+              "source_0",
+              "source_1",
+              "source_2",
+              "source_3",
+              "source_4",
+              "vector"
+            ],
+            "channel_ranks": {
+              "source_0": 5,
+              "source_1": 4,
+              "source_2": 2,
+              "source_3": 2,
+              "source_4": 4,
+              "vector": 3
+            },
+            "original_scores": {
+              "source_0": 0.5586276484504396,
+              "source_1": 0.47824420878954077,
+              "source_2": 0.5330461096842689,
+              "source_3": 0.5521833954185876,
+              "source_4": 0.5437421847602317,
+              "vector": 0.5586276484504396
+            },
+            "rrf_contributions": {
+              "vector": 0.01587302
+            },
+            "reranking": {
+              "mode": "graph_aware_keyword",
+              "score": 0.6869,
+              "semantic_score": 0.6869,
+              "graph_signal_score": null,
+              "graph_signals_applied": false,
+              "components": {
+                "centrality": null,
+                "community": null,
+                "edge": null,
+                "distance": null
+              }
+            },
+            "graph_paths": {}
+          }
+        }
+      ],
+      "total_results": 6,
+      "execution_time_ms": 22348.63,
+      "generated_answer": "A team transfer needs sign-off from the current and receiving Team Leads. [chunk_1_332a2e0618f398511f550f816dc40fc2db00559c2d95a7c580587628666c7631]\nWhen the transfer crosses departments, the losing and receiving Department Heads must also approve. [chunk_3_fa10f62a00a5e8e310437e3c53f833588ba7b2e6ced6477cc326b2302b215c9a]",
+      "answer_confidence": 1,
+      "intent": "conceptual",
+      "latency_breakdown": {
+        "intent_router_ms": 1,
+        "vector_retrieval_ms": 333.49,
+        "graph_retrieval_ms": 5595.69,
+        "parallel_fetch_ms": 5929.37,
+        "query_recovery_ms": 5203.96,
+        "fusion_ms": 1.95,
+        "rerank_ms": 1.72,
+        "corrective_rag_ms": 0.07,
+        "generation_ms": 8110.09,
+        "grounding_critique_ms": 3015.91
+      },
+      "recovery_triggered": true,
+      "recovery_details": {
+        "route_initial_assessment": {
+          "weak": true,
+          "reasons": [
+            "no_graph_seed_or_path",
+            "low_source_diversity"
+          ],
+          "result_count": 6,
+          "top_score": 0.6346311477463477,
+          "graph_result_count": 0,
+          "source_count": 1
+        },
+        "route_escalation": {
+          "triggered": false,
+          "from_mode": "hybrid",
+          "to_mode": "hybrid",
+          "trigger_reasons": [],
+          "added_channels": [],
+          "initial_channel_counts": {
+            "vector": 6,
+            "graph": 0,
+            "lexical": 0
+          },
+          "added_candidate_counts": {}
+        },
+        "initial_assessment": {
+          "weak": true,
+          "reasons": [
+            "no_graph_seed_or_path",
+            "low_source_diversity"
+          ],
+          "result_count": 6,
+          "top_score": 0.6346311477463477,
+          "graph_result_count": 0,
+          "source_count": 1
+        },
+        "initial_facet_coverage": {
+          "complete": true,
+          "facets": [
+            {
+              "facet": "I'm on the Data Science team and want to transfer to Customer Success. Whose approval do I need",
+              "covered": true,
+              "best_token_coverage": 0.8
+            }
+          ],
+          "missing_facets": []
+        },
+        "structured_recovery_used": true,
+        "hyde_used": false,
+        "subqueries": [
+          "Data Science team",
+          "Customer Success",
+          "approval needed"
+        ],
+        "vocabulary": [
+          "data science",
+          "customer success",
+          "transfer",
+          "approve"
+        ],
+        "generated_hypothesis": null,
+        "structured_assessment": {
+          "weak": true,
+          "reasons": [
+            "no_graph_seed_or_path",
+            "low_source_diversity"
+          ],
+          "result_count": 6,
+          "top_score": 0.6346311477463477,
+          "graph_result_count": 0,
+          "source_count": 1
+        },
+        "structured_facet_coverage": {
+          "complete": true,
+          "facets": [
+            {
+              "facet": "I'm on the Data Science team and want to transfer to Customer Success. Whose approval do I need",
+              "covered": true,
+              "best_token_coverage": 0.8
+            }
+          ],
+          "missing_facets": []
+        },
+        "final_assessment": {
+          "weak": true,
+          "reasons": [
+            "no_graph_seed_or_path",
+            "low_source_diversity"
+          ],
+          "result_count": 6,
+          "top_score": 0.6346311477463477,
+          "graph_result_count": 0,
+          "source_count": 1
+        },
+        "final_facet_coverage": {
+          "complete": true,
+          "facets": [
+            {
+              "facet": "I'm on the Data Science team and want to transfer to Customer Success. Whose approval do I need",
+              "covered": true,
+              "best_token_coverage": 0.8
+            }
+          ],
+          "missing_facets": []
+        }
+      },
+      "fusion_details": {
+        "lexical_enabled": false,
+        "vector_weight": 1,
+        "graph_weight": 1,
+        "lexical_weight": 0.7
+      },
+      "grounded_claims": [
+        {
+          "claim_id": "claim-1",
+          "text": "A team transfer needs sign-off from the current and receiving Team Leads.",
+          "chunk_ids": [
+            "chunk_1_332a2e0618f398511f550f816dc40fc2db00559c2d95a7c580587628666c7631"
+          ]
+        },
+        {
+          "claim_id": "claim-2",
+          "text": "When the transfer crosses departments, the losing and receiving Department Heads must also approve.",
+          "chunk_ids": [
+            "chunk_3_fa10f62a00a5e8e310437e3c53f833588ba7b2e6ced6477cc326b2302b215c9a"
+          ]
+        }
+      ],
+      "citation_validation": {
+        "structured_output_valid": true,
+        "total_claims": 2,
+        "accepted_claims": 2,
+        "rejected_claims": [],
+        "valid_chunk_ids": [
+          "chunk_0_2cfa3ba7ae739913cdd643a5f81a793a9fe2e06dd93c914b905956e34739816b",
+          "chunk_1_332a2e0618f398511f550f816dc40fc2db00559c2d95a7c580587628666c7631",
+          "chunk_2_380804975e6413b98ee35fad09c3b4b34293689d79b97f2caec6b7e98b1b0e18",
+          "chunk_3_fa10f62a00a5e8e310437e3c53f833588ba7b2e6ced6477cc326b2302b215c9a",
+          "chunk_4_6fbb5cb5fa74c7114219b703684e018a9191f46afa1fda10d7514cb3cc7dc104",
+          "chunk_5_ee46fb0e1d3d82bd14975b96a65955439e8bb5a422630acdebeecd940e64ab90"
+        ],
+        "repair_attempted": false
+      },
+      "grounding_critique": {
+        "completed": true,
+        "retained_claim_ids": [
+          "claim-1",
+          "claim-2"
+        ],
+        "removed_claim_ids": [],
+        "removed_unsupported_claim_ids": [],
+        "removed_irrelevant_claim_ids": [],
+        "unsupported_reasons": {},
+        "irrelevant_reasons": {},
+        "question_coverage": "complete",
+        "missing_question_facets": []
+      },
+      "answer_relevancy": {
+        "completed": true,
+        "question_coverage": "complete",
+        "missing_question_facets": [],
+        "retained_relevant_claim_ids": [
+          "claim-1",
+          "claim-2"
+        ],
+        "removed_irrelevant_claim_ids": [],
+        "irrelevant_reasons": {}
+      },
+      "routing_details": {
+        "intent": "conceptual",
+        "description": "Explain / describe / overview questions",
+        "suggested_mode": "hybrid",
+        "confidence": "low",
+        "scores": {
+          "definition": 0,
+          "comparison": 0,
+          "how_to": 0,
+          "relationship": 0,
+          "debugging": 0,
+          "factual_lookup": 0,
+          "procedural": 0,
+          "conceptual": 0
+        },
+        "matched_triggers": {},
+        "tied_intents": [],
+        "facets": [
+          "I'm on the Data Science team and want to transfer to Customer Success. Whose approval do I need"
+        ],
+        "coverage_sensitive": false,
+        "route_confidence": 0.25,
+        "relationship_signal": false,
+        "exact_tokens": [],
+        "has_exact_tokens": false,
+        "entity_candidates": [
+          "Data",
+          "Science",
+          "Customer",
+          "Success",
+          "Whose"
+        ],
+        "route_rationale": "no trigger matched; retain broad hybrid coverage",
+        "requested_mode": "hybrid",
+        "effective_mode": "hybrid",
+        "allow_mode_downgrade": false,
+        "enable_adaptive_routing": false,
+        "enable_conservative_routing": false,
+        "allow_vectorless_auto_route": true,
+        "decision": "benchmark profile requires requested mode",
+        "execution_plan": {
+          "policy_version": "kinegraph.adaptive-routing.v1",
+          "policy": "legacy",
+          "requested_mode": "hybrid",
+          "effective_mode": "hybrid",
+          "route_confidence": 0.25,
+          "confidence_label": "low",
+          "pinned": true,
+          "signals": {
+            "intent": "conceptual",
+            "facets": [
+              "I'm on the Data Science team and want to transfer to Customer Success. Whose approval do I need"
+            ],
+            "coverage_sensitive": false,
+            "exact_tokens": [],
+            "entity_candidates": [
+              "Data",
+              "Science",
+              "Customer",
+              "Success",
+              "Whose"
+            ],
+            "relationship_signal": false,
+            "attachment_eligible": false,
+            "tied_intents": []
+          },
+          "required_channels": [
+            "vector",
+            "graph"
+          ],
+          "recommended_channels": [
+            "vector",
+            "graph"
+          ],
+          "alternatives": [
+            {
+              "mode": "vector",
+              "rejected_reason": "requested Hybrid mode is pinned"
+            },
+            {
+              "mode": "graph",
+              "rejected_reason": "requested Hybrid mode is pinned"
+            },
+            {
+              "mode": "vectorless",
+              "rejected_reason": "no eligible attachment or local document"
+            }
+          ],
+          "decision": "requested Hybrid mode pinned by caller or benchmark profile",
+          "fallback_mode": null,
+          "fallback_trigger": null
+        }
+      },
+      "retrieval_orchestration": {
+        "enabled": false,
+        "context_optimization": {
+          "policy_version": "kinegraph.retrieval-orchestration.v1",
+          "enabled": false,
+          "reason": "ADR-003 feature flag disabled",
+          "input_count": 6,
+          "output_count": 6,
+          "decisions": [
+            {
+              "candidate_id": "chunk_3_fa10f62a00a5e8e310437e3c53f833588ba7b2e6ced6477cc326b2302b215c9a",
+              "stage": "context_optimization",
+              "decision": "survived",
+              "reason": "optimization_disabled_passthrough",
+              "input_rank": 1
+            },
+            {
+              "candidate_id": "chunk_1_332a2e0618f398511f550f816dc40fc2db00559c2d95a7c580587628666c7631",
+              "stage": "context_optimization",
+              "decision": "survived",
+              "reason": "optimization_disabled_passthrough",
+              "input_rank": 2
+            },
+            {
+              "candidate_id": "chunk_2_380804975e6413b98ee35fad09c3b4b34293689d79b97f2caec6b7e98b1b0e18",
+              "stage": "context_optimization",
+              "decision": "survived",
+              "reason": "optimization_disabled_passthrough",
+              "input_rank": 3
+            },
+            {
+              "candidate_id": "chunk_4_6fbb5cb5fa74c7114219b703684e018a9191f46afa1fda10d7514cb3cc7dc104",
+              "stage": "context_optimization",
+              "decision": "survived",
+              "reason": "optimization_disabled_passthrough",
+              "input_rank": 4
+            },
+            {
+              "candidate_id": "chunk_0_2cfa3ba7ae739913cdd643a5f81a793a9fe2e06dd93c914b905956e34739816b",
+              "stage": "context_optimization",
+              "decision": "survived",
+              "reason": "optimization_disabled_passthrough",
+              "input_rank": 5
+            },
+            {
+              "candidate_id": "chunk_5_ee46fb0e1d3d82bd14975b96a65955439e8bb5a422630acdebeecd940e64ab90",
+              "stage": "context_optimization",
+              "decision": "survived",
+              "reason": "optimization_disabled_passthrough",
+              "input_rank": 6
+            }
+          ]
+        },
+        "candidate_lifecycle": {
+          "policy_version": "kinegraph.retrieval-orchestration.v1",
+          "candidate_count": 6,
+          "complete_candidate_count": 6,
+          "candidate_provenance_completeness": 1,
+          "candidates": [
+            {
+              "candidate_id": "chunk_0_2cfa3ba7ae739913cdd643a5f81a793a9fe2e06dd93c914b905956e34739816b",
+              "source_channels": [
+                "source_0",
+                "source_1",
+                "source_2",
+                "source_3",
+                "source_4",
+                "vector"
+              ],
+              "original_scores": {
+                "source_0": 0.5577414024668094,
+                "source_1": 0.5172370081183673,
+                "source_2": 0.48167554757176445,
+                "source_3": 0.4756717384612694,
+                "source_4": 0.5206342840461197,
+                "vector": 0.5577414024668094
+              },
+              "channel_ranks": {
+                "source_0": 6,
+                "source_1": 3,
+                "source_2": 6,
+                "source_3": 6,
+                "source_4": 6,
+                "vector": 6
+              },
+              "graph_paths": {},
+              "graph_path_required": false,
+              "events": [
+                {
+                  "stage": "retrieval",
+                  "decision": "survived",
+                  "reason": "retrieved_by_channel",
+                  "channel": "vector",
+                  "rank": 6
+                },
+                {
+                  "stage": "fusion",
+                  "decision": "survived",
+                  "reason": "ranked_by_fusion_or_passthrough",
+                  "rank": 6,
+                  "rrf_score": 0.015151515151515152
+                },
+                {
+                  "candidate_id": "chunk_0_2cfa3ba7ae739913cdd643a5f81a793a9fe2e06dd93c914b905956e34739816b",
+                  "stage": "identity_deduplication",
+                  "decision": "survived",
+                  "reason": "unique_candidate",
+                  "duplicate_of": null,
+                  "similarity": null
+                },
+                {
+                  "candidate_id": "chunk_0_2cfa3ba7ae739913cdd643a5f81a793a9fe2e06dd93c914b905956e34739816b",
+                  "stage": "semantic_reranking",
+                  "decision": "survived",
+                  "reason": "selected_by_reranker",
+                  "semantic_score": 1
+                },
+                {
+                  "candidate_id": "chunk_0_2cfa3ba7ae739913cdd643a5f81a793a9fe2e06dd93c914b905956e34739816b",
+                  "stage": "context_optimization",
+                  "decision": "survived",
+                  "reason": "optimization_disabled_passthrough",
+                  "input_rank": 5
+                }
+              ],
+              "final_status": "selected_for_generation",
+              "initial": true,
+              "fused": true,
+              "reranked": true,
+              "sent_to_generation": true,
+              "dropped_at": null,
+              "missing_provenance_fields": []
+            },
+            {
+              "candidate_id": "chunk_1_332a2e0618f398511f550f816dc40fc2db00559c2d95a7c580587628666c7631",
+              "source_channels": [
+                "source_0",
+                "source_1",
+                "source_2",
+                "source_3",
+                "source_4",
+                "vector"
+              ],
+              "original_scores": {
+                "source_0": 0.6138056563704554,
+                "source_1": 0.577054903678231,
+                "source_2": 0.5639439543661221,
+                "source_3": 0.5042011592807758,
+                "source_4": 0.5898146063638388,
+                "vector": 0.6138056563704554
+              },
+              "channel_ranks": {
+                "source_0": 2,
+                "source_1": 1,
+                "source_2": 1,
+                "source_3": 4,
+                "source_4": 2,
+                "vector": 2
+              },
+              "graph_paths": {},
+              "graph_path_required": false,
+              "events": [
+                {
+                  "stage": "retrieval",
+                  "decision": "survived",
+                  "reason": "retrieved_by_channel",
+                  "channel": "vector",
+                  "rank": 2
+                },
+                {
+                  "stage": "fusion",
+                  "decision": "survived",
+                  "reason": "ranked_by_fusion_or_passthrough",
+                  "rank": 2,
+                  "rrf_score": 0.016129032258064516
+                },
+                {
+                  "candidate_id": "chunk_1_332a2e0618f398511f550f816dc40fc2db00559c2d95a7c580587628666c7631",
+                  "stage": "identity_deduplication",
+                  "decision": "survived",
+                  "reason": "unique_candidate",
+                  "duplicate_of": null,
+                  "similarity": null
+                },
+                {
+                  "candidate_id": "chunk_1_332a2e0618f398511f550f816dc40fc2db00559c2d95a7c580587628666c7631",
+                  "stage": "semantic_reranking",
+                  "decision": "survived",
+                  "reason": "selected_by_reranker",
+                  "semantic_score": 1
+                },
+                {
+                  "candidate_id": "chunk_1_332a2e0618f398511f550f816dc40fc2db00559c2d95a7c580587628666c7631",
+                  "stage": "context_optimization",
+                  "decision": "survived",
+                  "reason": "optimization_disabled_passthrough",
+                  "input_rank": 2
+                }
+              ],
+              "final_status": "selected_for_generation",
+              "initial": true,
+              "fused": true,
+              "reranked": true,
+              "sent_to_generation": true,
+              "dropped_at": null,
+              "missing_provenance_fields": []
+            },
+            {
+              "candidate_id": "chunk_2_380804975e6413b98ee35fad09c3b4b34293689d79b97f2caec6b7e98b1b0e18",
+              "source_channels": [
+                "source_0",
+                "source_1",
+                "source_2",
+                "source_3",
+                "source_4",
+                "vector"
+              ],
+              "original_scores": {
+                "source_0": 0.5596290633029648,
+                "source_1": 0.4760224183239543,
+                "source_2": 0.4829142876615354,
+                "source_3": 0.5118666464756338,
+                "source_4": 0.553830050944712,
+                "vector": 0.5596290633029648
+              },
+              "channel_ranks": {
+                "source_0": 4,
+                "source_1": 6,
+                "source_2": 5,
+                "source_3": 3,
+                "source_4": 3,
+                "vector": 4
+              },
+              "graph_paths": {},
+              "graph_path_required": false,
+              "events": [
+                {
+                  "stage": "retrieval",
+                  "decision": "survived",
+                  "reason": "retrieved_by_channel",
+                  "channel": "vector",
+                  "rank": 4
+                },
+                {
+                  "stage": "fusion",
+                  "decision": "survived",
+                  "reason": "ranked_by_fusion_or_passthrough",
+                  "rank": 4,
+                  "rrf_score": 0.015625
+                },
+                {
+                  "candidate_id": "chunk_2_380804975e6413b98ee35fad09c3b4b34293689d79b97f2caec6b7e98b1b0e18",
+                  "stage": "identity_deduplication",
+                  "decision": "survived",
+                  "reason": "unique_candidate",
+                  "duplicate_of": null,
+                  "similarity": null
+                },
+                {
+                  "candidate_id": "chunk_2_380804975e6413b98ee35fad09c3b4b34293689d79b97f2caec6b7e98b1b0e18",
+                  "stage": "semantic_reranking",
+                  "decision": "survived",
+                  "reason": "selected_by_reranker",
+                  "semantic_score": 1
+                },
+                {
+                  "candidate_id": "chunk_2_380804975e6413b98ee35fad09c3b4b34293689d79b97f2caec6b7e98b1b0e18",
+                  "stage": "context_optimization",
+                  "decision": "survived",
+                  "reason": "optimization_disabled_passthrough",
+                  "input_rank": 3
+                }
+              ],
+              "final_status": "selected_for_generation",
+              "initial": true,
+              "fused": true,
+              "reranked": true,
+              "sent_to_generation": true,
+              "dropped_at": null,
+              "missing_provenance_fields": []
+            },
+            {
+              "candidate_id": "chunk_3_fa10f62a00a5e8e310437e3c53f833588ba7b2e6ced6477cc326b2302b215c9a",
+              "source_channels": [
+                "source_0",
+                "source_1",
+                "source_2",
+                "source_3",
+                "source_4",
+                "vector"
+              ],
+              "original_scores": {
+                "source_0": 0.6346311477463477,
+                "source_1": 0.5176539402427125,
+                "source_2": 0.5182335134624371,
+                "source_3": 0.5649686246350829,
+                "source_4": 0.6427661898824834,
+                "vector": 0.6346311477463477
+              },
+              "channel_ranks": {
+                "source_0": 1,
+                "source_1": 2,
+                "source_2": 3,
+                "source_3": 1,
+                "source_4": 1,
+                "vector": 1
+              },
+              "graph_paths": {},
+              "graph_path_required": false,
+              "events": [
+                {
+                  "stage": "retrieval",
+                  "decision": "survived",
+                  "reason": "retrieved_by_channel",
+                  "channel": "vector",
+                  "rank": 1
+                },
+                {
+                  "stage": "fusion",
+                  "decision": "survived",
+                  "reason": "ranked_by_fusion_or_passthrough",
+                  "rank": 1,
+                  "rrf_score": 0.01639344262295082
+                },
+                {
+                  "candidate_id": "chunk_3_fa10f62a00a5e8e310437e3c53f833588ba7b2e6ced6477cc326b2302b215c9a",
+                  "stage": "identity_deduplication",
+                  "decision": "survived",
+                  "reason": "unique_candidate",
+                  "duplicate_of": null,
+                  "similarity": null
+                },
+                {
+                  "candidate_id": "chunk_3_fa10f62a00a5e8e310437e3c53f833588ba7b2e6ced6477cc326b2302b215c9a",
+                  "stage": "semantic_reranking",
+                  "decision": "survived",
+                  "reason": "selected_by_reranker",
+                  "semantic_score": 1
+                },
+                {
+                  "candidate_id": "chunk_3_fa10f62a00a5e8e310437e3c53f833588ba7b2e6ced6477cc326b2302b215c9a",
+                  "stage": "context_optimization",
+                  "decision": "survived",
+                  "reason": "optimization_disabled_passthrough",
+                  "input_rank": 1
+                }
+              ],
+              "final_status": "selected_for_generation",
+              "initial": true,
+              "fused": true,
+              "reranked": true,
+              "sent_to_generation": true,
+              "dropped_at": null,
+              "missing_provenance_fields": []
+            },
+            {
+              "candidate_id": "chunk_4_6fbb5cb5fa74c7114219b703684e018a9191f46afa1fda10d7514cb3cc7dc104",
+              "source_channels": [
+                "source_0",
+                "source_1",
+                "source_2",
+                "source_3",
+                "source_4",
+                "vector"
+              ],
+              "original_scores": {
+                "source_0": 0.5596451250941863,
+                "source_1": 0.47814806572063373,
+                "source_2": 0.5052444787432641,
+                "source_3": 0.500382919178905,
+                "source_4": 0.5434888250125055,
+                "vector": 0.5596451250941863
+              },
+              "channel_ranks": {
+                "source_0": 3,
+                "source_1": 5,
+                "source_2": 4,
+                "source_3": 5,
+                "source_4": 5,
+                "vector": 5
+              },
+              "graph_paths": {},
+              "graph_path_required": false,
+              "events": [
+                {
+                  "stage": "retrieval",
+                  "decision": "survived",
+                  "reason": "retrieved_by_channel",
+                  "channel": "vector",
+                  "rank": 5
+                },
+                {
+                  "stage": "fusion",
+                  "decision": "survived",
+                  "reason": "ranked_by_fusion_or_passthrough",
+                  "rank": 5,
+                  "rrf_score": 0.015384615384615385
+                },
+                {
+                  "candidate_id": "chunk_4_6fbb5cb5fa74c7114219b703684e018a9191f46afa1fda10d7514cb3cc7dc104",
+                  "stage": "identity_deduplication",
+                  "decision": "survived",
+                  "reason": "unique_candidate",
+                  "duplicate_of": null,
+                  "similarity": null
+                },
+                {
+                  "candidate_id": "chunk_4_6fbb5cb5fa74c7114219b703684e018a9191f46afa1fda10d7514cb3cc7dc104",
+                  "stage": "semantic_reranking",
+                  "decision": "survived",
+                  "reason": "selected_by_reranker",
+                  "semantic_score": 1
+                },
+                {
+                  "candidate_id": "chunk_4_6fbb5cb5fa74c7114219b703684e018a9191f46afa1fda10d7514cb3cc7dc104",
+                  "stage": "context_optimization",
+                  "decision": "survived",
+                  "reason": "optimization_disabled_passthrough",
+                  "input_rank": 4
+                }
+              ],
+              "final_status": "selected_for_generation",
+              "initial": true,
+              "fused": true,
+              "reranked": true,
+              "sent_to_generation": true,
+              "dropped_at": null,
+              "missing_provenance_fields": []
+            },
+            {
+              "candidate_id": "chunk_5_ee46fb0e1d3d82bd14975b96a65955439e8bb5a422630acdebeecd940e64ab90",
+              "source_channels": [
+                "source_0",
+                "source_1",
+                "source_2",
+                "source_3",
+                "source_4",
+                "vector"
+              ],
+              "original_scores": {
+                "source_0": 0.5586276484504396,
+                "source_1": 0.47824420878954077,
+                "source_2": 0.5330461096842689,
+                "source_3": 0.5521833954185876,
+                "source_4": 0.5437421847602317,
+                "vector": 0.5586276484504396
+              },
+              "channel_ranks": {
+                "source_0": 5,
+                "source_1": 4,
+                "source_2": 2,
+                "source_3": 2,
+                "source_4": 4,
+                "vector": 3
+              },
+              "graph_paths": {},
+              "graph_path_required": false,
+              "events": [
+                {
+                  "stage": "retrieval",
+                  "decision": "survived",
+                  "reason": "retrieved_by_channel",
+                  "channel": "vector",
+                  "rank": 3
+                },
+                {
+                  "stage": "fusion",
+                  "decision": "survived",
+                  "reason": "ranked_by_fusion_or_passthrough",
+                  "rank": 3,
+                  "rrf_score": 0.015873015873015872
+                },
+                {
+                  "candidate_id": "chunk_5_ee46fb0e1d3d82bd14975b96a65955439e8bb5a422630acdebeecd940e64ab90",
+                  "stage": "identity_deduplication",
+                  "decision": "survived",
+                  "reason": "unique_candidate",
+                  "duplicate_of": null,
+                  "similarity": null
+                },
+                {
+                  "candidate_id": "chunk_5_ee46fb0e1d3d82bd14975b96a65955439e8bb5a422630acdebeecd940e64ab90",
+                  "stage": "semantic_reranking",
+                  "decision": "survived",
+                  "reason": "selected_by_reranker",
+                  "semantic_score": 0.686924
+                },
+                {
+                  "candidate_id": "chunk_5_ee46fb0e1d3d82bd14975b96a65955439e8bb5a422630acdebeecd940e64ab90",
+                  "stage": "context_optimization",
+                  "decision": "survived",
+                  "reason": "optimization_disabled_passthrough",
+                  "input_rank": 6
+                }
+              ],
+              "final_status": "selected_for_generation",
+              "initial": true,
+              "fused": true,
+              "reranked": true,
+              "sent_to_generation": true,
+              "dropped_at": null,
+              "missing_provenance_fields": []
+            }
+          ]
+        }
+      },
+      "corrective_rag": {
+        "policy_version": "kinegraph.corrective-rag.v1",
+        "enabled": false,
+        "action": "passthrough",
+        "needs_supplementary": false,
+        "retrieval_completed": false,
+        "reason": "corrective RAG disabled",
+        "corrective_query": null,
+        "distinctive_terms": [],
+        "input_count": 6,
+        "supplementary_count": 0,
+        "output_count": 6,
+        "grades": [],
+        "decisions": []
+      },
+      "verification_outcome": {
+        "enabled": false,
+        "reason": "ADR-004 feature flag disabled"
+      },
+      "kinetic_score": {}
+    },
+    "request": {
+      "query": "I'm on the Data Science team and want to transfer to Customer Success. Whose approval do I need?",
+      "mode": "hybrid",
+      "allow_mode_downgrade": false,
+      "filters": {
+        "demo_pdf_sha256": "c9cad04fd762536011a7bc6e481c95c10916cd339c49e0592a7613d4c1fb782b"
+      }
+    }
+  },
+  "query_ui": {
+    "resultState": "Evidence returned",
+    "requestedMode": "hybrid",
+    "effectiveMode": "hybrid",
+    "latency": "22348.63 ms",
+    "answer": "A team transfer needs sign-off from the current and receiving Team Leads. [chunk_1_332a2e0618f398511f550f816dc40fc2db00559c2d95a7c580587628666c7631]\nWhen the transfer crosses departments, the losing and receiving Department Heads must also approve. [chunk_3_fa10f62a00a5e8e310437e3c53f833588ba7b2e6ced6477cc326b2302b215c9a]",
+    "resultMessage": ""
+  }
+}
