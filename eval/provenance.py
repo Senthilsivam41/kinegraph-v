@@ -321,11 +321,17 @@ def build_provenance_record(
             "fusion": {
                 **_sanitize({
                     key: value for key, value in (trace.get("fusion") or {}).items()
-                    if key != "candidates"
+                    if key not in {"candidates", "candidates_before_deduplication"}
                 }),
                 "candidates": [
                     candidate_snapshot(candidate, rank)
                     for rank, candidate in enumerate((trace.get("fusion") or {}).get("candidates", []), 1)
+                ],
+                "candidates_before_deduplication": [
+                    candidate_snapshot(candidate, rank)
+                    for rank, candidate in enumerate(
+                        (trace.get("fusion") or {}).get("candidates_before_deduplication", []), 1
+                    )
                 ],
             },
             "reranking": {

@@ -150,6 +150,60 @@ the reference-approval, fixed-profile, provenance, and all-rows-success gates.
 Offline answer-only evaluation is intentionally not exposed because it lacks
 retrieved contexts and cannot produce comparable retrieval metrics.
 
+## Paired Hybrid experiments
+
+Use the approved 20-query reference audit and a clean checkout. Restore the
+same corpus into Chroma, Neo4j, and the BM25 chunk directory for all arms.
+Set `CORPUS_SHA256` to the digest of that restored corpus and run all arms in
+the same environment with the same model endpoints and retrieval settings.
+The following commands reuse one keyword-only Hybrid baseline for both
+experiments and keep their outputs separate from `reports/run_output.json`.
+Use a fresh output directory for each trial.
+
+```bash
+: "${CORPUS_SHA256:?Set the restored corpus SHA-256}"
+out=/tmp/kinegraph-retrieval-trial
+mkdir -p "$out"
+common=(--output-dir "$out" --corpus-sha256 "$CORPUS_SHA256"
+  --max-hops 2 --max-results 6 --candidate-pool-size 25 --concurrency 1
+  --enable-retrieval-orchestration)
+
+python eval/ragas_evaluator.py "${common[@]}" --profile hybrid \
+  --run-label keyword --regression-run-output "$out/keyword-run.json"
+python eval/ragas_evaluator.py "${common[@]}" --profile hybrid_lexical \
+  --run-label lexical --regression-run-output "$out/lexical-run.json"
+python eval/ragas_evaluator.py "${common[@]}" --profile hybrid \
+  --enable-cross-encoder-reranking --run-label encoder \
+  --regression-run-output "$out/encoder-run.json"
+
+python scripts/compare_benchmark_manifests.py --experiment lexical-fusion \
+  --baseline "$out/ragas_keyword-hybrid_manifest.json" \
+  --candidate "$out/ragas_lexical-hybrid_lexical_manifest.json" \
+  --output "$out/lexical-comparison.json"
+python scripts/compare_benchmark_manifests.py --experiment cross-encoder \
+  --baseline "$out/ragas_keyword-hybrid_manifest.json" \
+  --candidate "$out/ragas_encoder-hybrid_manifest.json" \
+  --output "$out/reranker-comparison.json"
+```
+
+The comparisons write paired per-query deltas, slice summaries, and a
+`keep`, `revert`, or `invalid` decision. A non-passing comparison exits
+with status 2. Follow each manifest's checksummed provenance file for
+channel ranks, RRF contributions, candidate survival, scores, and stage times.
+
+- **#47** requires a context recall gain of at least 0.05 on the exact-token
+  slice, including queries 10, 11, 13, 14, and 15. Overall context precision
+  must reach 0.90, each required metric must stay within 0.05 of the baseline,
+  the composite must pass the existing ratchet, and BM25 stage p95 must be
+  at most 50 ms.
+- **#48** reports exact-token, misspelled, single-hop, and multi-hop slices.
+  The composite must improve by more than 0.01, context precision must improve
+  or reach 0.90, each required metric must stay within 0.05 of the baseline,
+  and rerank stage p95 may rise by at most 250 ms. The candidate must use one
+  resolved Hugging Face model revision throughout. Keyword fallback is recorded
+  with its reason and prevents promotion. Omit the cross-encoder flag to use the
+  keyword benchmark arm.
+
 ## Acceptance and outputs
 
 An accepted run requires:
