@@ -12,6 +12,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from eval.experiment_validation import compare_manifests
+from eval.retrieval_experiments import (
+    EXPERIMENTS,
+    compare_retrieval_experiment,
+    load_experiment_provenance,
+)
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -45,12 +50,40 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline", required=True)
     parser.add_argument("--candidate", required=True)
+    parser.add_argument("--experiment", choices=EXPERIMENTS)
+    parser.add_argument("--output", type=Path, help="Write the paired experiment decision and deltas as JSON")
     parser.add_argument(
         "--skip-ratchet",
         action="store_true",
         help="Print deltas even when the one-lever ratchet rejects the pair",
     )
     args = parser.parse_args()
+    if args.experiment:
+        if args.output is None or args.skip_ratchet:
+            parser.error("--experiment requires --output and does not support --skip-ratchet")
+        paths = (Path(args.baseline), Path(args.candidate))
+        try:
+            baseline, candidate = (_load(path) for path in paths)
+            comparison = compare_retrieval_experiment(
+                args.experiment, baseline, candidate,
+                load_experiment_provenance(baseline), load_experiment_provenance(candidate),
+            )
+        except (OSError, KeyError, TypeError, ValueError) as exc:
+            comparison = {
+                "experiment": args.experiment, "decision": "invalid",
+                "accepted": False, "reasons": [str(exc)],
+            }
+        comparison["manifests"] = {
+            name: str(path.resolve()) for name, path in zip(("baseline", "candidate"), paths)
+        }
+        # Exclusive creation protects the input manifests and previous experiment reports.
+        with args.output.open("x", encoding="utf-8") as output:
+            json.dump(comparison, output, indent=2, allow_nan=False)
+            output.write("\n")
+        print(f"{comparison['decision'].upper()} | {args.output}")
+        return 0 if comparison["accepted"] else 2
+    if args.output is not None:
+        parser.error("--output requires --experiment")
     baseline = _load(Path(args.baseline))
     candidate = _load(Path(args.candidate))
     comparison = compare_manifests(baseline, candidate)

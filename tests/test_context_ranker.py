@@ -114,3 +114,57 @@ def test_weighted_rrf_changes_channel_priority_and_reports_contributions():
 
     assert [item["content"] for item in fused] == ["graph evidence", "vector evidence"]
     assert fused[0]["rrf_contributions"] == {"graph": pytest.approx(2 / 61)}
+
+
+@pytest.mark.parametrize("failure", ["load", "predict", "nonfinite"])
+def test_cross_encoder_failure_reports_effective_keyword_fallback(monkeypatch, failure):
+    from backend.core import context_ranker
+
+    encoder = MagicMock()
+    factory = MagicMock(return_value=encoder)
+    if failure == "load":
+        factory.side_effect = OSError("model unavailable")
+    elif failure == "predict":
+        encoder.predict.side_effect = RuntimeError("inference unavailable")
+    else:
+        encoder.predict.return_value = [float("nan"), 0.9]
+    monkeypatch.setattr(context_ranker, "_CE_AVAILABLE", True)
+    monkeypatch.setattr(
+        context_ranker, "hf_hub_download",
+        lambda *args: f"/hub/snapshots/{'c' * 40}/config.json", raising=False,
+    )
+    monkeypatch.setattr(context_ranker, "CrossEncoder", factory, raising=False)
+    ranker = ContextRanker(use_cross_encoder=True)
+    chunks = [{"content": "needle"}, {"content": "unrelated"}]
+
+    results, trace = ranker.rerank_with_report("needle", chunks, top_k=1)
+
+    assert results[0]["content"] == "needle"
+    assert results[0]["rerank_mode"] == "graph_aware_keyword"
+    assert trace["mode"] == "keyword"
+    assert trace["fallback"] is True
+    expected = "load failed: OSError" if failure == "load" else "inference failed:"
+    assert expected in trace["fallback_reason"]
+    if failure != "load":
+        assert trace["model_revision"] == "c" * 40
+        encoder.predict.side_effect = None
+        encoder.predict.return_value = [0.9, 0.3]
+        _, retry_trace = ranker.rerank_with_report("needle", chunks)
+        assert retry_trace["mode"] == "cross_encoder"
+        assert retry_trace["fallback"] is False
+
+
+def test_rerank_trace_includes_scores_for_candidate_dropped_at_top_k():
+    ranker = ContextRanker(min_relevance_threshold=0)
+    chunks = [
+        _graph_chunk("needle strong", 0.9, "preferred", 0.9, 1),
+        _graph_chunk("needle weak", 0.1, "other", 0.1, 2),
+    ]
+
+    _, trace = ranker.rerank_with_report("needle", chunks, top_k=1)
+
+    dropped = trace["decisions"][1]
+    assert dropped["reason"] == "reranker_top_k_exceeded"
+    assert dropped["rerank_rank"] == 2
+    assert dropped["rerank_score"] > 0
+    assert dropped["rerank_components"]["centrality"] == 0.1

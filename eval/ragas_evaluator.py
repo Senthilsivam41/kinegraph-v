@@ -28,6 +28,7 @@ from eval.experiment_validation import (
     compare_manifests,
     current_git_revision,
     load_manifest,
+    sha256_file,
     validate_metric_values,
     weighted_composite,
     working_tree_is_clean,
@@ -1238,6 +1239,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--run-label", default="latest", help="Safe label used for persisted result files")
     parser.add_argument("--output-dir", help="Directory for this run's reports, manifests, and provenance")
+    parser.add_argument("--corpus-sha256", help="Identity of the independently restored, audited source corpus")
     parser.add_argument(
         "--concurrency",
         type=int,
@@ -1347,7 +1349,7 @@ if __name__ == "__main__":
     if not 5 <= args.candidate_pool_size <= 100:
         parser.error("--candidate-pool-size must be between 5 and 100")
     weights = [args.vector_weight, args.graph_weight]
-    if args.enable_lexical_fusion:
+    if profile.enable_lexical_fusion:
         weights.append(args.lexical_weight)
     if any(weight < 0 or weight > 5 for weight in weights) or not any(weights):
         parser.error("active fusion weights must be between 0 and 5 with at least one positive value")
@@ -1452,6 +1454,7 @@ if __name__ == "__main__":
     workflow = HybridRAGWorkflow(
         chroma_service=chroma,
         neo4j_service=neo4j,
+        use_cross_encoder=False,
         generation_model=args.generation_model,
     )
 
@@ -1559,6 +1562,7 @@ if __name__ == "__main__":
             "max_results": args.max_results,
             "max_hops": args.max_hops,
             "candidate_pool_size": args.candidate_pool_size,
+            "vector_embedding_model": settings.EMBEDDING_MODEL,
             "enable_lexical_fusion": profile.enable_lexical_fusion,
             "enable_retrieval_orchestration": args.enable_retrieval_orchestration,
             "vector_fusion_weight": args.vector_weight,
@@ -1569,6 +1573,7 @@ if __name__ == "__main__":
         "benchmark": {
             "dataset_version": audit_validation.dataset_version,
             "reference_audit_sha256": audit_validation.audit_sha256,
+            "corpus_sha256": args.corpus_sha256,
         },
         "reranking": {
             "enabled": True,
@@ -1576,10 +1581,13 @@ if __name__ == "__main__":
             "model": settings.RERANKER_MODEL,
             "minimum_relevance": settings.RERANKER_MIN_RELEVANCE,
             "dedup_threshold": settings.RETRIEVAL_DEDUP_THRESHOLD,
+            "context_max_per_source": settings.CONTEXT_OPTIMIZATION_MAX_PER_SOURCE,
+            "context_max_per_community": settings.CONTEXT_OPTIMIZATION_MAX_PER_COMMUNITY,
         },
         "recovery": {
             "conditional_recovery": True,
             "hyde_fallback": False,
+            "corrective_rag": settings.CORRECTIVE_RAG_ENABLED,
         },
         "generation": {
             "temperature": settings.GENERATION_TEMPERATURE,
@@ -1620,6 +1628,7 @@ if __name__ == "__main__":
             "audit_path": audit_path,
         },
     )
+    manifest["artifact_sha256"] = {"provenance_jsonl": sha256_file(provenance_path)}
     comparison = None
     if args.baseline_manifest:
         comparison = compare_manifests(
