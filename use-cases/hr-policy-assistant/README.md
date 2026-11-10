@@ -1,85 +1,126 @@
 # Ask HR policy demo
 
-This is fictional data for a five-minute retrieval demo. It is not HR advice
-and it must not be used for real workplace decisions.
+The Northwind Analytics handbook and all six questions are fictional. Use them
+to exercise retrieval and source verification. Do not use the demo for real
+employment, benefits, or expense decisions.
 
-`client.py` is a standalone standard-library HTTP client for Kinegraph's public
-`POST /api/v1/query/` API. It does not import or modify the core service.
+## Five-minute walkthrough
 
-## Run it
-
-1. Convert `data/northwind-analytics-employee-handbook.md` to a PDF with a local
-   tool you trust. The document-ingest endpoint accepts PDFs only.
-2. Start Kinegraph with the Hybrid route enabled, then upload that PDF through
-   the UI or `POST /api/v1/ingest/document`. Wait for the queued ingestion task
-   to complete.
-3. Run a case and name the revision of the Kinegraph service you started:
+1. Start a local Kinegraph development stack with an ingestion worker,
+   Neo4j with APOC, and working chat and embedding models. See the
+   [repository setup guide](../../README.md).
+   Start with fresh demo storage so the two routes see the same corpus.
+2. Start the standalone browser client from this directory.
 
    ```shell
-   python client.py --case HR-001 --mode hybrid \
-     --code-revision <running-kinegraph-commit> > hr-001-hybrid.json
+   python -m http.server 8080 --bind 127.0.0.1
    ```
 
-   Repeat for the six questions in `contract/prompts.json`. Check every answer
-   against its `expected_facts` and `source_sections`; `HR-006` should state the
-   handbook limit and decline details that are only in the missing addendum.
-4. For a comparison, ingest the same PDF into an isolated Vector-only run and
-   ask the same six questions with `--mode vector`. The client records the
-   corpus hash, code revision, requested and effective route, full response,
-   latency fields, and query ID when the API supplies one. Do not claim a
-   retrieval advantage without these recorded runs.
+   Open <http://localhost:8080/web/> and set the Kinegraph API URL (by default
+   `http://localhost:8000`). If port 8080 is occupied, use another port and add
+   that exact browser origin to `CORS_ALLOWED_ORIGINS` on the API.
+3. Open the bundled handbook if you want to read it, then select **Ingest
+   handbook**. The client verifies the PDF's SHA-256, uploads it through
+   `POST /api/v1/ingest/document`, and waits for
+   `GET /api/v1/ingest/task/{task_id}` to report success.
+4. Run HR-001 and HR-002 in both **Hybrid** and **Vector**. Review the answer,
+   effective route, latency, citations, and grounding evidence against
+   [the prompt contract](contract/prompts.json). HR-001 combines the team roster
+   with the transfer approval rule. HR-002 tests precedence between a named
+   exception and a general rule. HR-006 should state the handbook's contractor
+   PTO limit and decline to infer terms from the missing addendum.
 
-The contract pins the input corpus with SHA-256
-`95119b5dab08c01ea39adbd5bb8a2987f4b0153f278ce7ead37898d7f41504a8`.
+The [Markdown source](data/northwind-analytics-employee-handbook.md) and its
+[ingestion PDF](data/northwind-analytics-employee-handbook.pdf) each have a hash
+in the contract. The browser attaches the verified PDF hash as
+`demo_pdf_sha256` when ingesting. The browser and CLI use that same metadata
+filter for queries. If you ingested the handbook before this metadata was
+introduced, use the browser to ingest the bundled copy.
 
-## Run the complete comparison
+## Record all twelve results
 
-After ingesting the same corpus into the environment under test, run all six
-cases through both explicit routes:
+Run the comparison from this directory once the browser ingestion completes.
 
 ```shell
 python run_comparison.py \
   --base-url http://localhost:8000 \
   --code-revision <running-kinegraph-commit> \
-  --environment local \
+  --environment "local; describe chat and embedding models and relevant settings" \
   --output /tmp/hr-policy-comparison.json
 ```
 
-The JSON report contains 12 runs and flags failures, effective-route changes,
-missing evidence fields, and expected facts absent from the generated answer.
-Its `comparative_claim` remains `not_evaluated`; review the retained evidence
-before making any Hybrid-versus-Vector claim.
+The runner prints overall and per-route counts and writes JSON with the two corpus hashes,
+service revision, timestamp, expected facts and sections, and the full query
+response or failure for each case and route. It records the query ID when the
+API supplies it. It flags route changes, missing evidence fields, uncited responses, and
+expected phrases absent from the answer. The phrase check is literal. Review
+whether paraphrases, citations, and refusals satisfy the contract before
+making a comparative claim. Keep the successful ingestion task response with
+the report to document what went into the index. Use `--timeout` to increase
+the per-query timeout from 60 seconds when running a slower local model.
 
-The deterministic tests use fake API responses. A live smoke run requires a
-running Kinegraph stack, the ingested PDF, and explicitly authorized model
-providers. Record those environment details with the report; do not present
-the tests as live retrieval evidence.
-
-## Standalone browser client
-
-Serve this use-case directory from the origin allowed by Kinegraph's default
-local CORS configuration:
+To capture one case, use the same API URL and revision.
 
 ```shell
-cd use-cases/hr-policy-assistant
-python -m http.server 8080
+python client.py --case HR-001 --mode hybrid \
+  --code-revision <running-kinegraph-commit> > hr-001-hybrid.json
 ```
 
-Open <http://localhost:8080/web/>. Set the API URL, upload the synthetic
-handbook PDF, and wait for its ingestion task to finish. Choose one of the six
-contract prompts and run it in Hybrid or Vector mode. The page shows the
-requested and effective route, answer, latency, citation/grounding payload,
-mode downgrades, missing evidence, and API failures.
+## Troubleshooting
 
-If the page reports `Failed to fetch`, confirm the API is running, its URL is
-correct, and `http://localhost:8080` is allowed by `CORS_ALLOWED_ORIGINS`. If
-ingestion fails, inspect the returned task error before querying. Browser tests
-use deterministic responses; retain one real ingestion and query response
-before claiming live compatibility or retrieval quality.
+- **Failed to fetch**. Confirm the API base URL and the API's `/health/`
+  response. Verify that the page's origin is explicitly allowed by
+  `CORS_ALLOWED_ORIGINS`.
+- **Ingestion is pending or timed out**. Use the displayed task ID to check
+  `/api/v1/ingest/task/{task_id}`. Confirm the worker and its Redis queue are
+  running before retrying. For failed tasks, inspect the task error and worker
+  logs before running a query. If LiteParse returns empty text for the bundled
+  PDF, check its API version. For a disposable local demo you can use the
+  built-in PyMuPDF fallback by pointing the worker's `PARSER_URL` at an unused
+  loopback port and restarting that worker.
+- **No citations or an unexpected route**. Check the effective mode and the
+  returned grounding fields. Confirm the task succeeded against the same API
+  URL and review the API response for unavailable retrieval channels.
 
-## What to look for
+## Verification
 
-`HR-001` joins team-to-department facts with the cross-department transfer
-rule. `HR-002` resolves a named exception over a general rule. `HR-006` is an
-evidence-quality check: a grounded partial refusal, not a hallucination-rate
-claim.
+The focused checks use deterministic responses and require no model service.
+Run them from the repository root.
+
+```shell
+python -m pytest -q tests/test_hr_policy_demo.py tests/test_hr_policy_comparison.py tests/test_hr_policy_web.py
+node --test tests/hr_policy_web.test.mjs
+```
+
+For a live smoke run, retain the browser's upload response, terminal task
+status, and one query response. Record the deployed revision, corpus hashes,
+API URL and browser origin, model names, requested and effective routes, and
+the returned latency and provenance. Use the batch command above to preserve
+the Hybrid and Vector observations for all six cases.
+
+See the [November 11 local smoke report](../../reports/test-runs/2026-11-11/hr-policy/REPORT.md)
+for the captured browser and comparison results.
+
+## Optional MCP transport
+
+Point the standalone adapter at a Streamable HTTP endpoint that implements
+the [Kinegraph use-case MCP contract v1](../MCP_CONTRACT.md). Use a disposable
+index containing only the synthetic handbook. The v1 MCP query tool does
+not accept the corpus filter used by the HTTP clients.
+
+```shell
+python mcp_client.py --endpoint http://localhost:9000/mcp ingest > hr-mcp-ingest.json
+# Wait for the returned task ID to succeed through the server's ingestion status API.
+python mcp_client.py --endpoint http://localhost:9000/mcp \
+  query --case HR-001 --mode hybrid > hr-mcp-query.json
+```
+
+Set `KINEGRAPH_MCP_URL` to reuse the endpoint. The adapter prints a JSON
+evidence record and exits nonzero for tool, protocol, or transport failures.
+The normal browser, CLI, and comparison runner use the public HTTP API.
+
+Run `python -m pytest -q tests/test_mcp_use_case_adapter.py` from the
+repository root for deterministic request and evidence checks. For a live
+smoke test, retain the ingestion response, terminal task status, query
+response, server revision, and test environment. Compatibility with a live
+Kinegraph MCP server remains unverified.

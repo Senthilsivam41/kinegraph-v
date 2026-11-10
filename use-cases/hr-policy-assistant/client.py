@@ -12,6 +12,8 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).parent
 CONTRACT = json.loads((ROOT / "contract" / "prompts.json").read_text())
 CASES = CONTRACT["cases"]
+PDF_SHA256 = CONTRACT["ingestion_pdf_sha256"]
+EVIDENCE_KEYS = ("citation_validation", "grounded_claims", "grounding_critique")
 
 
 def build_artifact(case, requested_mode, result, code_revision, captured_at=None):
@@ -21,6 +23,7 @@ def build_artifact(case, requested_mode, result, code_revision, captured_at=None
         "captured_at": captured_at or datetime.now(timezone.utc).isoformat(),
         "kinegraph_code_revision": code_revision,
         "source_corpus_sha256": CONTRACT["corpus_sha256"],
+        "ingestion_pdf_sha256": PDF_SHA256,
         "case": case,
         "requested_mode": requested_mode,
         "effective_mode": result.get("effective_mode"),
@@ -29,15 +32,23 @@ def build_artifact(case, requested_mode, result, code_revision, captured_at=None
     }
 
 
-def query_case(base_url, case, mode, *, opener=urlopen):
-    body = json.dumps({"query": case["question"], "mode": mode, "allow_mode_downgrade": False}).encode()
+def query_case(base_url, case, mode, *, opener=urlopen, timeout=60):
+    body = json.dumps({
+        "query": case["question"],
+        "mode": mode,
+        "allow_mode_downgrade": False,
+        "filters": {"demo_pdf_sha256": PDF_SHA256},
+    }).encode()
     request = Request(
         f"{base_url.rstrip('/')}/api/v1/query/",
         data=body,
         headers={"Content-Type": "application/json"},
     )
-    with opener(request, timeout=60) as response:
-        return json.load(response)
+    with opener(request, timeout=timeout) as response:
+        result = json.load(response)
+    if not isinstance(result, dict):
+        raise ValueError("Kinegraph query response must be a JSON object")
+    return result
 
 
 def main() -> None:

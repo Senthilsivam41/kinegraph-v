@@ -26,9 +26,9 @@ def test_browser_client_has_accessible_controls_and_result_states():
     parser = PageParser()
     parser.feed((WEB_DIR / "index.html").read_text())
 
-    controls = {"apiUrl", "pdfFile", "promptSelect", "ingestButton", "queryButton"}
+    controls = {"apiUrl", "handbookLink", "promptSelect", "ingestButton", "queryButton"}
     assert controls <= parser.ids
-    assert {"apiUrl", "pdfFile", "promptSelect"} <= parser.labels
+    assert {"apiUrl", "promptSelect"} <= parser.labels
     assert {"ingestStatus", "resultState", "warningPanel", "answerPanel", "evidencePanel"} <= parser.ids
     assert parser.scripts == ["app.mjs"]
     assert (WEB_DIR / "styles.css").is_file()

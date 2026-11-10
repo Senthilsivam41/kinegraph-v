@@ -30,9 +30,8 @@
 
       <section aria-labelledby="ingestHeading">
         <h2 id="ingestHeading">1. Ingest the handbook</h2>
-        <label for="pdfFile">Synthetic handbook PDF</label>
-        <input id="pdfFile" type="file" accept="application/pdf,.pdf">
-        <button id="ingestButton" type="button">Upload and ingest</button>
+        <p><a id="handbookLink" hidden>Open the synthetic handbook PDF</a></p>
+        <button id="ingestButton" type="button" disabled>Ingest handbook</button>
         <p id="ingestStatus" class="helper" role="status">No document submitted.</p>
       </section>
 
@@ -46,7 +45,7 @@
           <label><input type="radio" name="mode" value="hybrid" checked> Hybrid</label>
           <label><input type="radio" name="mode" value="vector"> Vector</label>
         </fieldset>
-        <button id="queryButton" type="button">Run query</button>
+        <button id="queryButton" type="button" disabled>Run query</button>
       </section>
     </aside>
 
