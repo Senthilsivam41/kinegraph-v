@@ -111,7 +111,7 @@ superiority.
 ### Prerequisites
 
 - Python 3.11+
-- Docker and Docker Compose
+- Docker Engine 25+ and Docker Compose 2.20.2+
 - An OpenAI-compatible API key; OpenRouter is supported
 - A unique Neo4j password of at least 16 characters
 
@@ -127,10 +127,17 @@ cp .env.example .env
 
 The launcher reads the repository `.env`, validates the Neo4j password, and
 starts the stack from [`infra/docker-compose.yml`](infra/docker-compose.yml).
-The equivalent direct command is:
+Compose builds missing images and reuses existing ones on later starts.
+Backend edits are picked up by the local bind mount and Uvicorn reload. Use
+`./scripts/start_services.sh --build` after changing `requirements.txt` or the
+Dockerfile, including the first run with these build changes if you already
+have local images.
+
+Pass `--wait` to wait for Compose health checks, including API readiness.
+The equivalent direct command for the default launch is
 
 ```bash
-docker compose --env-file .env -f infra/docker-compose.yml up --build -d
+docker compose --env-file .env -f infra/docker-compose.yml up -d
 ```
 
 ### Service endpoints

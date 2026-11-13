@@ -28,8 +28,9 @@ if docker compose version >/dev/null 2>&1; then
 elif command -v docker-compose >/dev/null 2>&1; then
     COMPOSE=(docker-compose)
 else
-    echo "Docker Compose v2 or docker-compose is required." >&2
+    echo "Docker Compose 2.20.2 or newer is required." >&2
     exit 1
 fi
 
-exec "${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up --build -d "$@"
+# Compose builds missing images. Pass --build after changing image inputs.
+exec "${COMPOSE[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d "$@"

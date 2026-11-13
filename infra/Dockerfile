@@ -1,5 +1,5 @@
 # Multi-stage build for optimized image size
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
@@ -11,7 +11,8 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    pip install --user -r requirements.txt
 
 # Final stage
 FROM python:3.11-slim
@@ -29,6 +30,8 @@ ENV PATH=/home/appuser/.local/bin:$PATH
 
 # Copy application code
 COPY --chown=appuser:appuser . .
+RUN mkdir -p /app/data/uploads /app/data/chunks /app/data/documents \
+    && chown -R appuser:appuser /app/data
 
 USER appuser
 

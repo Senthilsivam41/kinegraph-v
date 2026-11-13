@@ -4,7 +4,7 @@ This guide provides step-by-step instructions for testing the KineticGraph-Vectr
 
 ## 🚀 Prerequisites
 
-- Docker and Docker Compose installed
+- Docker Engine 25+ and Docker Compose 2.20.2+
 - Run the Compose commands below from the repository root, with a `.env` file containing a Neo4j password of at least 16 characters.
 - OpenAI API Key
 - At least 8GB RAM available
@@ -25,8 +25,8 @@ cp .env.example .env
 # Edit .env and add your OpenAI API key
 nano .env  # or use your favorite editor
 
-# Build and start all containers
-docker compose --env-file .env -f infra/docker-compose.yml up --build -d
+# Start the stack, building missing images, and wait for API readiness
+./scripts/start_services.sh --wait
 
 # Check service health
 docker compose --env-file .env -f infra/docker-compose.yml ps

@@ -46,9 +46,6 @@ htmlcov/
 *.log
 logs/
 
-# Docker
-.dockerignore
-
 # Database & runtime data
 *.db
 *.sqlite3
