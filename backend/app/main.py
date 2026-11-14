@@ -28,6 +28,7 @@ async def lifespan(app: FastAPI):
         input_cost_per_million=settings.LLM_INPUT_COST_PER_MILLION_TOKENS,
         output_cost_per_million=settings.LLM_OUTPUT_COST_PER_MILLION_TOKENS,
         otlp_endpoint=settings.OTEL_EXPORTER_OTLP_ENDPOINT,
+        otlp_metrics_enabled=settings.OTEL_EXPORT_METRICS_ENABLED,
     )
 
     yield
