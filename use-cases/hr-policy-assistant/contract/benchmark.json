@@ -1,0 +1,130 @@
+{
+  "schema_version": "kinegraph.demo.hr-policy.benchmark.v1",
+  "cases": [
+    {
+      "id": "HR-B01",
+      "slice": "single_hop",
+      "question": "Trace the relationship between Customer Success and its Team Lead. Give the lead's name.",
+      "reference_answer": "Dana Whitfield is the Team Lead for Customer Success.",
+      "evidence": {"2": [["Customer Success Dana Whitfield Revenue"]]},
+      "paths": [["Customer Success", "Dana Whitfield"]],
+      "profiles": ["graph", "adaptive"],
+      "adaptive_plan_mode": "graph"
+    },
+    {
+      "id": "HR-B02",
+      "slice": "multi_hop",
+      "question": "Trace the relationship between Data Science and Customer Success for a cross-department transfer. Name the current and receiving Team Leads and Department Heads, and identify each person's team or department.",
+      "reference_answer": "Marcus Oyelaran (Data Science) and Dana Whitfield (Customer Success) are the Team Leads. Sam Torres (Engineering) and Naomi Fields (Revenue) are the Department Heads. All four must approve.",
+      "evidence": {
+        "2": [["Data Science", "Marcus Oyelaran", "Customer Success", "Dana Whitfield", "Sam Torres", "Naomi Fields"]],
+        "4.1": [["transfer needs sign-off from the current and receiving Team Leads", "losing and receiving Department Heads must also approve"]]
+      },
+      "paths": [["Data Science", "Engineering", "Sam Torres"], ["Customer Success", "Revenue", "Naomi Fields"]],
+      "profiles": ["graph", "graph_one_hop", "graph_dfs", "graph_community", "adaptive"],
+      "adaptive_plan_mode": "hybrid"
+    },
+    {
+      "id": "HR-B03",
+      "slice": "graph_paraphrase",
+      "question": "Connect a Sales employee's customer-hosting classification to the sign-off rule for a $700 dinner with a client. Identify the classification, the approver role and the spending ceiling.",
+      "reference_answer": "Sales is client-facing. The Team Lead approves the $700 dinner because it is within the $1,000 client entertainment limit.",
+      "evidence": {"6.1": [["Customer Success and Sales are client-facing roles"]], "7.2": [["client entertainment expenses up to $1,000", "Team Lead approval"]]},
+      "paths": [["Sales", "Client-Facing Role", "Expense Approval"]],
+      "profiles": ["graph", "cross_encoder"]
+    },
+    {
+      "id": "HR-B04",
+      "slice": "policy_precedence",
+      "question": "Trace the link between the normal exception approval rule and the PTO exception during an active resignation notice. Identify the approver for each rule and which rule controls while serving notice.",
+      "reference_answer": "The general exception rule requires Team Lead approval. The notice-period rule overrides it and requires Department Head approval for PTO.",
+      "evidence": {"3.4": [["without Department Head approval", "overrides the normal Team Lead approval rule"]], "4.2": [["need Team Lead approval only", "Section 3.4 is a named exception"]]},
+      "profiles": ["graph", "cross_encoder"]
+    },
+    {
+      "id": "HR-B05",
+      "slice": "exact_token",
+      "question": "Under Section 5.1, what is the 401(k) match percentage for an FTE and after how many days does eligibility start?",
+      "reference_answer": "FTEs are eligible for a 4% 401(k) match after 90 days of employment.",
+      "evidence": {"5.1": [["4% 401(k) match after 90 days"]]},
+      "profiles": ["hybrid_lexical", "vectorless", "adaptive"],
+      "adaptive_plan_mode": "hybrid"
+    },
+    {
+      "id": "HR-B06",
+      "slice": "misspelling",
+      "question": "For permanent remtoe status in Custmer Success, which approval roles are required?",
+      "reference_answer": "Both the Team Lead and Department Head must approve permanent remote status for Customer Success.",
+      "evidence": {"4.3": [["Customer Success and Sales employees need both Team Lead and Department Head approval"]]},
+      "profiles": ["hybrid_lexical", "cross_encoder"]
+    },
+    {
+      "id": "HR-B07",
+      "slice": "compound_recovery",
+      "question": "For a part-time employee who moves to full-time mid-quarter, what retirement match and waiting period normally apply, and who can approve an early eligibility waiver?",
+      "reference_answer": "The normal FTE match is 4% after 90 days of employment. The employee can request an early-eligibility waiver under the general exception rule, which requires Team Lead approval only.",
+      "evidence": {"5.1": [["4% 401(k) match after 90 days"]], "5.3": [["moves to FTE mid-quarter", "Team Lead approval only"]]},
+      "profiles": ["recovery", "hyde", "adaptive"],
+      "adaptive_plan_mode": "hybrid"
+    },
+    {
+      "id": "HR-B08",
+      "slice": "wrong_context_recovery",
+      "question": "My holiday balance could disappear after an internal move. Does a mid-year team transfer let me keep more unused PTO, and whose sign-off is required?",
+      "reference_answer": "Normally up to five days carry over. In the year of a mid-year team transfer, up to 10 days can carry over if the receiving Team Lead co-signs.",
+      "evidence": {"3.3": [["Up to five unused PTO days", "up to 10 days", "receiving Team Lead co-signs"]]},
+      "profiles": ["recovery", "hyde", "corrective"]
+    },
+    {
+      "id": "HR-B09",
+      "slice": "partial_refusal",
+      "question": "Does the handbook grant PTO to contractors, and how many paid days does the external contractor addendum grant them?",
+      "reference_answer": "Contractors are not eligible for PTO under the handbook. The addendum is absent, so its terms and any number of days cannot be established.",
+      "evidence": {"1": [["not eligible for PTO or benefits under this handbook", "external addendum"]]},
+      "profiles": ["verification"],
+      "verification_status": "partial"
+    },
+    {
+      "id": "HR-B10",
+      "slice": "refusal",
+      "question": "What is the paid parental leave allocation in days at Northwind Analytics?",
+      "reference_answer": "The available handbook does not establish paid parental leave or a number of days.",
+      "evidence": {},
+      "profiles": ["verification", "corrective"],
+      "verification_status": "refused"
+    },
+    {
+      "id": "HR-B11",
+      "slice": "structured_lookup",
+      "question": "From the Team Structure table, return the team lead and department for Data Science and Sales. Keep the mappings separate.",
+      "reference_answer": "Data Science — Marcus Oyelaran, Engineering. Sales — Jordan Kessler, Revenue.",
+      "evidence": {"2": [["Data Science Marcus Oyelaran Engineering", "Sales Jordan Kessler Revenue"]]},
+      "profiles": ["vectorless", "vectorless_attachment", "attachment_auto", "context_optimization"]
+    },
+    {
+      "id": "HR-B12",
+      "slice": "adaptive_vector",
+      "question": "What is the meaning of a Contractor classification under the handbook?",
+      "reference_answer": "A contractor is engaged through a statement of work and is not eligible for PTO or benefits under the handbook. Contractor terms are in an external addendum.",
+      "evidence": {"1": [["engaged through a statement of work", "external addendum"]]},
+      "profiles": ["adaptive"],
+      "adaptive_plan_mode": "vector"
+    },
+    {
+      "id": "HR-B13",
+      "slice": "distractor_and_boundary",
+      "question": "For exactly $1,000 in client entertainment, compare a Sales employee with a Data Science employee. Identify the approver for each and the rule that makes them different.",
+      "reference_answer": "Sales is client-facing and needs Team Lead approval at the $1,000 limit. Data Science is outside the client-facing roles listed in the handbook and needs Department Head approval for entertainment expenses.",
+      "evidence": {"6.1": [["Customer Success and Sales are client-facing roles"]], "7.2": [["client entertainment expenses up to $1,000", "Non-client-facing employees need Department Head approval"]]},
+      "profiles": ["corrective", "context_optimization", "cross_encoder"]
+    },
+    {
+      "id": "HR-B14",
+      "slice": "contrasting_policy",
+      "question": "Compare the permanent remote approval chains for Platform Engineering and Customer Success. Name each required approval role and explain the policy distinction.",
+      "reference_answer": "Platform Engineering requires Team Lead approval. Customer Success requires both Team Lead and Department Head approval because it is client-facing.",
+      "evidence": {"4.3": [["Platform Engineering and Data Science employees need Team Lead approval", "Customer Success and Sales employees need both Team Lead and Department Head approval"]], "6.1": [["Customer Success and Sales are client-facing roles"]]},
+      "profiles": ["vectorless", "context_optimization"]
+    }
+  ]
+}
