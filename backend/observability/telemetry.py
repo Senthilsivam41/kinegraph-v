@@ -166,6 +166,7 @@ class QueryTelemetry:
         input_cost_per_million: float | None = None,
         output_cost_per_million: float | None = None,
         otlp_endpoint: str | None = None,
+        otlp_metrics_enabled: bool = True,
     ) -> None:
         resource = Resource.create(
             {
@@ -179,15 +180,16 @@ class QueryTelemetry:
         if otlp_endpoint:
             # Imported only for configured exports so local development and
             # tests do not require a collector or exporter package at import.
-            from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
             from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
-            metric_readers.append(
-                PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=f"{otlp_endpoint.rstrip('/')}/v1/metrics"))
-            )
-            span_processors.append(
-                BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{otlp_endpoint.rstrip('/')}/v1/traces"))
-            )
+            base_endpoint = otlp_endpoint.rstrip("/")
+            span_processors.append(BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{base_endpoint}/v1/traces")))
+            if otlp_metrics_enabled:
+                from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+
+                metric_readers.append(
+                    PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=f"{base_endpoint}/v1/metrics"))
+                )
         self.meter_provider = MeterProvider(resource=resource, metric_readers=metric_readers)
         self.tracer_provider = TracerProvider(resource=resource)
         for processor in span_processors:

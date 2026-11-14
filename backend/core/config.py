@@ -109,6 +109,7 @@ class Settings(BaseSettings):
     # OpenTelemetry query metrics/tracing. Export configuration is deliberately
     # environment-owned; the app never stores collector credentials.
     OTEL_EXPORTER_OTLP_ENDPOINT: Optional[str] = None
+    OTEL_EXPORT_METRICS_ENABLED: bool = True
     LLM_INPUT_COST_PER_MILLION_TOKENS: Optional[float] = Field(default=None, ge=0)
     LLM_OUTPUT_COST_PER_MILLION_TOKENS: Optional[float] = Field(default=None, ge=0)
 
