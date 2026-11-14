@@ -1,3 +1,9 @@
+from unittest.mock import Mock
+
+import pytest
+import requests
+
+from backend.core.config import Settings
 from backend.observability.telemetry import (
     ALLOWED_ERROR_CODES,
     QueryTelemetry,
@@ -5,6 +11,41 @@ from backend.observability.telemetry import (
     normalize_usage,
     sanitized_error_code,
 )
+
+
+@pytest.mark.parametrize("disable_metrics", [False, True])
+def test_otlp_metrics_export_can_be_disabled(monkeypatch, disable_metrics):
+    monkeypatch.delenv("OTEL_EXPORT_METRICS_ENABLED", raising=False)
+    if disable_metrics:
+        monkeypatch.setenv("OTEL_EXPORT_METRICS_ENABLED", "false")
+    settings = Settings(_env_file=None, OPENAI_API_KEY="test", NEO4J_PASSWORD="unused-test-password")
+    posted_urls = set()
+
+    def post(_session, url, **_kwargs):
+        posted_urls.add(url)
+        return Mock(ok=True)
+
+    monkeypatch.setattr(requests.Session, "post", post)
+
+    telemetry = QueryTelemetry(
+        service_name="test",
+        service_version="1",
+        environment="test",
+        otlp_endpoint="http://collector:4318/",
+        otlp_metrics_enabled=settings.OTEL_EXPORT_METRICS_ENABLED,
+    )
+    try:
+        with telemetry.tracer.start_as_current_span("query"):
+            telemetry.query_requests.add(1)
+        assert telemetry.tracer_provider.force_flush()
+        assert telemetry.meter_provider.force_flush()
+    finally:
+        telemetry.shutdown()
+
+    expected = {"http://collector:4318/v1/traces"}
+    if not disable_metrics:
+        expected.add("http://collector:4318/v1/metrics")
+    assert posted_urls == expected
 
 
 def test_normalize_usage_supports_openai_and_langchain_names():
