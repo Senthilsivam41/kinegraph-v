@@ -1,4 +1,8 @@
 import inspect
+import os
+from pathlib import Path
+import subprocess
+import sys
 from unittest.mock import MagicMock
 
 import pytest
@@ -85,6 +89,19 @@ def test_normal_workflow_keeps_cross_encoder_as_controlled_experiment():
     default = inspect.signature(HybridRAGWorkflow.__init__).parameters["use_cross_encoder"].default
     assert default is None
     assert settings.CROSS_ENCODER_RERANK_ENABLED is False
+
+
+def test_keyword_ranker_does_not_import_sentence_transformers():
+    subprocess.run(
+        [
+            sys.executable, "-c",
+            "import sys; from backend.core.context_ranker import ContextRanker; "
+            "ContextRanker(); assert 'sentence_transformers' not in sys.modules",
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "."},
+        check=True,
+    )
 
 
 def test_cross_encoder_logits_use_query_independent_sigmoid_scores():

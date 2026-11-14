@@ -1,0 +1,12 @@
+{
+  "source": "Read-only Neo4j check of adjacent named entities in the isolated HR graph",
+  "relationships": [
+    {"case": "HR-B01", "nodes": ["Customer Success", "Dana Whitfield"], "types": ["LEADS"]},
+    {"case": "HR-B02", "nodes": ["Data Science", "Engineering"], "types": ["BELONGS_TO"]},
+    {"case": "HR-B02", "nodes": ["Engineering", "Sam Torres"], "types": ["HEADS"]},
+    {"case": "HR-B02", "nodes": ["Customer Success", "Revenue"], "types": ["BELONGS_TO"]},
+    {"case": "HR-B02", "nodes": ["Revenue", "Naomi Fields"], "types": ["HEADS"]},
+    {"case": "HR-B03", "nodes": ["Sales", "Client-Facing Role"], "types": ["CLASSIFIED_AS"]},
+    {"case": "HR-B03", "nodes": ["Client-Facing Role", "Expense Approval"], "types": []}
+  ]
+}

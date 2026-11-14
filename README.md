@@ -111,7 +111,7 @@ superiority.
 ### Prerequisites
 
 - Python 3.11+
-- Docker and Docker Compose
+- Docker Engine 25+ and Docker Compose 2.20.2+
 - An OpenAI-compatible API key; OpenRouter is supported
 - A unique Neo4j password of at least 16 characters
 
@@ -127,10 +127,17 @@ cp .env.example .env
 
 The launcher reads the repository `.env`, validates the Neo4j password, and
 starts the stack from [`infra/docker-compose.yml`](infra/docker-compose.yml).
-The equivalent direct command is:
+Compose builds missing images and reuses existing ones on later starts.
+Backend edits are picked up by the local bind mount and Uvicorn reload. Use
+`./scripts/start_services.sh --build` after changing `requirements.txt` or the
+Dockerfile, including the first run with these build changes if you already
+have local images.
+
+Pass `--wait` to wait for Compose health checks, including API readiness.
+The equivalent direct command for the default launch is
 
 ```bash
-docker compose --env-file .env -f infra/docker-compose.yml up --build -d
+docker compose --env-file .env -f infra/docker-compose.yml up -d
 ```
 
 ### Service endpoints
@@ -255,6 +262,39 @@ PYTHONPATH=. venv311/bin/python scripts/audit_schema_coverage.py
 ```
 
 ## Quality evaluation for contributors
+
+### Latest HR policy benchmark · November 14, 2026
+
+All 63 requests returned HTTP 200 across 14 synthetic HR questions and 17
+profiles. The table compares fixed Vector and Hybrid with the same handbook
+and a three-chunk context limit. Thirteen questions had expected evidence
+sections. The remaining question tested refusal for a policy absent from the
+handbook.
+
+| Retrieval measure | Vector | Hybrid |
+| --- | ---: | ---: |
+| Questions with complete expected evidence | 12/13 | 9/13 |
+| Mean expected-section recall | 96.2% | 73.1% |
+| Requests with initial graph candidates | 0/14 | 14/14 |
+
+Hybrid tied Vector on 10 scored questions and retrieved less expected evidence
+on three. The API returned none of the expected relationship paths on the
+three annotated cases. Neo4j contained the expected paths for two of those
+cases, and the third lacked the expense-approval link. The scoped retriever
+drops path metadata when it reloads source chunks, so the run leaves traversal's
+contribution unverified. Lexical fusion ran in both test cases and tied Hybrid
+on recall. Cross-encoder reranking improved recall in one case, reduced it in
+one, and tied in two.
+
+The local Docker run used isolated stores, PyMuPDF, and concurrent requests.
+The scores measure retrieved evidence coverage. Answer correctness and
+single-request latency remain unverified.
+
+[Run report](reports/test-runs/2026-11-14/hr-policy/REPORT.md) ·
+[Raw results](reports/test-runs/2026-11-14/hr-policy/benchmark.json) ·
+[Benchmark instructions](use-cases/hr-policy-assistant/README.md#benchmark-retrieval-features)
+
+### Repository quality benchmark
 
 Evaluation is separate from normal application use. The checked-in dataset has
 20 reviewed questions and expected answers. Validation fails closed: a run is

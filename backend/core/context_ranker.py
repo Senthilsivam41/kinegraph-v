@@ -19,20 +19,6 @@ from backend.core.retrieval_orchestration import candidate_identity
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Optional cross-encoder import
-# ---------------------------------------------------------------------------
-try:
-    from huggingface_hub import hf_hub_download
-    from sentence_transformers import CrossEncoder
-    _CE_AVAILABLE = True
-except ImportError:
-    _CE_AVAILABLE = False
-    logger.info(
-        "sentence-transformers not installed — using keyword reranker. "
-        "pip install sentence-transformers for cross-encoder reranking."
-    )
-
 _DEFAULT_CE_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 
@@ -94,9 +80,7 @@ class ContextRanker:
             raise ValueError("semantic_weight must remain at least 0.5")
         self.requested_cross_encoder = use_cross_encoder
         self.fallback_reason = None
-        self.use_cross_encoder = use_cross_encoder and _CE_AVAILABLE
-        if use_cross_encoder and not _CE_AVAILABLE:
-            self.fallback_reason = "sentence-transformers unavailable"
+        self.use_cross_encoder = False
         if not 0.0 <= min_relevance_threshold <= 1.0:
             raise ValueError("min_relevance_threshold must be between 0 and 1")
         self.min_relevance_threshold = min_relevance_threshold
@@ -105,22 +89,23 @@ class ContextRanker:
         self.weights = weights
         self._encoder = None
 
-        if self.use_cross_encoder:
-            try:
-                if Path(model_name).is_dir():
-                    self._encoder = CrossEncoder(model_name)
-                else:
-                    config_path = Path(hf_hub_download(model_name, "config.json"))
-                    revision = config_path.parent.name
-                    # Pin both tokenizer and weights to the resolved Hub snapshot.
-                    self._encoder = CrossEncoder(model_name, revision=revision)
-                    self.model_revision = revision
-                logger.info("ContextRanker: cross-encoder loaded (%s)", model_name)
-            except Exception as exc:
-                logger.warning("CrossEncoder load failed (%s) — falling back to keyword.", exc)
-                self.fallback_reason = f"cross-encoder load failed: {type(exc).__name__}"
-                self._encoder = None
-                self.use_cross_encoder = False
+        if not use_cross_encoder:
+            return
+
+        # Load the optional ML stack only when a cross-encoder ranker is requested.
+        try:
+            from sentence_transformers import CrossEncoder
+        except ImportError:
+            self.fallback_reason = "sentence-transformers unavailable"
+            return
+
+        try:
+            self._encoder = CrossEncoder(model_name)
+            self.use_cross_encoder = True
+            logger.info("ContextRanker: cross-encoder loaded (%s)", model_name)
+        except Exception as exc:
+            logger.warning("CrossEncoder load failed (%s) — falling back to keyword.", exc)
+            self.fallback_reason = f"cross-encoder load failed: {type(exc).__name__}"
 
     def _score_chunks(
         self, query: str, chunks: List[Dict[str, Any]]

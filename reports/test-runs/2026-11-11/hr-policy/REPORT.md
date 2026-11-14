@@ -42,7 +42,7 @@ the current runner's per-mode summary format.
 | HR-001 Transfer approvals | 12,534 ms | 11,514 ms | Cited both approval rules and omitted all four approver names. |
 | HR-002 Notice-period PTO | 19,753 ms | 6,858 ms | Cited Department Head approval and omitted the explicit override of Team Lead approval. |
 | HR-003 401(k) waiver | 23,550 ms | 7,568 ms | Cited waiver eligibility and omitted the normal match and waiting period and the required approver. |
-| HR-004 Client dinner | 25,218 ms | 10,454 ms | Grounding verification removed all claims. |
+| HR-004 Client dinner | 25,218 ms | 10,454 ms | Grounding verification removed both draft claims as irrelevant in each mode. |
 | HR-005 Permanent remote status | 17,820 ms | 4,708 ms | Cited the Team Lead and Department Head requirements. |
 | HR-006 Contractor PTO | 17,162 ms | 4,825 ms | Cited the handbook's PTO limit and omitted the refusal about terms in the missing addendum. |
 
@@ -52,6 +52,14 @@ synthetic-only index with the metadata filter removed and retrieval
 orchestration enabled also reported zero initial graph candidates. Ten
 comparison responses missed at least one literal expected phrase. Comparative
 retrieval quality remains unevaluated.
+
+HR-001's returned context already contained all four approver names in both
+modes. Both answers omitted the names while retaining the approval rules. The
+batch establishes that the API served both routes and that Hybrid fell back to
+vector evidence for this corpus. A follow-up comparison needs a demonstrated
+graph contribution. Start with HR-001 and HR-004, verify that the graph contains
+the needed relationships and source evidence, and confirm those paths reach
+generation before scoring the paired responses.
 
 ## Offline checks
 
