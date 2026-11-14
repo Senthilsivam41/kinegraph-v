@@ -176,3 +176,43 @@ def test_opt_in_lexical_channel_enters_weighted_fusion():
     assert fetched["lexical_results"][0]["content"] == "lexical evidence"
     assert fused["fused_results"][0]["content"] == "graph evidence"
     assert fused["fused_results"][0]["rrf_contributions"]["graph"] > 0
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        ("Set `OPENAI_API_KEY`.", "Set OPENAI_API_KEY before starting."),
+        ("Read docker-compose.yml!", "Read docker-compose.yml."),
+        ("http://localhost:7474?", "Open http://localhost:7474 in Neo4j Browser."),
+        ("opne http://localhost:7474", "Open http://localhost:7474 in Neo4j Browser."),
+        ("unmatched_identifier", None),
+        ("!?...", None),
+    ],
+)
+def test_hybrid_lexical_only_fuses_bm25_matches(query, expected):
+    from backend.core.langgraph_workflow import _search_lexical_chunks
+    from backend.services.vectorless_service import BM25Retriever
+
+    corpus = [
+        {"content": content, "metadata": {}}
+        for content in (
+            "Set OPENAI_API_KEY before starting.",
+            "Read docker-compose.yml.",
+            "Open http://localhost:7474 in Neo4j Browser.",
+            "Unrelated chunk.",
+        )
+    ]
+    retriever = BM25Retriever(corpus)
+    with patch("backend.core.langgraph_workflow.VectorlessService") as service:
+        service.return_value.search_chunks.side_effect = (
+            lambda query, top_k, filters, match_only: retriever.search(
+                query, top_k, match_only=match_only,
+            )
+        )
+        results = _search_lexical_chunks(query, top_k=4, filters=None)
+
+    assert all(result["score"] > 0 for result in results)
+    if expected is None:
+        assert results == []
+    else:
+        assert results[0]["content"] == expected
