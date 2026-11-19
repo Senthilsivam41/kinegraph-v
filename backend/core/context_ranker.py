@@ -12,6 +12,7 @@ import logging
 import math
 import json
 from collections import Counter
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from backend.core.retrieval_orchestration import candidate_identity
@@ -84,6 +85,7 @@ class ContextRanker:
             raise ValueError("min_relevance_threshold must be between 0 and 1")
         self.min_relevance_threshold = min_relevance_threshold
         self.model_name = model_name
+        self.model_revision = None
         self.weights = weights
         self._encoder = None
 
@@ -116,18 +118,27 @@ class ContextRanker:
             # sigmoid rather than batch-relative min/max scaling so relevance
             # thresholds mean the same thing across queries.
             raw_scores = [float(score) for score in scores]
+            if len(raw_scores) != len(chunks) or not all(map(math.isfinite, raw_scores)):
+                raise ValueError("invalid cross-encoder scores")
             if all(0.0 <= score <= 1.0 for score in raw_scores):
                 norm = raw_scores
             else:
                 norm = [1.0 / (1.0 + math.exp(-max(-60.0, min(score, 60.0)))) for score in raw_scores]
             scored = list(zip(chunks, norm))
         else:
-            scored = [
-                (c, max(0.0, min(_keyword_score(query, c.get("content", "")), 1.0)))
-                for c in chunks
-            ]
+            return self._score_keywords(query, chunks)
 
         return sorted(scored, key=lambda x: x[1], reverse=True)
+
+    @staticmethod
+    def _score_keywords(
+        query: str, chunks: List[Dict[str, Any]],
+    ) -> List[Tuple[Dict[str, Any], float]]:
+        return sorted(
+            [(chunk, min(1.0, _keyword_score(query, chunk.get("content", "")))) for chunk in chunks],
+            key=lambda pair: pair[1],
+            reverse=True,
+        )
 
     @staticmethod
     def _metadata(chunk: Dict[str, Any]) -> Dict[str, Any]:
@@ -252,15 +263,33 @@ class ContextRanker:
         preferred_community_id: str | None = None,
     ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """Rerank once and emit deterministic survival reasons for ADR-003."""
+        fallback_reason = self.fallback_reason
+        used_cross_encoder = self.use_cross_encoder and bool(chunks)
+        try:
+            scored = self._score_chunks(query, chunks) if chunks else []
+        except Exception as exc:
+            if not used_cross_encoder:
+                raise
+            fallback_reason = f"cross-encoder inference failed: {type(exc).__name__}"
+            logger.warning("%s, falling back to keyword", fallback_reason)
+            used_cross_encoder = False
+            scored = self._score_keywords(query, chunks)
+
+        mode_details = {
+            "mode": ("cross_encoder" if used_cross_encoder else "keyword") if chunks else None,
+            "model_revision": self.model_revision,
+            "fallback": bool(fallback_reason),
+            "fallback_reason": fallback_reason,
+        }
         if not chunks:
             return [], {
+                **mode_details,
                 "input_count": 0,
                 "output_count": 0,
                 "decisions": [],
                 "forced_top_candidate": False,
             }
 
-        scored = self._score_chunks(query, chunks)
         semantic_by_id = {
             candidate_identity(chunk): float(score) for chunk, score in scored
         }
@@ -293,7 +322,7 @@ class ContextRanker:
             enriched["graph_signals_applied"] = graph_score is not None
             enriched["rerank_mode"] = (
                 "graph_aware_cross_encoder"
-                if self.use_cross_encoder
+                if used_cross_encoder
                 else "graph_aware_keyword"
             )
             enriched["rerank_components"] = {
@@ -310,6 +339,10 @@ class ContextRanker:
             reverse=True,
         )
         result = reranked[:top_k]
+        ranks = {
+            candidate_identity(chunk): (rank, chunk)
+            for rank, chunk in enumerate(reranked, 1)
+        }
         retained_ids = {candidate_identity(chunk) for chunk in result}
         forced_id = candidate_identity(survivors[0][0]) if forced_top_candidate else None
         decisions = []
@@ -327,12 +360,17 @@ class ContextRanker:
                 decision, reason = "dropped", "below_semantic_relevance_threshold"
             else:
                 decision, reason = "dropped", "reranker_top_k_exceeded"
+            rank, ranked = ranks.get(candidate_id, (None, {}))
             decisions.append({
                 "candidate_id": candidate_id,
                 "stage": "semantic_reranking",
                 "decision": decision,
                 "reason": reason,
                 "semantic_score": round(semantic_score, 6),
+                "rerank_rank": rank,
+                "rerank_score": ranked.get("rerank_score"),
+                "graph_signal_score": ranked.get("graph_signal_score"),
+                "rerank_components": ranked.get("rerank_components"),
             })
 
         logger.debug(
@@ -340,9 +378,10 @@ class ContextRanker:
             len(chunks),
             len(result),
             self.min_relevance_threshold,
-            "cross-encoder" if self.use_cross_encoder else "keyword",
+            mode_details["mode"],
         )
         return result, {
+            **mode_details,
             "input_count": len(chunks),
             "output_count": len(result),
             "minimum_relevance": self.min_relevance_threshold,

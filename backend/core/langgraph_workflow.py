@@ -77,6 +77,15 @@ def _search_vectorless_chunks(
     )
 
 
+def _search_lexical_chunks(
+    query: str, top_k: int, filters: Optional[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Fuse only BM25 matches. Zero-score Vectorless padding has no lexical rank."""
+    return VectorlessService().search_chunks(
+        query=query, top_k=top_k, filters=filters, match_only=True,
+    )
+
+
 def _search_vectorless_attachment(
     query: str,
     attachment_content: str,
@@ -611,7 +620,7 @@ class HybridRAGWorkflow:
         tasks = [vector_task, graph_task]
         if state.get("enable_lexical_fusion", False):
             tasks.append(timed(asyncio.to_thread(
-                _search_vectorless_chunks,
+                _search_lexical_chunks,
                 rq,
                 fetch_n,
                 state.get("filters"),
@@ -856,7 +865,7 @@ class HybridRAGWorkflow:
             if state.get("enable_lexical_fusion", False):
                 try:
                     lexical_results = await asyncio.to_thread(
-                        _search_vectorless_chunks,
+                        _search_lexical_chunks,
                         original_query,
                         fetch_n,
                         state.get("filters"),
@@ -1203,11 +1212,8 @@ class HybridRAGWorkflow:
         state["reranker_details"] = {
             **reranker_report,
             "requested_mode": "cross_encoder" if ranker.requested_cross_encoder else "keyword",
-            "mode": "cross_encoder" if ranker.use_cross_encoder else "keyword",
             "model": ranker.model_name,
             "controlled_experiment": bool(requested_cross_encoder),
-            "fallback": bool(ranker.fallback_reason),
-            "fallback_reason": ranker.fallback_reason,
             "minimum_relevance": ranker.min_relevance_threshold,
             "input_count": len(state["fused_results"]),
             "output_count": len(selected),
@@ -1353,7 +1359,7 @@ class HybridRAGWorkflow:
                     )
                 else:
                     lexical = await asyncio.to_thread(
-                        _search_vectorless_chunks,
+                        _search_vectorless_chunks if mode == QueryMode.VECTORLESS else _search_lexical_chunks,
                         query,
                         fetch_n,
                         state.get("filters"),
@@ -1691,6 +1697,7 @@ class HybridRAGWorkflow:
                 },
                 "lexical_enabled": state["enable_lexical_fusion"],
                 "candidates": list(state["fused_results"]),
+                "candidates_before_deduplication": list(state.get("fusion_candidates_before_dedup", [])),
                 "deduplication": state.get("deduplication_details", {}),
             },
             "reranking": {

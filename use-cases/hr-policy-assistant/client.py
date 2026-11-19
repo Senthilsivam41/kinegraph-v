@@ -32,12 +32,13 @@ def build_artifact(case, requested_mode, result, code_revision, captured_at=None
     }
 
 
-def query_case(base_url, case, mode, *, opener=urlopen, timeout=60):
+def query_case(base_url, case, mode, *, opener=urlopen, timeout=60, options=None):
     body = json.dumps({
+        **(options or {}),
         "query": case["question"],
         "mode": mode,
-        "allow_mode_downgrade": False,
         "filters": {"demo_pdf_sha256": PDF_SHA256},
+        "allow_mode_downgrade": (options or {}).get("allow_mode_downgrade", False),
     }).encode()
     request = Request(
         f"{base_url.rstrip('/')}/api/v1/query/",

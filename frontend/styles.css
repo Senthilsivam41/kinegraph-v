@@ -367,6 +367,8 @@ body {
     border: 1px solid var(--border-color);
     border-bottom-left-radius: 4px;
     box-shadow: var(--shadow);
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .message-meta {
@@ -421,16 +423,84 @@ body {
     color: var(--text-secondary);
 }
 
-.result-content {
-    font-size: 13px;
-    line-height: 1.6;
-    margin-bottom: 8px;
-    color: var(--text-primary);
-}
-
 .result-metadata {
     font-size: 11px;
     color: var(--text-secondary);
+}
+
+.query-retrieval p + p,
+.query-evidence-note,
+.answer-claim,
+.query-more-results,
+.result-passage,
+.result-explanation {
+    margin-top: 8px;
+}
+
+.query-retrieval p + p,
+.query-evidence-note,
+.result-explanation,
+.result-passage,
+.query-more-results {
+    font-size: 13px;
+}
+
+.result-passage summary,
+.result-explanation summary,
+.query-more-results summary {
+    cursor: pointer;
+    color: var(--primary-hover);
+    font-weight: 600;
+}
+
+.result-preview,
+.result-passage-text {
+    color: var(--text-primary);
+    font-weight: 400;
+    white-space: pre-wrap;
+}
+
+.result-preview {
+    display: block;
+}
+
+.result-passage[open] .result-preview {
+    display: none;
+}
+
+.result-explanation ul {
+    padding-inline-start: 20px;
+}
+
+.answer-claim {
+    white-space: pre-wrap;
+}
+
+.query-citation,
+.query-citation-unavailable {
+    margin-inline-start: 6px;
+    font-size: 13px;
+}
+
+.query-citation {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 2px 6px;
+    background: white;
+    color: var(--primary-hover);
+    cursor: pointer;
+}
+
+.query-citation:focus-visible,
+.result-passage-text:focus,
+.message.assistant summary:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.result-cited {
+    font-size: 12px;
+    font-weight: 600;
 }
 
 /* Typing Indicator */
@@ -665,6 +735,12 @@ body {
     line-height: 1.6;
     color: #166534;
     position: relative;
+}
+
+.generated-answer.answer-without-claims {
+    background: var(--bg-light);
+    border-color: var(--border-color);
+    color: var(--text-primary);
 }
 
 .confidence-badge {

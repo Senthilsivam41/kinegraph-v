@@ -12,6 +12,40 @@ import client
 
 
 MODES = ("hybrid", "vector")
+GRAPH_CASE_IDS = ("HR-001", "HR-004")
+
+
+def graph_checks(response):
+    recovery = response.get("recovery_details") or {}
+    escalation = recovery.get("route_escalation") or {}
+    initial_count = (escalation.get("initial_channel_counts") or {}).get("graph")
+    chunks = response.get("results")
+    selected_path_count = None
+    if isinstance(chunks, list):
+        selected_path_count = 0
+        for chunk in chunks:
+            metadata = chunk.get("metadata") or {}
+            path = (metadata.get("graph_paths") or {}).get("graph")
+            if path and all((step.get("evidence_text") or "").strip() for step in path):
+                selected_path_count += 1
+
+    return {
+        "initial_graph_candidate_count": initial_count,
+        "selected_evidence_graph_path_count": selected_path_count,
+    }
+
+
+def summarize_graph_participation(rows):
+    observed = {
+        row["case"]["id"] for row in rows
+        if row["requested_mode"] == "hybrid"
+        and row["status"] == "success"
+        and not row["checks"]["mode_downgrade"]
+        and (row["checks"]["initial_graph_candidate_count"] or 0) > 0
+        and (row["checks"]["selected_evidence_graph_path_count"] or 0) > 0
+    }
+    missing = [case_id for case_id in GRAPH_CASE_IDS if case_id not in observed]
+    return {"required_case_ids": list(GRAPH_CASE_IDS), "missing_case_ids": missing, "passed": not missing}
 
 
 def summarize(rows):
@@ -65,6 +99,7 @@ def build_report(query, code_revision, environment, captured_at=None):
                 "evidence_present": any(response.get(key) for key in client.EVIDENCE_KEYS),
                 "cited_claims_present": any(isinstance(claim, dict) and claim.get("chunk_ids") for claim in claims),
                 "missing_expected_facts": [fact for fact in case["expected_facts"] if fact.casefold() not in answer],
+                **graph_checks(response),
             }
             rows.append(artifact)
 
@@ -82,6 +117,7 @@ def build_report(query, code_revision, environment, captured_at=None):
                 mode: summarize([row for row in rows if row["requested_mode"] == mode])
                 for mode in MODES
             },
+            "graph_participation": summarize_graph_participation(rows),
             "comparative_claim": "not_evaluated",
         },
     }

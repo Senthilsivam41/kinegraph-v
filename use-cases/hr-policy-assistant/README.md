@@ -53,9 +53,21 @@ The runner prints overall and per-route counts and writes JSON with the two corp
 service revision, timestamp, expected facts and sections, and the full query
 response or failure for each case and route. It records the query ID when the
 API supplies it. It flags route changes, missing evidence fields, uncited responses, and
-expected phrases absent from the answer. The phrase check is literal. Review
-whether paraphrases, citations, and refusals satisfy the contract before
-making a comparative claim. Keep the successful ingestion task response with
+expected phrases absent from the answer. The phrase check is literal. The report
+also records the initial graph-candidate count and the number of candidates sent
+to generation with a graph path that carries evidence text on every edge. Missing
+trace fields are recorded as `null`.
+
+The graph participation check covers HR-001 (transfer approval chain) and HR-004
+(role classification and expense rule). Each Hybrid response needs an initial
+graph candidate and a selected candidate with an evidence-bearing graph path.
+For a comparison of retrieval quality, inspect whether the selected paths connect
+the entities and sections the contract calls for. Hold the corpus, models, and
+context budget fixed. Compare coverage and rank of the expected evidence against
+Vector, and review paraphrases, citations, and refusals separately from retrieval.
+The runner leaves comparative retrieval quality unevaluated.
+
+Keep the successful ingestion task response with
 the report to document what went into the index. Use `--timeout` to increase
 the per-query timeout from 60 seconds when running a slower local model.
 
@@ -65,6 +77,76 @@ To capture one case, use the same API URL and revision.
 python client.py --case HR-001 --mode hybrid \
   --code-revision <running-kinegraph-commit> > hr-001-hybrid.json
 ```
+
+## Benchmark retrieval features
+
+The [benchmark contract](contract/benchmark.json) adds 14 handbook-grounded
+questions. The original six remain available for reproducing the smoke run.
+
+| Questions | Feature exercised |
+| --- | --- |
+| HR-B01 | One-hop relationship between Customer Success and its team lead. Adaptive routing can select Graph. |
+| HR-B02–B04 | Cross-department transfer chains, paraphrased client entertainment lookup, and policy precedence. The transfer also compares one-hop depth, BFS, DFS, and community traversal. |
+| HR-B05–B06 | Exact `401(k)` and `FTE` lookup, misspelled names, lexical fusion, and cross-encoder reranking. |
+| HR-B07–B08 | Compound and indirect queries for decomposition, vocabulary expansion, conditional HyDE, and corrective retrieval. |
+| HR-B09–B10 | Partial answer with an unavailable addendum and refusal on a policy absent from the handbook. |
+| HR-B11–B12 | Table lookup through scoped Vectorless and Markdown attachment routing, plus a high-confidence adaptive Vector route. |
+| HR-B13–B14 | Approval thresholds and competing policy rules for distractor rejection, reranking, and context selection. |
+
+From the repository root, validate the question references and compare the
+expected graph entities against the original ingestion receipt.
+
+```shell
+python use-cases/hr-policy-assistant/run_benchmark.py --plan \
+  --ingest-receipt reports/test-runs/2026-11-11/hr-policy/browser-smoke.json
+```
+
+The archived receipt misses Customer Success in HR-B01, Data Science,
+Engineering, Customer Success, and Revenue in HR-B02, and Sales in HR-B03.
+The receipt checks entity presence. To establish graph readiness, verify the
+listed paths and their source evidence in the newly ingested graph. A Hybrid
+request exercises the intended relation when a matching path survives into the
+returned context. Keep the PDF scope filter enabled during the comparison.
+
+An offline check against the archived six-chunk index ran the local Vectorless
+BM25 retrieval stage directly. At three chunks, it covered all reference
+sections for 10 of 13 answerable or partially answerable questions. It missed
+the roster for HR-B01 and HR-B02 and the expense rule for HR-B13. The full
+refusal case has no expected evidence section.
+
+After ingesting into the local stack, run a three-way check for the graph
+questions before the full 63-request matrix.
+
+```shell
+python use-cases/hr-policy-assistant/run_benchmark.py \
+  --base-url http://localhost:8000 \
+  --code-revision "$(git rev-parse HEAD)" \
+  --environment 'Record the actual chat and embedding models, parser, and index/chunking settings' \
+  --case HR-B01 --case HR-B02 --case HR-B03 \
+  --profile vector --profile hybrid --profile graph \
+  --output /tmp/hr-graph-benchmark.json
+```
+
+Omit the case and profile selectors for the full matrix. The report records
+the request settings, corpus and contract hashes, expected and observed routes,
+initial channel counts in the API response, graph paths, gold evidence coverage
+at rank 1 and across returned contexts, cited evidence coverage, and latency.
+Evidence coverage uses reviewed handbook excerpts and tolerates whitespace and
+punctuation differences. Use the reference answer and cited chunks to review
+answer correctness, unsupported claims, and refusals. The benchmark sets a
+three-chunk context limit and a ten-candidate pool per channel. Feature profiles
+use matched baselines. In particular, HyDE compares against recovery alone,
+and attachment auto-routing compares against explicit Vectorless on the same
+Markdown attachment.
+
+For a chunking comparison, repeat the matrix against two clean indexes built
+with `ADAPTIVE_CHUNKING_ENABLED=false` and `true`, respectively. Keep the
+parser, models, and PDF fixed and record both ingestion receipts. The one-file
+handbook can exercise source caps and provide a regression baseline. Measuring
+community diversity or generalizing quality or latency requires a larger,
+multi-document corpus and repeated runs. The public response lacks pre-filter
+traversal diagnostics, so the report leaves traversal execution unconfirmed
+unless separately verified in the workflow trace.
 
 ## Troubleshooting
 
@@ -81,6 +163,11 @@ python client.py --case HR-001 --mode hybrid \
 - **No citations or an unexpected route**. Check the effective mode and the
   returned grounding fields. Confirm the task succeeded against the same API
   URL and review the API response for unavailable retrieval channels.
+- **Graph participation check fails**. Use the initial graph count to see
+  whether the graph channel produced candidates. The scoped retriever can
+  reload a graph-discovered chunk from Chroma while dropping its relationship
+  path. To pass the check, the response needs to carry a path verified against
+  the same corpus scope.
 
 ## Verification
 
@@ -88,7 +175,7 @@ The focused checks use deterministic responses and require no model service.
 Run them from the repository root.
 
 ```shell
-python -m pytest -q tests/test_hr_policy_demo.py tests/test_hr_policy_comparison.py tests/test_hr_policy_web.py
+python -m pytest -q tests/test_hr_policy_demo.py tests/test_hr_policy_comparison.py tests/test_hr_policy_benchmark.py tests/test_hr_policy_web.py
 node --test tests/hr_policy_web.test.mjs
 ```
 

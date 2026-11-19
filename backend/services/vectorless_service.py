@@ -81,13 +81,17 @@ class BM25Retriever:
             denominator = freq + 0.5
             self.idf[word] = math.log(max(numerator / denominator, 0.0001) + 1.0)
 
-    def search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    def search(
+        self, query: str, top_k: int = 5, *, match_only: bool = False,
+    ) -> List[Dict[str, Any]]:
         """Search the corpus and return the top-k matched chunks."""
         if not self.corpus:
             return []
 
         query_tokens = self._tokenize(query)
         if not query_tokens:
+            if match_only:
+                return []
             # If query is empty or only punctuation, return the first few chunks
             return [
                 {
@@ -118,7 +122,8 @@ class BM25Retriever:
                     )
                     score += token_idf * (numerator / denominator)
 
-            scores.append((idx, score))
+            if score > 0 or not match_only:
+                scores.append((idx, score))
 
         # Sort descending by score
         scores.sort(key=lambda x: x[1], reverse=True)
@@ -268,6 +273,8 @@ class VectorlessService:
         query: str,
         top_k: int = 5,
         filters: Optional[Dict[str, Any]] = None,
+        *,
+        match_only: bool = False,
     ) -> List[Dict[str, Any]]:
         """Load cached JSON chunk files, filter them, and run BM25 search."""
         corpus: List[Dict[str, Any]] = []
@@ -302,4 +309,4 @@ class VectorlessService:
 
         # Run BM25
         retriever = BM25Retriever(corpus)
-        return retriever.search(query, top_k=top_k)
+        return retriever.search(query, top_k=top_k, match_only=match_only)

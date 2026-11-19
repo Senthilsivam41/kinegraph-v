@@ -213,7 +213,7 @@ async function handleSendMessage() {
         removeTypingIndicator(typingId);
         
         // Add assistant message with results
-        addAssistantMessage(data);
+        addAssistantMessage(data, payload.mode);
         
     } catch (error) {
         console.error('Query error:', error);
@@ -251,123 +251,271 @@ function addMessage(role, content, metadata = null) {
     state.messages.push({ role, content, timestamp: Date.now(), metadata });
 }
 
-// Add Assistant Message with Results
-function addAssistantMessage(data) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'message assistant';
-    
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'message-content';
-    
-    // Summary
-    const summary = document.createElement('p');
-    summary.innerHTML = `Found <strong>${data.total_results}</strong> result${data.total_results !== 1 ? 's' : ''} using <strong>${data.mode}</strong> mode in <strong>${data.execution_time_ms}ms</strong>`;
-    contentDiv.appendChild(summary);
+const retrievalLabels = new Map([
+    ['hybrid', 'Hybrid'],
+    ['vector', 'Vector'],
+    ['graph', 'Graph'],
+    ['lexical', 'Lexical'],
+    ['vectorless', 'Vectorless']
+]);
 
-    // Generated Answer (if available)
-    if (data.generated_answer) {
-        const answerPara = document.createElement('div');
-        answerPara.className = 'generated-answer';
-        answerPara.innerHTML = `<strong>Answer:</strong><br>${data.generated_answer.replace(/\n/g, '<br>')}`;
-        
-        if (data.answer_confidence !== undefined) {
-            const confBadge = document.createElement('div');
-            confBadge.className = `confidence-badge ${data.answer_confidence >= 0.7 ? 'high' : 'low'}`;
-            confBadge.textContent = `Confidence: ${(data.answer_confidence * 100).toFixed(0)}%`;
-            answerPara.appendChild(confBadge);
-        }
-        
-        contentDiv.appendChild(answerPara);
-        
-        // Add a line break or separator before source chunks
-        const separator = document.createElement('hr');
-        separator.style.margin = '16px 0 12px 0';
-        separator.style.border = '0';
-        separator.style.borderTop = '1px solid var(--border-color, #e0e0e0)';
-        contentDiv.appendChild(separator);
-    }
-    
-    // Results
-    if (data.results && data.results.length > 0) {
-        data.results.slice(0, 5).forEach((result, index) => {
-            const resultCard = createResultCard(result, index);
-            contentDiv.appendChild(resultCard);
-        });
-        
-        if (data.results.length > 5) {
-            const moreInfo = document.createElement('p');
-            moreInfo.style.marginTop = '12px';
-            moreInfo.style.fontSize = '13px';
-            moreInfo.style.fontStyle = 'italic';
-            moreInfo.textContent = `... and ${data.results.length - 5} more results`;
-            contentDiv.appendChild(moreInfo);
-        }
-    } else {
-        const noResults = document.createElement('p');
-        noResults.style.marginTop = '12px';
-        noResults.textContent = 'No results found. Try uploading documents or adjusting your query.';
-        contentDiv.appendChild(noResults);
-    }
-    
-    const metaDiv = document.createElement('div');
-    metaDiv.className = 'message-meta';
-    metaDiv.textContent = new Date().toLocaleTimeString();
-    
-    messageDiv.appendChild(contentDiv);
-    messageDiv.appendChild(metaDiv);
-    
-    // Remove welcome message if exists
-    const welcomeMsg = elements.chatMessages.querySelector('.welcome-message');
-    if (welcomeMsg) {
-        welcomeMsg.remove();
-    }
-    
-    elements.chatMessages.appendChild(messageDiv);
-    scrollToBottom();
-    
-    // Store in state
-    state.messages.push({ 
-        role: 'assistant', 
-        content: data, 
-        timestamp: Date.now() 
-    });
+function retrievalLabel(mode) {
+    return retrievalLabels.get(mode) ?? mode;
 }
 
-// Create Result Card
-function createResultCard(result, index) {
-    const card = document.createElement('div');
-    card.className = 'result-card';
-    
-    const header = document.createElement('div');
-    header.className = 'result-header';
-    
-    const source = document.createElement('span');
-    source.className = `result-source ${result.source}`;
-    source.textContent = result.source;
-    
-    const score = document.createElement('span');
-    score.className = 'result-score';
-    score.textContent = `Score: ${result.score.toFixed(3)}`;
-    
-    header.appendChild(source);
-    header.appendChild(score);
-    
-    const content = document.createElement('div');
-    content.className = 'result-content';
-    content.textContent = result.content.substring(0, 200) + (result.content.length > 200 ? '...' : '');
-    
-    const metadata = document.createElement('div');
-    metadata.className = 'result-metadata';
-    const metaText = [];
-    if (result.metadata.file_name) metaText.push(`📄 ${result.metadata.file_name}`);
-    if (result.metadata.chunk_index !== undefined) metaText.push(`Chunk ${result.metadata.chunk_index + 1}/${result.metadata.total_chunks}`);
-    metadata.textContent = metaText.join(' • ');
-    
-    card.appendChild(header);
-    card.appendChild(content);
-    if (metaText.length > 0) card.appendChild(metadata);
-    
-    return card;
+function resultElement(tag, text, className) {
+    const element = document.createElement(tag);
+    if (text != null) element.textContent = text;
+    if (className) element.className = className;
+    return element;
+}
+
+function resultDetails(label, className) {
+    const details = resultElement('details', null, className);
+    details.append(resultElement('summary', label));
+    return details;
+}
+
+function retrievalSummary(data, requestMode, resultCount) {
+    const summary = resultElement('div', null, 'query-retrieval');
+    const requested = retrievalLabel(data.requested_mode ?? data.mode ?? requestMode);
+    const effective = retrievalLabel(data.effective_mode);
+    const count = data.total_results ?? resultCount;
+    const timing = Number.isFinite(data.execution_time_ms) ? ` in ${data.execution_time_ms} ms` : '';
+    const mode = effective ? ` using ${effective} search` : '';
+    const requestedMode = requested && requested !== effective ? ` (requested ${requested})` : '';
+    summary.append(resultElement('p', `Found ${count} result${count === 1 ? '' : 's'}${mode}${requestedMode}${timing}.`));
+    if (!effective) summary.append(resultElement('p', 'Effective search mode unavailable.'));
+
+    const routing = data.routing_details ?? {};
+    const recovery = data.recovery_details ?? {};
+    const escalation = recovery.route_escalation ?? routing.route_escalation;
+    if (escalation?.triggered) {
+        const from = retrievalLabel(escalation.from_mode);
+        const to = retrievalLabel(escalation.to_mode);
+        const route = from && to ? ` from ${from} to ${to}` : '';
+        const reasons = (escalation.trigger_reasons ?? []).map(reason => reason.replaceAll('_', ' '));
+        const reason = reasons.join(', ') || routing.decision;
+        summary.append(resultElement('p', `Retrieval switched${route} during recovery.${reason ? ` Reason: ${reason}` : ''}`));
+    } else if (requested && effective && requested !== effective) {
+        const reason = routing.decision ?? routing.execution_plan?.decision;
+        summary.append(resultElement('p', reason ? `Routing reason: ${reason}` : 'Routing reason unavailable.'));
+    }
+
+    if (recovery.structured_recovery_used || recovery.hyde_used || (data.recovery_triggered && !escalation?.triggered)) {
+        const reasons = (recovery.initial_assessment?.reasons ?? []).map(reason => reason.replaceAll('_', ' '));
+        summary.append(resultElement('p', `Additional retrieval was attempted${effective ? ` in ${effective} mode` : ''}.${reasons.length ? ` Reason: ${reasons.join(', ')}` : ''}`));
+    }
+    return summary;
+}
+
+function createQueryAnswer(data, claims, citationTargets, hasResults) {
+    const answer = resultElement('div', null, 'generated-answer');
+    if (!claims.length) answer.classList.add('answer-without-claims');
+    answer.append(resultElement('strong', 'Answer'));
+    if (claims.length) {
+        for (const claim of claims) {
+            const paragraph = resultElement('p', claim.text, 'answer-claim');
+            for (const id of new Set(claim.chunk_ids ?? [])) {
+                const target = citationTargets.get(id);
+                if (target) {
+                    const citation = resultElement('button', `[${target.number}]`, 'query-citation');
+                    citation.type = 'button';
+                    citation.setAttribute('aria-label', `Open cited passage ${target.number} from ${target.source}`);
+                    citation.addEventListener('click', target.open);
+                    paragraph.append(citation);
+                } else {
+                    paragraph.append(resultElement('span', `[${id}: passage unavailable]`, 'query-citation-unavailable'));
+                }
+            }
+            answer.append(paragraph);
+        }
+    } else {
+        if (data.generated_answer) {
+            answer.append(resultElement('p', data.generated_answer, 'answer-claim'));
+        }
+        if (hasResults) {
+            const status = Array.isArray(data.grounded_claims)
+                ? 'No grounded claims were returned. Retrieved passages are still available below.'
+                : 'Claim citations are unavailable for this response. Retrieved passages are still available below.';
+            answer.append(resultElement('p', status, 'query-evidence-note'));
+        }
+    }
+
+    const validation = data.citation_validation;
+    if (validation?.structured_output_valid && validation.total_claims > 0) {
+        const rejected = validation.rejected_claims?.length ?? 0;
+        const status = rejected
+            ? `Citation check rejected ${rejected} claim${rejected === 1 ? '' : 's'}.`
+            : 'Citation check found no invalid or missing references in the generated claims.';
+        answer.append(resultElement('p', status, 'query-evidence-note'));
+    } else if (validation) {
+        answer.append(resultElement('p', 'Citation check unavailable for this answer.', 'query-evidence-note'));
+    }
+
+    const review = data.grounding_critique;
+    const coverage = data.answer_relevancy?.question_coverage ?? review?.question_coverage;
+    if (review?.completed) {
+        const label = ['complete', 'partial', 'none'].includes(coverage) ? coverage : 'unverified';
+        answer.append(resultElement('p', `Grounding review completed. Question coverage: ${label}.`, 'query-evidence-note'));
+    } else if (claims.length || review) {
+        answer.append(resultElement('p', 'Grounding review unavailable for this answer.', 'query-evidence-note'));
+    }
+    if (coverage === 'partial' || coverage === 'none') {
+        const facets = data.answer_relevancy?.missing_question_facets ?? review?.missing_question_facets ?? [];
+        if (!review?.completed) {
+            answer.append(resultElement('p', `Reported question coverage: ${coverage}.`, 'query-evidence-note'));
+        }
+        if (facets.length) {
+            answer.append(resultElement('p', `Missing coverage: ${facets.join(' · ')}`, 'query-evidence-note'));
+        }
+    }
+    if (Number.isFinite(data.answer_confidence)) {
+        const level = data.answer_confidence >= 0.7 ? 'high' : 'low';
+        answer.append(resultElement('div', `Confidence: ${(data.answer_confidence * 100).toFixed(0)}%`, `confidence-badge ${level}`));
+    }
+    return answer;
+}
+
+function createRankingExplanation(explanation) {
+    const details = resultDetails('Why this result?', 'result-explanation');
+    const channels = explanation?.source_channels ?? [];
+    if (!channels.length) {
+        details.append(resultElement('p', 'Retrieval explanation unavailable for this passage.'));
+        return details;
+    }
+
+    details.append(resultElement('p', `Found by ${channels.map(retrievalLabel).join(' and ')} search.`));
+    const ranks = resultElement('ul');
+    for (const channel of channels) {
+        const rank = explanation.channel_ranks?.[channel];
+        const score = explanation.original_scores?.[channel];
+        const contribution = explanation.rrf_contributions?.[channel];
+        const fields = [
+            Number.isFinite(rank) ? `rank ${rank} before merging` : null,
+            Number.isFinite(score) ? `retrieval score ${score}` : null,
+            Number.isFinite(contribution) ? `contributed ${contribution} to the merged score` : null
+        ].filter(Boolean);
+        if (fields.length) ranks.append(resultElement('li', `${retrievalLabel(channel)}: ${fields.join(', ')}`));
+    }
+    if (ranks.childElementCount) details.append(ranks);
+
+    const reranking = explanation.reranking;
+    if (reranking?.mode && reranking.mode !== 'unknown') {
+        const components = Object.entries(reranking.components ?? {})
+            .filter(([, value]) => Number.isFinite(value))
+            .map(([key, value]) => `${key.replaceAll('_', ' ')} ${value}`);
+        const score = Number.isFinite(reranking.score) ? `, score ${reranking.score}` : '';
+        const breakdown = components.length ? ` (${components.join(', ')})` : '';
+        details.append(resultElement('p', `Reranking: ${reranking.mode.replaceAll('_', ' ')}${score}${breakdown}.`));
+    }
+
+    for (const path of Object.values(explanation.graph_paths ?? {})) {
+        if (!Array.isArray(path)) continue;
+        const steps = path.map(step => {
+            const relation = step?.relationship_type ?? step?.relationship;
+            if (!relation) return null;
+            if (!step.from_node_id || !step.to_node_id) return relation;
+            const left = step.direction === 'INCOMING' ? '←' : '—';
+            const right = step.direction === 'OUTGOING' ? '→' : '—';
+            return `${step.from_node_id} ${left} ${relation} ${right} ${step.to_node_id}`;
+        }).filter(Boolean);
+        if (steps.length) details.append(resultElement('p', `Graph path: ${steps.join(' · ')}`));
+    }
+    return details;
+}
+
+function createResultCard(result, number) {
+    const card = resultElement('div', null, 'result-card');
+    const metadata = result.metadata ?? {};
+    const sourceName = metadata.file_name || `result ${number}`;
+    const header = resultElement('div', null, 'result-header');
+    const source = resultElement('span', `Result ${number} · ${retrievalLabel(result.source) ?? 'Unknown source'}`, 'result-source');
+    if (retrievalLabels.has(result.source)) source.classList.add(result.source);
+    header.append(source);
+    if (Number.isFinite(result.score)) {
+        header.append(resultElement('span', `Score: ${result.score.toFixed(3)}`, 'result-score'));
+    }
+    card.append(header);
+
+    const location = [];
+    if (metadata.file_name) location.push(metadata.file_name);
+    if (metadata.section_path) location.push(metadata.section_path);
+    if (metadata.page_start > 0) {
+        const end = metadata.page_end;
+        location.push(end > metadata.page_start ? `Pages ${metadata.page_start}–${end}` : `Page ${metadata.page_start}`);
+    }
+    if (Number.isInteger(metadata.chunk_index) && metadata.chunk_index >= 0) {
+        const total = metadata.total_chunks > 0 ? `/${metadata.total_chunks}` : '';
+        location.push(`Chunk ${metadata.chunk_index + 1}${total}`);
+    }
+    if (location.length) card.append(resultElement('p', location.join(' · '), 'result-metadata'));
+    const passage = resultDetails('Read passage', 'result-passage');
+    const text = result.content || 'Passage text unavailable.';
+    const preview = text.length > 200 ? `${text.slice(0, 200)}…` : text;
+    passage.firstElementChild.append(resultElement('span', preview, 'result-preview'));
+    const fullText = resultElement('p', text, 'result-passage-text');
+    fullText.tabIndex = -1;
+    passage.append(fullText);
+    card.append(passage, createRankingExplanation(result.explanation));
+    return { card, sourceName, passage, fullText };
+}
+
+function addAssistantMessage(data, requestMode) {
+    const messageDiv = resultElement('div', null, 'message assistant');
+    const contentDiv = resultElement('div', null, 'message-content');
+    const results = data.results ?? [];
+    const claims = (data.grounded_claims ?? []).filter(claim => claim?.text);
+    const citedIds = new Set(claims.flatMap(claim => claim.chunk_ids ?? []));
+    const citationTargets = new Map();
+    const visibleCards = [];
+    const initialResultLimit = 5;
+    const extraResultCount = results.length - initialResultLimit;
+    const moreResults = extraResultCount > 0
+        ? resultDetails(`Show ${extraResultCount} more result${extraResultCount === 1 ? '' : 's'}`, 'query-more-results')
+        : null;
+
+    results.forEach((result, index) => {
+        const number = index + 1;
+        const id = result.metadata?.citation_id;
+        const inMoreResults = index >= initialResultLimit;
+        const { card, sourceName, passage, fullText } = createResultCard(result, number);
+        if (inMoreResults) moreResults.append(card);
+        else visibleCards.push(card);
+        if (id && citedIds.has(id)) {
+            // An ambiguous reference should never open the wrong passage.
+            citationTargets.set(id, citationTargets.has(id) ? null : {
+                number,
+                source: sourceName,
+                passage,
+                open() {
+                    if (inMoreResults) moreResults.open = true;
+                    passage.open = true;
+                    fullText.focus();
+                }
+            });
+        }
+    });
+    for (const target of citationTargets.values()) {
+        target?.passage.before(resultElement('p', 'Cited in the answer', 'result-cited'));
+    }
+
+    contentDiv.append(retrievalSummary(data, requestMode, results.length));
+    if (claims.length || data.generated_answer || results.length) {
+        contentDiv.append(createQueryAnswer(data, claims, citationTargets, results.length > 0));
+    }
+    contentDiv.append(...visibleCards);
+    if (moreResults) contentDiv.append(moreResults);
+    if (!results.length) {
+        contentDiv.append(resultElement('p', 'No passages were retrieved. Try adjusting your query or uploading a document.', 'query-evidence-note'));
+    }
+
+    messageDiv.append(contentDiv, resultElement('div', new Date().toLocaleTimeString(), 'message-meta'));
+    elements.chatMessages.querySelector('.welcome-message')?.remove();
+    elements.chatMessages.append(messageDiv);
+    scrollToBottom();
+
+    state.messages.push({ role: 'assistant', content: data, timestamp: Date.now() });
 }
 
 // Typing Indicator
